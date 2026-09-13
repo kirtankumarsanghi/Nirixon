@@ -42,14 +42,20 @@ from collections import Counter
 import pandas as pd
 
 # Allow imports from the generator — use absolute path from this file
-_GENERATOR_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/generator"))
+_GENERATOR_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../data/generator")
+)
 if _GENERATOR_PATH not in sys.path:
     sys.path.insert(0, _GENERATOR_PATH)
 from item_bank import DOMAINS, ITEM_BANK, Item
 
 from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
-DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"))
+DATA_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"
+    )
+)
 
 # Minimum subpopulation size to trust MI estimates; below this, fall back
 # to domain-quota. Set low enough not to trigger too early on real data.
@@ -86,7 +92,9 @@ def _mutual_information(series_x: pd.Series, series_y: pd.Series) -> float:
     return mi
 
 
-def _domain_quota_fallback(session: ScreeningSession, candidate_ids: list[str]) -> str | None:
+def _domain_quota_fallback(
+    session: ScreeningSession, candidate_ids: list[str]
+) -> str | None:
     """
     Round-robin fallback: pick the age-appropriate item from the domain
     that has been answered the least so far.
@@ -108,7 +116,8 @@ def _domain_quota_fallback(session: ScreeningSession, candidate_ids: list[str]) 
 
     for domain in sorted_domains:
         domain_candidates = [
-            item for item in candidate_items
+            item
+            for item in candidate_items
             if item.domain == domain and item.item_id in candidate_set
         ]
         if not domain_candidates:
@@ -116,7 +125,9 @@ def _domain_quota_fallback(session: ScreeningSession, candidate_ids: list[str]) 
         # Within domain, pick item whose typical_age_months is closest to child's age
         best = min(
             domain_candidates,
-            key=lambda item: abs(item.typical_age_months - session.corrected_age_months),
+            key=lambda item: abs(
+                item.typical_age_months - session.corrected_age_months
+            ),
         )
         return best.item_id
 
@@ -138,7 +149,8 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
 
     already_asked = set(session.answers.keys()) | set(session.mandatory_answered.keys())
     candidate_ids = [
-        iid for iid in all_item_ids
+        iid
+        for iid in all_item_ids
         if iid not in already_asked and iid not in mandatory_set
     ]
 

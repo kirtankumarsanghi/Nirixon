@@ -52,7 +52,9 @@ def build_preprocessor(feature_columns: list[str]) -> ColumnTransformer:
     )
 
 
-def run_grid_search(X_train, y_train, feature_columns: list[str], class_weight="balanced"):
+def run_grid_search(
+    X_train, y_train, feature_columns: list[str], class_weight="balanced"
+):
     """
     Runs GridSearchCV for all three model families and returns a dict of
     {name: fitted_best_pipeline}, plus the CV scores used to pick a winner.
@@ -67,20 +69,31 @@ def run_grid_search(X_train, y_train, feature_columns: list[str], class_weight="
     results = {}
 
     # --- Logistic Regression ---
-    logreg_pipe = Pipeline([
-        ("preprocess", build_preprocessor(feature_columns)),
-        ("clf", LogisticRegression(class_weight=class_weight, max_iter=2000, random_state=42)),
-    ])
+    logreg_pipe = Pipeline(
+        [
+            ("preprocess", build_preprocessor(feature_columns)),
+            (
+                "clf",
+                LogisticRegression(
+                    class_weight=class_weight, max_iter=2000, random_state=42
+                ),
+            ),
+        ]
+    )
     logreg_grid = {"clf__C": [0.01, 0.1, 1.0, 10.0]}
-    logreg_search = GridSearchCV(logreg_pipe, logreg_grid, scoring=scoring, cv=cv, n_jobs=-1)
+    logreg_search = GridSearchCV(
+        logreg_pipe, logreg_grid, scoring=scoring, cv=cv, n_jobs=-1
+    )
     logreg_search.fit(X_train, y_train)
     results["logistic_regression"] = logreg_search
 
     # --- Random Forest ---
-    rf_pipe = Pipeline([
-        ("preprocess", build_preprocessor(feature_columns)),
-        ("clf", RandomForestClassifier(class_weight=class_weight, random_state=42)),
-    ])
+    rf_pipe = Pipeline(
+        [
+            ("preprocess", build_preprocessor(feature_columns)),
+            ("clf", RandomForestClassifier(class_weight=class_weight, random_state=42)),
+        ]
+    )
     rf_grid = {
         "clf__n_estimators": [200, 400],
         "clf__max_depth": [6, 10, None],
@@ -97,15 +110,20 @@ def run_grid_search(X_train, y_train, feature_columns: list[str], class_weight="
     class_weights_arr = len(y_train_int) / (len(class_counts) * class_counts)
     sample_weight = class_weights_arr[y_train_int]
 
-    xgb_pipe = Pipeline([
-        ("preprocess", build_preprocessor(feature_columns)),
-        ("clf", XGBClassifier(
-            objective="multi:softprob",
-            num_class=len(LABEL_ORDER),
-            eval_metric="mlogloss",
-            random_state=42,
-        )),
-    ])
+    xgb_pipe = Pipeline(
+        [
+            ("preprocess", build_preprocessor(feature_columns)),
+            (
+                "clf",
+                XGBClassifier(
+                    objective="multi:softprob",
+                    num_class=len(LABEL_ORDER),
+                    eval_metric="mlogloss",
+                    random_state=42,
+                ),
+            ),
+        ]
+    )
     xgb_grid = {
         "clf__n_estimators": [200, 400],
         "clf__max_depth": [3, 5],

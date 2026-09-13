@@ -89,9 +89,13 @@ def explain_prediction(
     contrib_series = pd.Series(contributions, index=feature_columns)
 
     if real_answer_mask is not None:
-        contrib_series = contrib_series[real_answer_mask.reindex(feature_columns, fill_value=True)]
+        contrib_series = contrib_series[
+            real_answer_mask.reindex(feature_columns, fill_value=True)
+        ]
 
-    top_features = contrib_series.abs().sort_values(ascending=False).head(5).index.tolist()
+    top_features = (
+        contrib_series.abs().sort_values(ascending=False).head(5).index.tolist()
+    )
 
     return {
         "predicted_class": predicted_class,

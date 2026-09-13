@@ -37,11 +37,17 @@ if _CORE_PATH not in sys.path:
 
 from .session import MANDATORY_IDS
 
-DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"))
+DATA_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"
+    )
+)
 BIN_SIZE_MONTHS = 3
 
 
-def _load_medians(corrected_age_months: float, data_path: str = DATA_PATH) -> dict[str, int]:
+def _load_medians(
+    corrected_age_months: float, data_path: str = DATA_PATH
+) -> dict[str, int]:
     """
     Computes per-item medians for the 3-month age bin containing
     `corrected_age_months`, from the Stage 1 CSV.
@@ -65,9 +71,14 @@ def _load_medians(corrected_age_months: float, data_path: str = DATA_PATH) -> di
 
     # Item columns: anything that's not metadata or the target
     non_item_cols = {
-        "child_id", "age_months", "corrected_age_months",
-        "family_history_flag", "multilingual_home_flag",
-        "regression_flag", "risk_label", "age_bin",
+        "child_id",
+        "age_months",
+        "corrected_age_months",
+        "family_history_flag",
+        "multilingual_home_flag",
+        "regression_flag",
+        "risk_label",
+        "age_bin",
     }
     item_cols = [c for c in bin_df.columns if c not in non_item_cols]
 

@@ -21,6 +21,7 @@ EXCLUDED FROM TRAINING:
                                  including it and checking its coefficient.
   - risk_label                -> the target, not a feature
 """
+
 import numpy as np
 
 ITEM_PREFIXES = ("GM", "FM", "CM", "CG", "PS", "SH")
@@ -36,12 +37,18 @@ TARGET_COLUMN = "risk_label"
 FAIRNESS_GROUP_COLUMN = "multilingual_home_flag"
 AGE_COLUMN = "corrected_age_months"
 
-LABEL_ORDER = ["Typical", "Monitor", "Refer"]  # canonical ordering used for reports/plots
+LABEL_ORDER = [
+    "Typical",
+    "Monitor",
+    "Refer",
+]  # canonical ordering used for reports/plots
 
 
 def get_feature_columns(df) -> list[str]:
     """Given the full dataframe, return the exact list of columns to train on."""
-    return [c for c in df.columns if c not in NON_FEATURE_COLUMNS and c != TARGET_COLUMN]
+    return [
+        c for c in df.columns if c not in NON_FEATURE_COLUMNS and c != TARGET_COLUMN
+    ]
 
 
 def reorder_proba(proba, model_classes) -> "np.ndarray":

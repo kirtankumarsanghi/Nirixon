@@ -52,7 +52,9 @@ def domain_percentiles(
     (0-1, higher = better) for each domain.
     """
     bins = age_bin(corrected_age_months)
-    out = pd.DataFrame(index=domain_scores.index, columns=domain_scores.columns, dtype=float)
+    out = pd.DataFrame(
+        index=domain_scores.index, columns=domain_scores.columns, dtype=float
+    )
 
     for b in np.unique(bins):
         mask = bins == b

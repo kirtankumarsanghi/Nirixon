@@ -66,6 +66,7 @@ MIN_DOMAINS_COVERED: int = 4
 # Helper
 # ------------------------------------------------------------------
 
+
 def _domains_with_real_answer(session: ScreeningSession) -> set[str]:
     """
     Returns the set of developmental domains for which the session has
@@ -84,6 +85,7 @@ def _domains_with_real_answer(session: ScreeningSession) -> set[str]:
 # ------------------------------------------------------------------
 # Stopping guard
 # ------------------------------------------------------------------
+
 
 def can_stop_early(
     session: ScreeningSession,
@@ -115,7 +117,9 @@ def stopping_blocked_reason(
     or None if stopping is permitted. Used for logging and test assertions.
     """
     if not session.all_mandatory_answered():
-        missing = [mid for mid in MANDATORY_IDS if mid not in session.mandatory_answered]
+        missing = [
+            mid for mid in MANDATORY_IDS if mid not in session.mandatory_answered
+        ]
         return f"Mandatory items not yet answered: {missing}"
 
     if session.real_answer_count < min_real_answers:
@@ -139,6 +143,7 @@ def stopping_blocked_reason(
 # ------------------------------------------------------------------
 # Deterministic ML override
 # ------------------------------------------------------------------
+
 
 def get_deterministic_override(session: ScreeningSession) -> str | None:
     """

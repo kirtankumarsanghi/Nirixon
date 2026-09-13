@@ -49,15 +49,19 @@ STUB_API_BASE = "http://localhost:8001"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _run_full_session_via_api(corrected_age_months: float, question_cap: int) -> dict:
     """
     Runs a complete session through the stub API, answering every question
     with answer=1 (middle response), and returns a summary dict.
     """
-    r = requests.post(f"{STUB_API_BASE}/session/start", json={
-        "corrected_age_months": corrected_age_months,
-        "question_cap": question_cap,
-    })
+    r = requests.post(
+        f"{STUB_API_BASE}/session/start",
+        json={
+            "corrected_age_months": corrected_age_months,
+            "question_cap": question_cap,
+        },
+    )
     r.raise_for_status()
     action = r.json()
 
@@ -73,11 +77,14 @@ def _run_full_session_via_api(corrected_age_months: float, question_cap: int) ->
 
         # Answer with 1 for mandatory (Yes/sometimes), 1 for milestone (occasional)
         answer = 1
-        r = requests.post(f"{STUB_API_BASE}/session/answer", json={
-            "session_id": session_id,
-            "item_id": item_id,
-            "answer": answer,
-        })
+        r = requests.post(
+            f"{STUB_API_BASE}/session/answer",
+            json={
+                "session_id": session_id,
+                "item_id": item_id,
+                "answer": answer,
+            },
+        )
         r.raise_for_status()
         action = r.json()
 
@@ -136,6 +143,7 @@ def _run_full_session_direct(
 # Unit tests — mandatory_items.py
 # ---------------------------------------------------------------------------
 
+
 class TestMandatoryItems:
     def test_first_two_questions_are_mandatory(self):
         result = _run_full_session_direct(24.0, 10)
@@ -148,18 +156,18 @@ class TestMandatoryItems:
     def test_regression_flag_asked_before_family_history(self):
         result = _run_full_session_direct(24.0, 10)
         q = result["questions_asked"]
-        assert q.index("regression_flag") < q.index("family_history_flag"), (
-            "regression_flag must be asked before family_history_flag"
-        )
+        assert q.index("regression_flag") < q.index(
+            "family_history_flag"
+        ), "regression_flag must be asked before family_history_flag"
 
     def test_mandatory_items_never_repeated(self):
         for cap in (10, 15, 20):
             result = _run_full_session_direct(24.0, cap)
             q = result["questions_asked"]
             for mid in MANDATORY_IDS:
-                assert q.count(mid) == 1, (
-                    f"{mid} appeared {q.count(mid)} times in cap={cap} session (expected exactly 1)"
-                )
+                assert (
+                    q.count(mid) == 1
+                ), f"{mid} appeared {q.count(mid)} times in cap={cap} session (expected exactly 1)"
 
     def test_record_mandatory_raises_on_repeat(self):
         session = ScreeningSession("c2", 24.0, 10)
@@ -176,6 +184,7 @@ class TestMandatoryItems:
 # ---------------------------------------------------------------------------
 # Unit tests — safety_floor.py
 # ---------------------------------------------------------------------------
+
 
 class TestSafetyFloor:
     def test_floor_blocked_before_mandatory(self):
@@ -211,11 +220,16 @@ class TestSafetyFloor:
 # Unit tests — imputation.py
 # ---------------------------------------------------------------------------
 
+
 class TestImputation:
     def test_imputed_values_are_valid_item_scores(self):
         imputed = impute_missing(["GM01", "GM02", "CM01"], corrected_age_months=24.0)
         for item_id, val in imputed.items():
-            assert val in (0, 1, 2), f"Imputed value for {item_id} must be 0/1/2, got {val}"
+            assert val in (
+                0,
+                1,
+                2,
+            ), f"Imputed value for {item_id} must be 0/1/2, got {val}"
 
     def test_mandatory_items_raise_if_imputed(self):
         with pytest.raises(ValueError, match="cannot be imputed"):
@@ -238,6 +252,7 @@ class TestImputation:
 # Integration tests — full session via HTTP
 # ---------------------------------------------------------------------------
 
+
 class TestFullSessionHTTP:
     """These tests require the stub API to be running on port 8001."""
 
@@ -257,9 +272,9 @@ class TestFullSessionHTTP:
     def test_mandatory_first_via_http(self, cap: int):
         result = _run_full_session_via_api(corrected_age_months=36.0, question_cap=cap)
         first_two = result["questions_asked"][:2]
-        assert set(first_two) == set(MANDATORY_IDS), (
-            f"First two questions via HTTP (cap={cap}) were {first_two}, expected mandatory items"
-        )
+        assert set(first_two) == set(
+            MANDATORY_IDS
+        ), f"First two questions via HTTP (cap={cap}) were {first_two}, expected mandatory items"
 
     @pytest.mark.parametrize("age", [6.0, 18.0, 36.0, 54.0])
     def test_session_completes_across_age_range(self, age: float):
@@ -270,6 +285,7 @@ class TestFullSessionHTTP:
 # ---------------------------------------------------------------------------
 # Sensitivity simulation — per-class (Monitor/Refer) at each cap
 # ---------------------------------------------------------------------------
+
 
 class TestSensitivityAtCaps:
     """
@@ -306,21 +322,23 @@ class TestSensitivityAtCaps:
             f"Cap={cap}: session only used {real_count} questions — "
             f"expected at least {cap - 1}. Budget not fully utilized."
         )
-        assert real_count <= cap, (
-            f"Cap={cap}: session asked {real_count} questions — exceeded cap of {cap}."
-        )
+        assert (
+            real_count <= cap
+        ), f"Cap={cap}: session asked {real_count} questions — exceeded cap of {cap}."
 
     @pytest.mark.parametrize("cap", [10, 15, 20])
     def test_stopping_reason_is_valid(self, cap: int):
         result = _run_full_session_via_api(corrected_age_months=24.0, question_cap=cap)
-        assert result["stopping_reason"] in ("cap_reached", "budget_exhausted"), (
-            f"Unexpected stopping_reason: {result['stopping_reason']!r}"
-        )
+        assert result["stopping_reason"] in (
+            "cap_reached",
+            "budget_exhausted",
+        ), f"Unexpected stopping_reason: {result['stopping_reason']!r}"
 
 
 # ---------------------------------------------------------------------------
 # Fix 1: Deterministic ML Override — regression_flag
 # ---------------------------------------------------------------------------
+
 
 class TestDeterministicMLOverride:
     """
@@ -336,18 +354,18 @@ class TestDeterministicMLOverride:
         record_mandatory_answer(session, "regression_flag", 1)
         record_mandatory_answer(session, "family_history_flag", 0)
         override = get_deterministic_override(session)
-        assert override == "Refer", (
-            f"Expected 'Refer' override when regression_flag=1, got {override!r}"
-        )
+        assert (
+            override == "Refer"
+        ), f"Expected 'Refer' override when regression_flag=1, got {override!r}"
 
     def test_no_override_when_regression_flag_not_set(self):
         session = ScreeningSession("c-override-2", 24.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         override = get_deterministic_override(session)
-        assert override is None, (
-            f"Expected None override when regression_flag=0, got {override!r}"
-        )
+        assert (
+            override is None
+        ), f"Expected None override when regression_flag=0, got {override!r}"
 
     def test_override_present_in_final_result_via_orchestrator(self):
         """Regression flag override must travel through the full orchestrator
@@ -372,6 +390,7 @@ class TestDeterministicMLOverride:
 # Fix 2: Domain Coverage Floor
 # ---------------------------------------------------------------------------
 
+
 class TestDomainCoverageFloor:
     """
     Verifies that stopping_blocked_reason() blocks early stopping when
@@ -394,7 +413,9 @@ class TestDomainCoverageFloor:
         )
         reason = stopping_blocked_reason(session)
         assert reason is not None
-        assert "Domain coverage" in reason, f"Expected domain coverage message, got: {reason!r}"
+        assert (
+            "Domain coverage" in reason
+        ), f"Expected domain coverage message, got: {reason!r}"
 
     def test_floor_passes_when_four_domains_covered(self):
         """Meets both count and domain floors."""
@@ -415,8 +436,11 @@ class TestDomainCoverageFloor:
         result = _run_full_session_direct(24.0, 20)
         session: ScreeningSession = result["session"]
         from item_bank import ITEM_BANK
+
         domain_map = {item.item_id: item.domain for item in ITEM_BANK}
-        domains_covered = {domain_map[iid] for iid in session.answers if iid in domain_map}
+        domains_covered = {
+            domain_map[iid] for iid in session.answers if iid in domain_map
+        }
         assert len(domains_covered) >= MIN_DOMAINS_COVERED, (
             f"Session only covered {len(domains_covered)} domains "
             f"(need >= {MIN_DOMAINS_COVERED}): {domains_covered}"
@@ -426,6 +450,7 @@ class TestDomainCoverageFloor:
 # ---------------------------------------------------------------------------
 # Fix 3: Session Serialization (to_dict / from_dict)
 # ---------------------------------------------------------------------------
+
 
 class TestSessionSerialization:
     """
@@ -452,6 +477,7 @@ class TestSessionSerialization:
 
     def test_to_dict_is_json_serializable(self):
         import json
+
         s = ScreeningSession("c2", 12.0, 10)
         s.answers["GM01"] = 1
         data = s.to_dict()
@@ -472,16 +498,18 @@ class TestSessionSerialization:
 
         # Re-restore A from the stored dict
         session_a_restored = ScreeningSession.from_dict(data_a)
-        assert "GM02" not in session_a_restored.answers, (
-            "Cross-session contamination: GM02 appeared in session A after mutation of session B"
-        )
-        assert "regression_flag" not in session_a_restored.mandatory_answered, (
-            "Cross-session contamination: regression_flag appeared in session A"
-        )
+        assert (
+            "GM02" not in session_a_restored.answers
+        ), "Cross-session contamination: GM02 appeared in session A after mutation of session B"
+        assert (
+            "regression_flag" not in session_a_restored.mandatory_answered
+        ), "Cross-session contamination: regression_flag appeared in session A"
+
 
 class TestSanityCheckItem:
     def test_sanity_check_fails_if_honeypot_present(self):
         from app.core.sanity_item import HONEYPOT_ITEM_ID
+
         session = ScreeningSession("c1", 24.0, 10)
         session.answers[HONEYPOT_ITEM_ID] = 1
         with pytest.raises(ValueError, match="sanity check failed"):
@@ -493,16 +521,17 @@ class TestSanityCheckItem:
         action = get_next_action(session)
         assert action is not None
 
+
 class TestMotorConfoundCaveat:
     def test_caveat_generated_when_motor_confound_failed_but_pure_item_passed(self):
         session = ScreeningSession("c1", 24.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
-        
+
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 0  # Failed confound
         session.answers["CG01"] = 1  # Passed pure
-        
+
         # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
@@ -510,7 +539,7 @@ class TestMotorConfoundCaveat:
         session.answers["FM02"] = 1
         session.answers["CM01"] = 1
         session.answers["CM02"] = 1
-        
+
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
         assert len(action.caveats) == 1
@@ -521,11 +550,11 @@ class TestMotorConfoundCaveat:
         session = ScreeningSession("c1", 24.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
-        
+
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 0  # Failed confound
         session.answers["CG01"] = 0  # Failed pure
-        
+
         # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
@@ -533,7 +562,7 @@ class TestMotorConfoundCaveat:
         session.answers["FM02"] = 1
         session.answers["CM01"] = 1
         session.answers["CM02"] = 1
-        
+
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
         assert len(action.caveats) == 0
@@ -542,11 +571,11 @@ class TestMotorConfoundCaveat:
         session = ScreeningSession("c1", 24.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
-        
+
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 1  # Passed confound
         session.answers["CG01"] = 0  # Failed pure
-        
+
         # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
@@ -554,7 +583,7 @@ class TestMotorConfoundCaveat:
         session.answers["FM02"] = 1
         session.answers["CM01"] = 1
         session.answers["CM02"] = 1
-        
+
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
         assert len(action.caveats) == 0

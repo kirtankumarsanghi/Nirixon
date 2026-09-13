@@ -28,6 +28,7 @@ def run_fairness_check(model, X_test, y_test, multilingual_flag_test) -> dict:
     """
     proba = model.predict_proba(X_test)
     from columns import reorder_proba
+
     proba = reorder_proba(proba, model.classes_)
 
     refer_idx = LABEL_ORDER.index("Refer")
@@ -36,24 +37,31 @@ def run_fairness_check(model, X_test, y_test, multilingual_flag_test) -> dict:
     refer_prob = proba[:, refer_idx]
     monitor_or_refer_prob = proba[:, monitor_idx] + proba[:, refer_idx]
 
-    df = pd.DataFrame({
-        "multilingual": multilingual_flag_test.to_numpy(),
-        "refer_prob": refer_prob,
-        "monitor_or_refer_prob": monitor_or_refer_prob,
-        "true_label": np.asarray(y_test),
-    })
+    df = pd.DataFrame(
+        {
+            "multilingual": multilingual_flag_test.to_numpy(),
+            "refer_prob": refer_prob,
+            "monitor_or_refer_prob": monitor_or_refer_prob,
+            "true_label": np.asarray(y_test),
+        }
+    )
 
-    group_means = df.groupby("multilingual")[["refer_prob", "monitor_or_refer_prob"]].mean()
+    group_means = df.groupby("multilingual")[
+        ["refer_prob", "monitor_or_refer_prob"]
+    ].mean()
 
     refer_gap = abs(group_means.loc[1, "refer_prob"] - group_means.loc[0, "refer_prob"])
     monitor_refer_gap = abs(
-        group_means.loc[1, "monitor_or_refer_prob"] - group_means.loc[0, "monitor_or_refer_prob"]
+        group_means.loc[1, "monitor_or_refer_prob"]
+        - group_means.loc[0, "monitor_or_refer_prob"]
     )
 
     # Also check actual Refer RATE in the true labels by group, as a sanity
     # check on the test split itself (should also be near-equal, since this
     # was already verified at the data-generation stage in Stage 1).
-    true_refer_rate = df.groupby("multilingual")["true_label"].apply(lambda s: (s == "Refer").mean())
+    true_refer_rate = df.groupby("multilingual")["true_label"].apply(
+        lambda s: (s == "Refer").mean()
+    )
 
     return {
         "group_means": group_means,
@@ -68,7 +76,14 @@ def print_fairness_result(result: dict, max_acceptable_gap: float = 0.05) -> Non
     print("Mean predicted probabilities by group:")
     print(result["group_means"].round(4))
     print(f"\nRefer-probability gap between groups: {result['refer_prob_gap']:.4f}")
-    print(f"Monitor+Refer-probability gap:        {result['monitor_or_refer_prob_gap']:.4f}")
+    print(
+        f"Monitor+Refer-probability gap:        {result['monitor_or_refer_prob_gap']:.4f}"
+    )
     print(f"(threshold for concern: {max_acceptable_gap})")
-    passed = result["refer_prob_gap"] <= max_acceptable_gap and result["monitor_or_refer_prob_gap"] <= max_acceptable_gap
-    print(f"\nResult: {'PASS' if passed else 'FAIL - investigate proxying via item responses'}")
+    passed = (
+        result["refer_prob_gap"] <= max_acceptable_gap
+        and result["monitor_or_refer_prob_gap"] <= max_acceptable_gap
+    )
+    print(
+        f"\nResult: {'PASS' if passed else 'FAIL - investigate proxying via item responses'}"
+    )

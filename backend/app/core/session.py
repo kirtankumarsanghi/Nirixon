@@ -109,22 +109,23 @@ class NextQuestion:
     item_id: str
     question_text: str
     domain: str
-    question_number: int   # 1-indexed, for display ("Question 3 of up to 10")
+    question_number: int  # 1-indexed, for display ("Question 3 of up to 10")
     question_cap: int
 
 
 @dataclass
 class FinalResult:
     """Passed to Stage 4 to trigger the Stage 2 model prediction."""
+
     session: ScreeningSession
-    real_answers: dict[str, int]      # mandatory + adaptive answers
-    imputed_answers: dict[str, int]   # imputed-only, clearly separated
+    real_answers: dict[str, int]  # mandatory + adaptive answers
+    imputed_answers: dict[str, int]  # imputed-only, clearly separated
     stopping_reason: Literal["cap_reached", "budget_exhausted"]
 
     # If set, Stage 4 MUST substitute this for whatever the ML model returns.
     # None means use ML prediction as-is. Populated by safety_floor.py rules.
     deterministic_override: str | None = None
-    
+
     # A list of warnings/caveats generated during the session (e.g., motor confounds)
     # that should be surfaced to the clinician alongside the final prediction.
     caveats: list[str] = field(default_factory=list)

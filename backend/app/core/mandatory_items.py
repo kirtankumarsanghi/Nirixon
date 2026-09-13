@@ -61,15 +61,23 @@ def next_mandatory_question(session: ScreeningSession) -> NextQuestion | None:
     return None
 
 
-def record_mandatory_answer(session: ScreeningSession, item_id: str, answer: int) -> None:
+def record_mandatory_answer(
+    session: ScreeningSession, item_id: str, answer: int
+) -> None:
     """
     Validates and stores a mandatory answer. Raises if the item_id is not
     a mandatory item or has already been answered.
     """
     if item_id not in MANDATORY_IDS:
-        raise ValueError(f"{item_id!r} is not a mandatory item. Use session.answers for milestone items.")
+        raise ValueError(
+            f"{item_id!r} is not a mandatory item. Use session.answers for milestone items."
+        )
     if item_id in session.mandatory_answered:
-        raise ValueError(f"{item_id!r} has already been answered and cannot be repeated.")
+        raise ValueError(
+            f"{item_id!r} has already been answered and cannot be repeated."
+        )
     if answer not in (0, 1):
-        raise ValueError(f"Mandatory item answers must be 0 (No) or 1 (Yes), got {answer}.")
+        raise ValueError(
+            f"Mandatory item answers must be 0 (No) or 1 (Yes), got {answer}."
+        )
     session.mandatory_answered[item_id] = answer

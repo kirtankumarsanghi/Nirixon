@@ -21,38 +21,56 @@ import pandas as pd
 
 
 def sensitivity_by_age_bin(y_test, y_pred, age_months_series) -> pd.DataFrame:
-    df = pd.DataFrame({
-        "true_label": np.asarray(y_test),
-        "pred_label": np.asarray(y_pred),
-        "age_months": np.asarray(age_months_series)
-    })
-    
+    df = pd.DataFrame(
+        {
+            "true_label": np.asarray(y_test),
+            "pred_label": np.asarray(y_pred),
+            "age_months": np.asarray(age_months_series),
+        }
+    )
+
     df["age_bin"] = (df["age_months"] // 12).astype(int).astype(str) + " yr"
-    
+
     rows = []
     for bin_val, group in df.groupby("age_bin"):
         refer_group = group[group["true_label"] == "Refer"]
         if len(refer_group) > 0:
             recall = (refer_group["pred_label"] == "Refer").mean()
-            rows.append({"age_bin": bin_val, "refer_n": len(refer_group), "refer_recall": recall})
-            
+            rows.append(
+                {
+                    "age_bin": bin_val,
+                    "refer_n": len(refer_group),
+                    "refer_recall": recall,
+                }
+            )
+
     return pd.DataFrame(rows)
 
+
 def sensitivity_by_family_history(y_test, y_pred, fh_series) -> pd.DataFrame:
-    df = pd.DataFrame({
-        "true_label": np.asarray(y_test),
-        "pred_label": np.asarray(y_pred),
-        "family_history": np.asarray(fh_series)
-    })
-    
+    df = pd.DataFrame(
+        {
+            "true_label": np.asarray(y_test),
+            "pred_label": np.asarray(y_pred),
+            "family_history": np.asarray(fh_series),
+        }
+    )
+
     rows = []
     for fh_val, group in df.groupby("family_history"):
         refer_group = group[group["true_label"] == "Refer"]
         if len(refer_group) > 0:
             recall = (refer_group["pred_label"] == "Refer").mean()
-            rows.append({"family_history": fh_val, "refer_n": len(refer_group), "refer_recall": recall})
-            
+            rows.append(
+                {
+                    "family_history": fh_val,
+                    "refer_n": len(refer_group),
+                    "refer_recall": recall,
+                }
+            )
+
     return pd.DataFrame(rows)
+
 
 def print_subgroup_tables(age_table: pd.DataFrame, fh_table: pd.DataFrame) -> None:
     print(f"\n{'='*60}\nSubgroup Sensitivity (Refer Class Recall)\n{'='*60}")
@@ -68,11 +86,15 @@ def print_subgroup_tables(age_table: pd.DataFrame, fh_table: pd.DataFrame) -> No
         print("  No Refer cases available to check.")
     else:
         for _, row in age_table.iterrows():
-            print(f"  {row['age_bin']:<5s} : {row['refer_recall']:.1%}  (n={int(row['refer_n'])} Refer cases)")
+            print(
+                f"  {row['age_bin']:<5s} : {row['refer_recall']:.1%}  (n={int(row['refer_n'])} Refer cases)"
+            )
 
     print("\nBy Family History:")
     if fh_table.empty:
         print("  No Refer cases available to check.")
     else:
         for _, row in fh_table.iterrows():
-            print(f"  FH={row['family_history']} : {row['refer_recall']:.1%}  (n={int(row['refer_n'])} Refer cases)")
+            print(
+                f"  FH={row['family_history']} : {row['refer_recall']:.1%}  (n={int(row['refer_n'])} Refer cases)"
+            )

@@ -25,7 +25,9 @@ from label_derivation import (
 )
 
 RNG_SEED = 42
-N_CHILDREN = 5000  # scoped down from the design doc's 50,000 for a fast, iterable demo build
+N_CHILDREN = (
+    5000  # scoped down from the design doc's 50,000 for a fast, iterable demo build
+)
 
 AGE_MIN, AGE_MAX = 0, 60  # months
 
@@ -56,7 +58,9 @@ def sample_children(n: int, rng: np.random.Generator) -> pd.DataFrame:
     corrected_age_months = np.clip(age_months - weeks_early / 4.345, 0, None)
 
     family_history_flag = (rng.random(n) < 0.08).astype(int)
-    multilingual_home_flag = (rng.random(n) < 0.40).astype(int)  # common in India; must NOT affect ability
+    multilingual_home_flag = (rng.random(n) < 0.40).astype(
+        int
+    )  # common in India; must NOT affect ability
     regression_flag = (rng.random(n) < 0.05).astype(int)
 
     return pd.DataFrame(
@@ -150,7 +154,9 @@ def write_data_dictionary(path: str) -> None:
         f.writelines(lines)
 
 
-def generate(n_children: int = N_CHILDREN, seed: int = RNG_SEED) -> tuple[pd.DataFrame, pd.DataFrame]:
+def generate(
+    n_children: int = N_CHILDREN, seed: int = RNG_SEED
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     rng = np.random.default_rng(seed)
 
     children = sample_children(n_children, rng)
@@ -158,13 +164,19 @@ def generate(n_children: int = N_CHILDREN, seed: int = RNG_SEED) -> tuple[pd.Dat
     latents = sample_domain_latents(
         n_children, children["family_history_flag"].to_numpy(), rng
     )
-    latents = apply_regression_event(latents, children["regression_flag"].to_numpy(), rng)
+    latents = apply_regression_event(
+        latents, children["regression_flag"].to_numpy(), rng
+    )
 
     item_responses = simulate_item_responses(children, latents, rng)
     domain_scores = compute_domain_scores(item_responses)  # derived, display-only
 
-    pct_df = domain_percentiles(domain_scores, children["corrected_age_months"].to_numpy())
-    composite = composite_risk_score(pct_df, children["regression_flag"].to_numpy(), rng)
+    pct_df = domain_percentiles(
+        domain_scores, children["corrected_age_months"].to_numpy()
+    )
+    composite = composite_risk_score(
+        pct_df, children["regression_flag"].to_numpy(), rng
+    )
     labels = assign_labels_by_quantile(composite)
 
     full = pd.concat([children, item_responses], axis=1)

@@ -33,7 +33,9 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
     # Per-class and macro AUPRC
     auprc_per_class = {}
     for i, label in enumerate(LABEL_ORDER):
-        auprc_per_class[label] = average_precision_score(y_true_bin[:, i], y_proba[:, i])
+        auprc_per_class[label] = average_precision_score(
+            y_true_bin[:, i], y_proba[:, i]
+        )
     macro_auprc = float(np.mean(list(auprc_per_class.values())))
 
     # AUPRC specifically for Refer - the metric that matters most, called
@@ -42,9 +44,13 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
     macro_f1 = f1_score(y_true, y_pred, labels=LABEL_ORDER, average="macro")
 
     try:
-        macro_auroc = roc_auc_score(y_true_bin, y_proba, average="macro", multi_class="ovr")
+        macro_auroc = roc_auc_score(
+            y_true_bin, y_proba, average="macro", multi_class="ovr"
+        )
     except ValueError:
-        macro_auroc = float("nan")  # can happen if a class is missing from a small split
+        macro_auroc = float(
+            "nan"
+        )  # can happen if a class is missing from a small split
 
     cm = confusion_matrix(y_true, y_pred, labels=LABEL_ORDER)
     report = classification_report(y_true, y_pred, labels=LABEL_ORDER, zero_division=0)
@@ -64,11 +70,15 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
 def print_metrics(metrics: dict, title: str = "Evaluation") -> None:
     print(f"\n{'='*60}\n{title}\n{'='*60}")
     print(f"Macro AUPRC:        {metrics['macro_auprc']:.4f}")
-    print(f"Refer-class AUPRC:  {metrics['refer_auprc']:.4f}  <-- primary metric to watch")
+    print(
+        f"Refer-class AUPRC:  {metrics['refer_auprc']:.4f}  <-- primary metric to watch"
+    )
     for label, val in metrics["auprc_per_class"].items():
         print(f"  AUPRC ({label:8s}): {val:.4f}")
     print(f"Macro F1:           {metrics['macro_f1']:.4f}")
     print(f"Macro AUROC:        {metrics['macro_auroc']:.4f}")
-    print(f"\nConfusion matrix (rows=true, cols=pred), labels={metrics['confusion_matrix_labels']}:")
+    print(
+        f"\nConfusion matrix (rows=true, cols=pred), labels={metrics['confusion_matrix_labels']}:"
+    )
     print(metrics["confusion_matrix"])
     print(f"\n{metrics['classification_report']}")

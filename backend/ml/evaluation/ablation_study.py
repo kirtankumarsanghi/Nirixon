@@ -23,7 +23,9 @@ from evaluation.metrics import compute_metrics
 from sklearn.base import clone
 
 
-def run_ablation(model_pipeline, X_train, y_train, X_test, y_test, feature_columns: list[str]) -> dict:
+def run_ablation(
+    model_pipeline, X_train, y_train, X_test, y_test, feature_columns: list[str]
+) -> dict:
     if AGE_COLUMN not in feature_columns:
         raise ValueError(f"{AGE_COLUMN} not in feature_columns - nothing to ablate.")
 
@@ -43,6 +45,7 @@ def run_ablation(model_pipeline, X_train, y_train, X_test, y_test, feature_colum
     preds_idx = proba.argmax(axis=1)
 
     from columns import LABEL_ORDER
+
     preds = [LABEL_ORDER[i] for i in preds_idx]
 
     ablated_metrics = compute_metrics(y_test, preds, proba)

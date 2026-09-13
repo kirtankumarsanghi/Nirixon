@@ -39,7 +39,11 @@ from .safety_floor import get_deterministic_override, stopping_blocked_reason
 from .sanity_item import check_sanity
 from .session import FinalResult, NextQuestion, ScreeningSession
 
-DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"))
+DATA_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"
+    )
+)
 
 
 def get_next_action(
@@ -99,7 +103,10 @@ def _build_final_result(
     import sys
 
     from item_bank import ITEM_BANK
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../data/generator"))
+
+    sys.path.insert(
+        0, os.path.join(os.path.dirname(__file__), "../../../data/generator")
+    )
 
     all_item_ids = [item.item_id for item in ITEM_BANK]
 

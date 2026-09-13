@@ -20,7 +20,9 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-sys.path.insert(0, os.path.dirname(__file__))  # allow sibling-package imports when run directly
+sys.path.insert(
+    0, os.path.dirname(__file__)
+)  # allow sibling-package imports when run directly
 
 from columns import LABEL_ORDER, get_feature_columns, reorder_proba
 from evaluation.ablation_study import print_ablation_comparison, run_ablation
@@ -55,13 +57,20 @@ def split_data(df: pd.DataFrame, feature_columns: list[str]):
     """
     X = df[feature_columns]
     y = df["risk_label"]
-    aux = df[["multilingual_home_flag", "age_months"]]  # carried alongside for fairness/subgroup checks
+    aux = df[
+        ["multilingual_home_flag", "age_months"]
+    ]  # carried alongside for fairness/subgroup checks
 
     X_train, X_temp, y_train, y_temp, aux_train, aux_temp = train_test_split(
         X, y, aux, test_size=0.4, stratify=y, random_state=RANDOM_STATE
     )
     X_val, X_test, y_val, y_test, aux_val, aux_test = train_test_split(
-        X_temp, y_temp, aux_temp, test_size=0.5, stratify=y_temp, random_state=RANDOM_STATE
+        X_temp,
+        y_temp,
+        aux_temp,
+        test_size=0.5,
+        stratify=y_temp,
+        random_state=RANDOM_STATE,
     )
 
     return {
@@ -94,7 +103,9 @@ def main():
     X_train, y_train, _aux_train = splits["train"]
     X_val, y_val, _aux_val = splits["val"]
     X_test, y_test, aux_test = splits["test"]
-    print(f"Split sizes -> train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
+    print(
+        f"Split sizes -> train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}"
+    )
 
     # --- Model comparison ---
     print("\nRunning model comparison (this may take a minute)...")
@@ -113,8 +124,10 @@ def main():
 
     # --- Calibration (fit on validation set, never on train or test) ---
     print("\nCalibrating winning model...")
-    y_val_for_calibration = y_val if winner_name != "xgboost" else np.array(
-        [LABEL_ORDER.index(v) for v in y_val]
+    y_val_for_calibration = (
+        y_val
+        if winner_name != "xgboost"
+        else np.array([LABEL_ORDER.index(v) for v in y_val])
     )
     calibrated_model = calibrate_model(winner_pipeline, X_val, y_val_for_calibration)
 
@@ -125,11 +138,15 @@ def main():
     preds_test = [LABEL_ORDER[i] for i in preds_test_idx]
 
     test_metrics = compute_metrics(y_test, preds_test, proba_test)
-    print_metrics(test_metrics, title=f"Final Test Set Evaluation ({winner_name}, calibrated)")
+    print_metrics(
+        test_metrics, title=f"Final Test Set Evaluation ({winner_name}, calibrated)"
+    )
 
     # --- Ablation study (run on the UNCALIBRATED winner, using its own pipeline structure) ---
-    y_train_for_ablation = y_train if winner_name != "xgboost" else np.array(
-        [LABEL_ORDER.index(v) for v in y_train]
+    y_train_for_ablation = (
+        y_train
+        if winner_name != "xgboost"
+        else np.array([LABEL_ORDER.index(v) for v in y_train])
     )
     # compute_metrics inside ablation expects string labels
     ablation_result = run_ablation(
@@ -138,12 +155,16 @@ def main():
     print_ablation_comparison(test_metrics, ablation_result)
 
     # --- Fairness check ---
-    fairness_result = run_fairness_check(calibrated_model, X_test, y_test, aux_test["multilingual_home_flag"])
+    fairness_result = run_fairness_check(
+        calibrated_model, X_test, y_test, aux_test["multilingual_home_flag"]
+    )
     print_fairness_result(fairness_result)
 
     # --- Subgroup sensitivity ---
     age_table = sensitivity_by_age_bin(y_test, preds_test, aux_test["age_months"])
-    fh_table = sensitivity_by_family_history(y_test, preds_test, X_test["family_history_flag"])
+    fh_table = sensitivity_by_family_history(
+        y_test, preds_test, X_test["family_history_flag"]
+    )
     print_subgroup_tables(age_table, fh_table)
 
     # --- SHAP explainability (fit on the raw, uncalibrated tree model) ---

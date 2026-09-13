@@ -47,6 +47,7 @@ _sessions: dict[str, ScreeningSession] = {}
 
 # --- Request / Response schemas ---
 
+
 class StartRequest(BaseModel):
     child_id: str = ""
     corrected_age_months: float
@@ -76,6 +77,7 @@ class ActionResponse(BaseModel):
 
 # --- Endpoints ---
 
+
 @app.post("/session/start", response_model=ActionResponse)
 def start_session(req: StartRequest):
     session_id = str(uuid.uuid4())
@@ -103,13 +105,16 @@ def submit_answer(req: AnswerRequest):
         record_mandatory_answer(session, req.item_id, req.answer)
     else:
         if req.answer not in (0, 1, 2):
-            raise HTTPException(status_code=422, detail="Milestone answer must be 0, 1, or 2")
+            raise HTTPException(
+                status_code=422, detail="Milestone answer must be 0, 1, or 2"
+            )
         session.answers[req.item_id] = req.answer
 
     action = get_next_action(session)
 
     # Mark session complete if FinalResult returned
     from session import FinalResult
+
     if isinstance(action, FinalResult):
         session.completed = True
 
@@ -136,6 +141,7 @@ def get_session(session_id: str):
 
 def _action_to_response(session_id: str, action) -> ActionResponse:
     from session import FinalResult, NextQuestion
+
     if isinstance(action, NextQuestion):
         return ActionResponse(
             type="question",

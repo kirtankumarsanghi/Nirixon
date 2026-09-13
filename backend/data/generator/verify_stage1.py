@@ -29,16 +29,22 @@ CSV_PATH = "../processed/screening_data_items.csv"
 # failure vs. normal random variation. Loosen only if you understand why
 # a check is failing, not to make a red result go away.
 CLASS_BALANCE_TARGET = {"Typical": 0.73, "Monitor": 0.20, "Refer": 0.07}
-CLASS_BALANCE_TOLERANCE = 0.03          # +/- 3 percentage points
+CLASS_BALANCE_TOLERANCE = 0.03  # +/- 3 percentage points
 
-FAIRNESS_MAX_GAP = 0.08                 # max allowed mean-score gap, multilingual vs not
-REGRESSION_MIN_REFER_RATE = 0.60        # regression_flag=1 should mostly land in Refer...
-REGRESSION_MAX_REFER_RATE = 0.95        # ...but must NOT be near-100% (that's a separability bug)
+FAIRNESS_MAX_GAP = 0.08  # max allowed mean-score gap, multilingual vs not
+REGRESSION_MIN_REFER_RATE = 0.60  # regression_flag=1 should mostly land in Refer...
+REGRESSION_MAX_REFER_RATE = (
+    0.95  # ...but must NOT be near-100% (that's a separability bug)
+)
 
-CORRELATION_MIN_BOOSTED = 0.35          # comm<->personal_social, age-residualized, should exceed baseline clearly
-CORRELATION_MAX_BASELINE = 0.40         # comm<->gross_motor, age-residualized, should stay near baseline (~0.30)
+CORRELATION_MIN_BOOSTED = (
+    0.35  # comm<->personal_social, age-residualized, should exceed baseline clearly
+)
+CORRELATION_MAX_BASELINE = (
+    0.40  # comm<->gross_motor, age-residualized, should stay near baseline (~0.30)
+)
 
-AGE_REFER_RATE_MAX_SPREAD = 0.08        # Refer rate shouldn't swing wildly across age bins
+AGE_REFER_RATE_MAX_SPREAD = 0.08  # Refer rate shouldn't swing wildly across age bins
 
 
 results = []  # (check_name, passed: bool, detail: str)
@@ -59,14 +65,25 @@ def main() -> int:
     try:
         df = pd.read_csv(CSV_PATH)
     except FileNotFoundError:
-        print(f"ERROR: could not find {CSV_PATH} — run generate_synthetic_data.py first.")
+        print(
+            f"ERROR: could not find {CSV_PATH} — run generate_synthetic_data.py first."
+        )
         return 1
 
-    item_cols = [c for c in df.columns if c not in (
-        "child_id", "age_months", "corrected_age_months",
-        "family_history_flag", "multilingual_home_flag", "regression_flag",
-        "risk_label",
-    )]
+    item_cols = [
+        c
+        for c in df.columns
+        if c
+        not in (
+            "child_id",
+            "age_months",
+            "corrected_age_months",
+            "family_history_flag",
+            "multilingual_home_flag",
+            "regression_flag",
+            "risk_label",
+        )
+    ]
 
     # -----------------------------------------------------------------
     # 1. Basic shape / schema sanity
@@ -132,7 +149,9 @@ def main() -> int:
     ).mean()
     check(
         "regression_flag strongly predicts Refer, but isn't a 100%-deterministic shortcut",
-        REGRESSION_MIN_REFER_RATE <= refer_rate_if_regression <= REGRESSION_MAX_REFER_RATE,
+        REGRESSION_MIN_REFER_RATE
+        <= refer_rate_if_regression
+        <= REGRESSION_MAX_REFER_RATE,
         f"Refer rate when regression_flag=1: {refer_rate_if_regression:.1%} "
         f"(expected between {REGRESSION_MIN_REFER_RATE:.0%} and {REGRESSION_MAX_REFER_RATE:.0%}). "
         f"Below range = flag too weak; above range = flag is a trivial shortcut, re-check the bump logic.",
@@ -176,7 +195,9 @@ def main() -> int:
     # 6. Age-relative fairness: Refer rate shouldn't swing wildly by age
     # -----------------------------------------------------------------
     df["_age_bin_12mo"] = (df["corrected_age_months"] // 12).astype(int)
-    refer_rate_by_age = df.groupby("_age_bin_12mo")["risk_label"].apply(lambda s: (s == "Refer").mean())
+    refer_rate_by_age = df.groupby("_age_bin_12mo")["risk_label"].apply(
+        lambda s: (s == "Refer").mean()
+    )
     spread = refer_rate_by_age.max() - refer_rate_by_age.min()
     check(
         "Refer rate is reasonably stable across age groups (confirms age-relative scoring is working)",
@@ -188,7 +209,9 @@ def main() -> int:
     # -----------------------------------------------------------------
     # 7. Family history should raise risk modestly, not dominate it
     # -----------------------------------------------------------------
-    refer_rate_by_fh = df.groupby("family_history_flag")["risk_label"].apply(lambda s: (s == "Refer").mean())
+    refer_rate_by_fh = df.groupby("family_history_flag")["risk_label"].apply(
+        lambda s: (s == "Refer").mean()
+    )
     fh_effect = refer_rate_by_fh.get(1, 0) - refer_rate_by_fh.get(0, 0)
     check(
         "family_history_flag raises Refer rate modestly (not zero, not overwhelming)",
