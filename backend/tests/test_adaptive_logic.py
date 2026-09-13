@@ -504,11 +504,13 @@ class TestMotorConfoundCaveat:
         session.answers["CG02"] = 0  # Failed confound
         session.answers["CG01"] = 1  # Passed pure
         
-        # Force completion
+        # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
-        session.answers["GM03"] = 1
-        session.answers["GM04"] = 1
+        session.answers["FM01"] = 1
+        session.answers["FM02"] = 1
+        session.answers["CM01"] = 1
+        session.answers["CM02"] = 1
         
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
@@ -525,11 +527,13 @@ class TestMotorConfoundCaveat:
         session.answers["CG02"] = 0  # Failed confound
         session.answers["CG01"] = 0  # Failed pure
         
-        # Force completion
+        # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
-        session.answers["GM03"] = 1
-        session.answers["GM04"] = 1
+        session.answers["FM01"] = 1
+        session.answers["FM02"] = 1
+        session.answers["CM01"] = 1
+        session.answers["CM02"] = 1
         
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
@@ -544,11 +548,13 @@ class TestMotorConfoundCaveat:
         session.answers["CG02"] = 1  # Passed confound
         session.answers["CG01"] = 0  # Failed pure
         
-        # Force completion
+        # Force completion by meeting domain coverage (4 domains) and cap (10 items)
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
-        session.answers["GM03"] = 1
-        session.answers["GM04"] = 1
+        session.answers["FM01"] = 1
+        session.answers["FM02"] = 1
+        session.answers["CM01"] = 1
+        session.answers["CM02"] = 1
         
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
