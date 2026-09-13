@@ -17,7 +17,7 @@ from correlation_structure import (
     apply_regression_event,
     sample_domain_latents,
 )
-from item_bank import DOMAINS, ITEM_BANK
+from data.generator.item_bank import DOMAINS, ITEM_BANK
 from label_derivation import (
     assign_labels_by_quantile,
     composite_risk_score,

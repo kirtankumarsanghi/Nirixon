@@ -27,13 +27,8 @@ Design decisions, stated explicitly:
 from __future__ import annotations
 
 import os
-import sys
 
 import pandas as pd
-
-_CORE_PATH = os.path.dirname(os.path.abspath(__file__))
-if _CORE_PATH not in sys.path:
-    sys.path.insert(0, _CORE_PATH)
 
 from .session import MANDATORY_IDS
 

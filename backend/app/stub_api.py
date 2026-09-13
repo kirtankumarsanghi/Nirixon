@@ -23,21 +23,15 @@ Endpoints:
 
 from __future__ import annotations
 
-import os
-import sys
-
-# Allow imports from app/core and data/generator without install
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "core"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../data/generator"))
-
 import uuid
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from mandatory_items import record_mandatory_answer
-from orchestrator import get_next_action
 from pydantic import BaseModel
-from session import MANDATORY_IDS, ScreeningSession
+
+from app.core.mandatory_items import record_mandatory_answer
+from app.core.orchestrator import get_next_action
+from app.core.session import MANDATORY_IDS, ScreeningSession
 
 app = FastAPI(title="Nirixon Stage 3 Stub API")
 
@@ -113,7 +107,7 @@ def submit_answer(req: AnswerRequest):
     action = get_next_action(session)
 
     # Mark session complete if FinalResult returned
-    from session import FinalResult
+    from app.core.session import FinalResult
 
     if isinstance(action, FinalResult):
         session.completed = True
@@ -140,7 +134,7 @@ def get_session(session_id: str):
 
 
 def _action_to_response(session_id: str, action) -> ActionResponse:
-    from session import FinalResult, NextQuestion
+    from app.core.session import FinalResult, NextQuestion
 
     if isinstance(action, NextQuestion):
         return ActionResponse(

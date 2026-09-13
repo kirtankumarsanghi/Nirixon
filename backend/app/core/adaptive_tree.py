@@ -36,19 +36,14 @@ from __future__ import annotations
 
 import math
 import os
-import sys
 from collections import Counter
 
 import pandas as pd
 
 # Allow imports from the generator — use absolute path from this file
-_GENERATOR_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../data/generator")
-)
-if _GENERATOR_PATH not in sys.path:
-    sys.path.insert(0, _GENERATOR_PATH)
-from item_bank import DOMAINS, ITEM_BANK, Item
+from data.generator.item_bank import DOMAINS, ITEM_BANK, Item
 
+from .safety_floor import MIN_DOMAINS_COVERED, _domains_with_real_answer
 from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
 DATA_PATH = os.path.abspath(
@@ -134,6 +129,30 @@ def _domain_quota_fallback(
     return None
 
 
+def _restrict_to_uncovered_domains(
+    session: ScreeningSession, candidate_ids: list[str]
+) -> list[str]:
+    """
+    While domain-coverage floor is unmet, only consider items from domains
+    that do not yet have a real answer. Uses the same
+    `_domains_with_real_answer` helper as safety_floor so mandatory and
+    adaptive coverage are not separate counters.
+    """
+    covered = _domains_with_real_answer(session)
+    if len(covered) >= MIN_DOMAINS_COVERED:
+        return candidate_ids
+
+    uncovered = [
+        iid
+        for iid in candidate_ids
+        if iid in ITEM_BY_ID and ITEM_BY_ID[iid].domain not in covered
+    ]
+    # If every remaining candidate is already in a covered domain (e.g.
+    # uncovered domains fully exhausted), fall back to the full set so
+    # selection can still terminate rather than looping forever.
+    return uncovered if uncovered else candidate_ids
+
+
 def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str | None:
     """
     Returns the item_id of the next question to ask, or None if the
@@ -141,8 +160,10 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
 
     Selection priority:
       1. Mandatory items (handled by mandatory_items.py — not this function)
-      2. Highest MI item in the filtered subpopulation matching answers so far
-      3. Domain-quota fallback if subpopulation too small or MI all zero
+      2. While domain coverage < MIN_DOMAINS_COVERED, restrict candidates to
+         uncovered domains, then pick by MI within that set
+      3. Once the floor is met, unrestricted global MI selection
+      4. Domain-quota fallback if subpopulation too small or MI all zero
     """
     all_item_ids = {item.item_id for item in ITEM_BANK}
     mandatory_set = set(MANDATORY_IDS)
@@ -156,6 +177,8 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
 
     if not candidate_ids:
         return None  # all items exhausted
+
+    candidate_ids = _restrict_to_uncovered_domains(session, candidate_ids)
 
     # Load Stage 1 data and filter to subpopulation matching current answers
     df = pd.read_csv(data_path)
@@ -178,7 +201,7 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
         # No information remaining — fall back to domain quota
         return _domain_quota_fallback(session, candidate_ids)
 
-    return max(mi_scores, key=mi_scores.get)
+    return max(mi_scores.keys(), key=lambda k: mi_scores[k])
 
 
 def build_next_question_response(

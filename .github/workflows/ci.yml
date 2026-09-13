@@ -23,9 +23,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruff black pytest
+          pip install ruff black pytest pytest-asyncio
           pip install -r backend/requirements-ml.txt
-          pip install fastapi uvicorn httpx
+          pip install -r backend/requirements.txt
 
       - name: Lint (ruff)
         run: ruff check backend/
@@ -50,9 +50,47 @@ jobs:
         run: |
           python -m pytest tests/test_adaptive_logic.py -v -k "not HTTP and not Sensitivity" --tb=short
 
-      - name: Stage 3 — HTTP integration tests
+      - name: Stage 3 — HTTP integration tests (stub_api)
         working-directory: backend
         run: |
           python -m uvicorn app.stub_api:app --port 8001 --log-level warning &
           sleep 3
           python -m pytest tests/test_adaptive_logic.py -v -k "HTTP or Sensitivity" --tb=short
+
+      - name: Stage 4 — API tests
+        working-directory: backend
+        env:
+          JWT_SECRET: ci-test-secret-at-least-32-bytes-long
+          RATE_LIMIT_ENABLED: "false"
+          SESSION_REPO_BACKEND: memory
+        run: |
+          python -m pytest tests/test_api.py -v --tb=short
+
+  frontend:
+    name: Stage 5 — Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Production build
+        run: npx vite build

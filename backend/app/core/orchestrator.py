@@ -22,13 +22,7 @@ NEVER presented to the caregiver as an answer they gave.
 from __future__ import annotations
 
 import os
-import sys
-
-_CORE_PATH = os.path.dirname(os.path.abspath(__file__))
-_GENERATOR_PATH = os.path.abspath(os.path.join(_CORE_PATH, "../../data/generator"))
-for _p in (_CORE_PATH, _GENERATOR_PATH):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+from typing import Literal
 
 from .adaptive_tree import build_next_question_response
 from .adaptive_tree import next_question as pick_next_item
@@ -77,7 +71,9 @@ def get_next_action(
     budget_exhausted = session.adaptive_budget_remaining == 0
 
     if floor_met and (cap_reached or budget_exhausted):
-        stopping_reason = "cap_reached" if cap_reached else "budget_exhausted"
+        stopping_reason: Literal["cap_reached", "budget_exhausted"] = (
+            "cap_reached" if cap_reached else "budget_exhausted"
+        )
         return _build_final_result(session, stopping_reason, data_path)
 
     # Step 3 — Ask next adaptive question
@@ -92,21 +88,15 @@ def get_next_action(
 
 def _build_final_result(
     session: ScreeningSession,
-    stopping_reason: str,
+    stopping_reason: Literal["cap_reached", "budget_exhausted"],
     data_path: str,
 ) -> FinalResult:
     """
     Assembles real answers and imputes the remaining items, then returns
     a FinalResult for Stage 4 to pass to the Stage 2 model.
     """
-    import os
-    import sys
 
-    from item_bank import ITEM_BANK
-
-    sys.path.insert(
-        0, os.path.join(os.path.dirname(__file__), "../../../data/generator")
-    )
+    from data.generator.item_bank import ITEM_BANK
 
     all_item_ids = [item.item_id for item in ITEM_BANK]
 

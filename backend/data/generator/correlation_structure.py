@@ -27,7 +27,7 @@ Design choices, stated plainly:
 from __future__ import annotations
 
 import numpy as np
-from item_bank import DOMAINS
+from data.generator.item_bank import DOMAINS
 
 N_DOMAINS = len(DOMAINS)
 DOMAIN_INDEX = {d: i for i, d in enumerate(DOMAINS)}

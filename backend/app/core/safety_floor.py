@@ -32,22 +32,14 @@ What counts toward the stopping floor?
 
 from __future__ import annotations
 
-import os
-import sys
-
-from .session import MANDATORY_IDS, ScreeningSession
-
 # ------------------------------------------------------------------
 # Wire in item_bank so we know which domain each item belongs to.
 # Safety floor needs domain coverage — importing here keeps the
 # dependency chain clean (no circular import through adaptive_tree).
 # ------------------------------------------------------------------
-_GENERATOR_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../data/generator")
-)
-if _GENERATOR_PATH not in sys.path:
-    sys.path.insert(0, _GENERATOR_PATH)
-from item_bank import DOMAINS, ITEM_BANK
+from data.generator.item_bank import DOMAINS, ITEM_BANK
+
+from .session import MANDATORY_IDS, ScreeningSession
 
 ITEM_DOMAIN_MAP: dict[str, str] = {item.item_id: item.domain for item in ITEM_BANK}
 
@@ -70,12 +62,22 @@ MIN_DOMAINS_COVERED: int = 4
 def _domains_with_real_answer(session: ScreeningSession) -> set[str]:
     """
     Returns the set of developmental domains for which the session has
-    at least one real (non-imputed) milestone answer.
-    Mandatory items (regression_flag, family_history_flag) are context
-    flags, not milestone items, so they don't count toward domain coverage.
+    at least one real (non-imputed) answer.
+
+    Counts both `session.answers` and `session.mandatory_answered` against
+    ITEM_DOMAIN_MAP so mandatory coverage and adaptive coverage share one
+    counter. Today's mandatory flags (regression_flag, family_history_flag)
+    are context flags and are not in ITEM_DOMAIN_MAP, so they still do not
+    inflate domain coverage — but any future mandatory item that *does*
+    touch a developmental domain is counted exactly once here, not again
+    by adaptive_tree.
     """
     covered: set[str] = set()
     for item_id in session.answers:
+        domain = ITEM_DOMAIN_MAP.get(item_id)
+        if domain is not None:
+            covered.add(domain)
+    for item_id in session.mandatory_answered:
         domain = ITEM_DOMAIN_MAP.get(item_id)
         if domain is not None:
             covered.add(domain)

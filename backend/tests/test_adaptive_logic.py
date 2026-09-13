@@ -22,14 +22,10 @@ What this covers (per the verification plan in the implementation plan):
 
 from __future__ import annotations
 
-import os
-import sys
+from typing import Literal
 
 import pytest
 import requests
-
-# Allow imports from data/generator when running tests from backend/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../data/generator"))
 
 from app.core.imputation import impute_missing
 from app.core.mandatory_items import record_mandatory_answer
@@ -104,7 +100,7 @@ def _run_full_session_via_api(corrected_age_months: float, question_cap: int) ->
 
 def _run_full_session_direct(
     corrected_age_months: float,
-    question_cap: int,
+    question_cap: Literal[10, 15, 20],
     regression_flag_answer: int = 0,
 ) -> dict:
     """
@@ -118,7 +114,7 @@ def _run_full_session_direct(
         question_cap=question_cap,
     )
 
-    questions_asked = []
+    questions_asked: list[str] = []
 
     while True:
         action = get_next_action(session)
@@ -435,7 +431,7 @@ class TestDomainCoverageFloor:
         """End-to-end: a completed session must touch >= MIN_DOMAINS_COVERED domains."""
         result = _run_full_session_direct(24.0, 20)
         session: ScreeningSession = result["session"]
-        from item_bank import ITEM_BANK
+        from data.generator.item_bank import ITEM_BANK
 
         domain_map = {item.item_id: item.domain for item in ITEM_BANK}
         domains_covered = {
@@ -587,3 +583,115 @@ class TestMotorConfoundCaveat:
         action = get_next_action(session)
         assert isinstance(action, FinalResult)
         assert len(action.caveats) == 0
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 — Domain-coverage selection + mandatory interaction + termination
+# ---------------------------------------------------------------------------
+
+
+class TestAdaptiveDomainCoverageSelection:
+    """
+    Adaptive tree must prefer uncovered domains until MIN_DOMAINS_COVERED,
+    using the same `_domains_with_real_answer` helper as safety_floor so
+    mandatory and adaptive coverage are not separate counters.
+    """
+
+    def test_mandatory_domain_item_counts_toward_coverage(self):
+        """
+        If a domain-touching item is recorded in mandatory_answered, the
+        shared coverage helper must count it — adaptive selection must not
+        force a redundant question in that already-covered domain.
+        """
+        from app.core.adaptive_tree import _restrict_to_uncovered_domains, next_question
+        from app.core.safety_floor import _domains_with_real_answer
+        from data.generator.item_bank import ITEM_BANK
+
+        session = ScreeningSession("c-mand-domain", 24.0, 10)
+        record_mandatory_answer(session, "regression_flag", 0)
+        record_mandatory_answer(session, "family_history_flag", 0)
+
+        # Simulate a domain-touching mandatory answer via the shared counter
+        # path (mandatory_answered). GM01 is a real gross_motor item.
+        session.mandatory_answered["GM01"] = 1
+
+        covered = _domains_with_real_answer(session)
+        assert "gross_motor" in covered
+
+        # Restriction must exclude gross_motor candidates
+        all_ids = [item.item_id for item in ITEM_BANK if item.item_id != "GM01"]
+        restricted = _restrict_to_uncovered_domains(session, all_ids)
+        assert restricted
+        assert all(
+            next(i.domain for i in ITEM_BANK if i.item_id == iid) != "gross_motor"
+            for iid in restricted
+        )
+
+        # next_question itself should not pick another gross_motor item first
+        # while coverage floor is unmet and other domains remain
+        picked = next_question(session)
+        assert picked is not None
+        domain_map = {item.item_id: item.domain for item in ITEM_BANK}
+        assert domain_map[picked] != "gross_motor"
+
+    def test_only_mandatory_flags_answered_still_selects_from_all_domains(self):
+        """Current mandatory flags are not domain items — covered stays empty."""
+        from app.core.adaptive_tree import _restrict_to_uncovered_domains
+        from app.core.safety_floor import _domains_with_real_answer
+        from data.generator.item_bank import ITEM_BANK
+
+        session = ScreeningSession("c-mand-only", 24.0, 10)
+        record_mandatory_answer(session, "regression_flag", 0)
+        record_mandatory_answer(session, "family_history_flag", 0)
+
+        assert _domains_with_real_answer(session) == set()
+        candidates = [item.item_id for item in ITEM_BANK]
+        restricted = _restrict_to_uncovered_domains(session, candidates)
+        # All domains uncovered → full candidate set retained
+        assert set(restricted) == set(candidates)
+
+    def test_prefers_uncovered_domains_until_floor_met(self):
+        from app.core.adaptive_tree import next_question
+        from data.generator.item_bank import ITEM_BANK
+
+        session = ScreeningSession("c-uncovered", 24.0, 20)
+        record_mandatory_answer(session, "regression_flag", 0)
+        record_mandatory_answer(session, "family_history_flag", 0)
+        # Cover only one domain
+        session.answers["GM01"] = 1
+        session.answers["GM02"] = 1
+
+        domain_map = {item.item_id: item.domain for item in ITEM_BANK}
+        for _ in range(3):
+            picked = next_question(session)
+            assert picked is not None
+            assert domain_map[picked] != "gross_motor"
+            session.answers[picked] = 1
+
+    def test_adversarial_answers_still_terminate(self):
+        """
+        Alternating extreme answers must still reach FinalResult — no
+        infinite loop / no failure to exhaust questions.
+        """
+        session = ScreeningSession("c-adversarial", 24.0, 10)
+        questions: list[str] = []
+        flip = 0
+
+        for _ in range(50):  # hard guard — must finish well before this
+            action = get_next_action(session)
+            if isinstance(action, FinalResult):
+                break
+            assert isinstance(action, NextQuestion)
+            assert action.item_id not in questions, "Repeated item — possible loop"
+            questions.append(action.item_id)
+            answer = flip % 2
+            flip += 1
+            if action.item_id in MANDATORY_IDS:
+                record_mandatory_answer(session, action.item_id, answer)
+            else:
+                session.answers[action.item_id] = answer
+        else:
+            pytest.fail("Session failed to terminate within 50 steps")
+
+        assert isinstance(action, FinalResult)
+        assert len(questions) <= 10

@@ -1,0 +1,32 @@
+:root {
+  /* Design tokens — Stage 5 (exact values from brief) */
+  --paper: #f6f3ec;
+  --ink: #26241f;
+  --teal: #2e6b69;
+  --moss: #6c7a52;
+  --clay: #a45a34;
+
+  --font-display: "Source Serif 4", "Georgia", serif;
+  --font-body: "Public Sans", "Segoe UI", sans-serif;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --radius: 0.35rem;
+  --max-width: 40rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
