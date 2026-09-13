@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Lint + Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install ruff black pytest
+          pip install -r backend/requirements-ml.txt
+          pip install fastapi uvicorn httpx
+
+      - name: Lint (ruff)
+        run: ruff check backend/
+
+      - name: Format check (black)
+        run: black --check backend/
+
+      - name: Stage 1 — Generate synthetic data
+        working-directory: backend/data/generator
+        run: python generate_synthetic_data.py
+
+      - name: Stage 1 — Verify synthetic data
+        working-directory: backend/data/generator
+        run: python verify_stage1.py
+
+      - name: Stage 2 — Train ML pipeline
+        working-directory: backend/ml
+        run: python train.py
+
+      - name: Stage 3 — Unit tests (no server required)
+        working-directory: backend
+        run: |
+          python -m pytest tests/test_adaptive_logic.py -v -k "not HTTP and not Sensitivity" --tb=short
+
+      - name: Stage 3 — HTTP integration tests
+        working-directory: backend
+        run: |
+          python -m uvicorn app.stub_api:app --port 8001 --log-level warning &
+          sleep 3
+          python -m pytest tests/test_adaptive_logic.py -v -k "HTTP or Sensitivity" --tb=short
