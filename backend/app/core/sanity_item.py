@@ -10,6 +10,4 @@ def check_sanity(session: ScreeningSession) -> bool:
     
     Returns True if sane (valid), False if insane (invalid/bot).
     """
-    if HONEYPOT_ITEM_ID in session.answers:
-        return False
-    return True
+    return HONEYPOT_ITEM_ID not in session.answers

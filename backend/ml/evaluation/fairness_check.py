@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-
-from columns import FAIRNESS_GROUP_COLUMN, LABEL_ORDER
+from columns import LABEL_ORDER
 
 
 def run_fairness_check(model, X_test, y_test, multilingual_flag_test) -> dict:

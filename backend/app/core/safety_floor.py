@@ -32,10 +32,10 @@ What counts toward the stopping floor?
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
-from .session import ScreeningSession, MANDATORY_IDS
+from .session import MANDATORY_IDS, ScreeningSession
 
 # ------------------------------------------------------------------
 # Wire in item_bank so we know which domain each item belongs to.
@@ -47,7 +47,7 @@ _GENERATOR_PATH = os.path.abspath(
 )
 if _GENERATOR_PATH not in sys.path:
     sys.path.insert(0, _GENERATOR_PATH)
-from item_bank import ITEM_BANK, DOMAINS  # noqa: E402
+from item_bank import DOMAINS, ITEM_BANK
 
 ITEM_DOMAIN_MAP: dict[str, str] = {item.item_id: item.domain for item in ITEM_BANK}
 
@@ -102,9 +102,7 @@ def can_stop_early(
         return False
     if session.real_answer_count < min_real_answers:
         return False
-    if len(_domains_with_real_answer(session)) < min_domains:
-        return False
-    return True
+    return len(_domains_with_real_answer(session)) >= min_domains
 
 
 def stopping_blocked_reason(

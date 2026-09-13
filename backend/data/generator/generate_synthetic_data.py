@@ -12,10 +12,17 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-
-from item_bank import ITEM_BANK, DOMAINS
-from correlation_structure import sample_domain_latents, apply_regression_event, DOMAIN_INDEX
-from label_derivation import domain_percentiles, composite_risk_score, assign_labels_by_quantile
+from correlation_structure import (
+    DOMAIN_INDEX,
+    apply_regression_event,
+    sample_domain_latents,
+)
+from item_bank import DOMAINS, ITEM_BANK
+from label_derivation import (
+    assign_labels_by_quantile,
+    composite_risk_score,
+    domain_percentiles,
+)
 
 RNG_SEED = 42
 N_CHILDREN = 5000  # scoped down from the design doc's 50,000 for a fast, iterable demo build
@@ -122,12 +129,12 @@ def write_data_dictionary(path: str) -> None:
         "- `child_id`: synthetic identifier, no real-world meaning\n",
         "- `age_months`: chronological age at screening (0-60)\n",
         "- `corrected_age_months`: prematurity-adjusted age; used for ALL age-relative "
-        "logic (label derivation, imputation) instead of chronological age\n",
+        + "logic (label derivation, imputation) instead of chronological age\n",
         "- `family_history_flag`: 1 if family history of developmental delay\n",
         "- `multilingual_home_flag`: 1 if home is multilingual — CONTEXT, not a "
-        "penalty; must show no correlation with domain scores (checked in Stage 2)\n",
+        + "penalty; must show no correlation with domain scores (checked in Stage 2)\n",
         "- `regression_flag`: 1 if child has lost a previously-acquired skill — a "
-        "high-weight red flag independent of the smooth age trend\n",
+        + "high-weight red flag independent of the smooth age trend\n",
         "- `risk_label`: Typical / Monitor / Refer — derived label, NOT a model input\n",
         "\n## Item-level fields (36 columns, one per item, coded 0 / 1 / 2)\n",
         "Response scale: 0 = 0 times in the past week, 1 = 1-2 times, 2 = 3+ times\n\n",

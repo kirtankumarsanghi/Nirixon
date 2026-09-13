@@ -21,8 +21,8 @@ NEVER presented to the caregiver as an answer they gave.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 
 _CORE_PATH = os.path.dirname(os.path.abspath(__file__))
 _GENERATOR_PATH = os.path.abspath(os.path.join(_CORE_PATH, "../../data/generator"))
@@ -30,14 +30,14 @@ for _p in (_CORE_PATH, _GENERATOR_PATH):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from .session import ScreeningSession, NextQuestion, FinalResult, MANDATORY_IDS
-from .mandatory_items import next_mandatory_question
-from .safety_floor import can_stop_early, stopping_blocked_reason, get_deterministic_override
-from .adaptive_tree import next_question as pick_next_item, build_next_question_response
-from .imputation import impute_missing
-from .sanity_item import check_sanity
+from .adaptive_tree import build_next_question_response
+from .adaptive_tree import next_question as pick_next_item
 from .confound_caveat import evaluate_motor_confounds
-
+from .imputation import impute_missing
+from .mandatory_items import next_mandatory_question
+from .safety_floor import get_deterministic_override, stopping_blocked_reason
+from .sanity_item import check_sanity
+from .session import FinalResult, NextQuestion, ScreeningSession
 
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"))
 
@@ -95,8 +95,10 @@ def _build_final_result(
     Assembles real answers and imputes the remaining items, then returns
     a FinalResult for Stage 4 to pass to the Stage 2 model.
     """
+    import os
+    import sys
+
     from item_bank import ITEM_BANK
-    import sys, os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../data/generator"))
 
     all_item_ids = [item.item_id for item in ITEM_BANK]

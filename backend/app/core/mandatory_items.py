@@ -22,7 +22,7 @@ Why these two specifically?
 
 from __future__ import annotations
 
-from .session import ScreeningSession, NextQuestion, MANDATORY_IDS
+from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
 # Question text for each mandatory item, kept here as the authoritative
 # copy so Stage 4's API never needs to hard-code strings.

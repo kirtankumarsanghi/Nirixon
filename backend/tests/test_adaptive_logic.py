@@ -22,26 +22,26 @@ What this covers (per the verification plan in the implementation plan):
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
+
 import pytest
 import requests
 
 # Allow imports from data/generator when running tests from backend/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../data/generator"))
 
-from app.core.session import ScreeningSession, MANDATORY_IDS, FinalResult, NextQuestion
-from app.core.mandatory_items import next_mandatory_question, record_mandatory_answer
-from app.core.safety_floor import (
-    can_stop_early,
-    stopping_blocked_reason,
-    get_deterministic_override,
-    MIN_REAL_ANSWERS,
-    MIN_DOMAINS_COVERED,
-)
-from app.core.orchestrator import get_next_action
 from app.core.imputation import impute_missing
-
+from app.core.mandatory_items import record_mandatory_answer
+from app.core.orchestrator import get_next_action
+from app.core.safety_floor import (
+    MIN_DOMAINS_COVERED,
+    MIN_REAL_ANSWERS,
+    can_stop_early,
+    get_deterministic_override,
+    stopping_blocked_reason,
+)
+from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion, ScreeningSession
 
 STUB_API_BASE = "http://localhost:8001"
 
@@ -138,7 +138,6 @@ def _run_full_session_direct(
 
 class TestMandatoryItems:
     def test_first_two_questions_are_mandatory(self):
-        session = ScreeningSession("c1", 24.0, 10)
         result = _run_full_session_direct(24.0, 10)
         first_two = result["questions_asked"][:2]
         assert set(first_two) == set(MANDATORY_IDS), (
@@ -482,7 +481,7 @@ class TestSessionSerialization:
 
 class TestSanityCheckItem:
     def test_sanity_check_fails_if_honeypot_present(self):
-        from sanity_item import HONEYPOT_ITEM_ID
+        from app.core.sanity_item import HONEYPOT_ITEM_ID
         session = ScreeningSession("c1", 24.0, 10)
         session.answers[HONEYPOT_ITEM_ID] = 1
         with pytest.raises(ValueError, match="sanity check failed"):

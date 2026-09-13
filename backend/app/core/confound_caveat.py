@@ -1,5 +1,7 @@
-from .session import ScreeningSession
 from data.generator.item_bank import Item
+
+from .session import ScreeningSession
+
 
 def evaluate_motor_confounds(session: ScreeningSession, item_bank: list[Item]) -> list[str]:
     """

@@ -34,9 +34,9 @@ at prototype scale.
 
 from __future__ import annotations
 
-import sys
-import os
 import math
+import os
+import sys
 from collections import Counter
 
 import pandas as pd
@@ -45,9 +45,9 @@ import pandas as pd
 _GENERATOR_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/generator"))
 if _GENERATOR_PATH not in sys.path:
     sys.path.insert(0, _GENERATOR_PATH)
-from item_bank import ITEM_BANK, DOMAINS, Item  # noqa: E402
+from item_bank import DOMAINS, ITEM_BANK, Item
 
-from .session import ScreeningSession, NextQuestion, MANDATORY_IDS
+from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"))
 

@@ -21,6 +21,7 @@ EXCLUDED FROM TRAINING:
                                  including it and checking its coefficient.
   - risk_label                -> the target, not a feature
 """
+import numpy as np
 
 ITEM_PREFIXES = ("GM", "FM", "CM", "CG", "PS", "SH")
 

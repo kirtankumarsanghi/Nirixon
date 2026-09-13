@@ -12,15 +12,14 @@ search - a huge grid would burn time for very little real benefit here.
 from __future__ import annotations
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+from columns import AGE_COLUMN, LABEL_ORDER
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-
-from columns import LABEL_ORDER, AGE_COLUMN
 
 
 def _label_to_int(y):

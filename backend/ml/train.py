@@ -12,9 +12,9 @@ Run:
 
 from __future__ import annotations
 
+import os
 import pickle
 import sys
-import os
 
 import numpy as np
 import pandas as pd
@@ -22,16 +22,18 @@ from sklearn.model_selection import train_test_split
 
 sys.path.insert(0, os.path.dirname(__file__))  # allow sibling-package imports when run directly
 
-from columns import get_feature_columns, LABEL_ORDER, AGE_COLUMN, FAIRNESS_GROUP_COLUMN, reorder_proba
+from columns import LABEL_ORDER, get_feature_columns, reorder_proba
+from evaluation.ablation_study import print_ablation_comparison, run_ablation
+from evaluation.fairness_check import print_fairness_result, run_fairness_check
 from evaluation.metrics import compute_metrics, print_metrics
-from evaluation.ablation_study import run_ablation, print_ablation_comparison
-from evaluation.fairness_check import run_fairness_check, print_fairness_result
 from evaluation.subgroup_sensitivity import (
-    sensitivity_by_age_bin, sensitivity_by_family_history, print_subgroup_tables,
+    print_subgroup_tables,
+    sensitivity_by_age_bin,
+    sensitivity_by_family_history,
 )
-from models.model_comparison import run_grid_search
-from models.calibration import calibrate_model
 from explainability.shap_explainer import build_explainer, save_explainer
+from models.calibration import calibrate_model
+from models.model_comparison import run_grid_search
 
 DATA_PATH = "../data/processed/screening_data_items.csv"
 ARTIFACTS_DIR = "artifacts"
@@ -89,8 +91,8 @@ def main():
     print(f"Feature columns ({len(feature_columns)}): {feature_columns}")
 
     splits = split_data(df, feature_columns)
-    X_train, y_train, aux_train = splits["train"]
-    X_val, y_val, aux_val = splits["val"]
+    X_train, y_train, _aux_train = splits["train"]
+    X_val, y_val, _aux_val = splits["val"]
     X_test, y_test, aux_test = splits["test"]
     print(f"Split sizes -> train: {len(X_train)}, val: {len(X_val)}, test: {len(X_test)}")
 
@@ -129,7 +131,7 @@ def main():
     y_train_for_ablation = y_train if winner_name != "xgboost" else np.array(
         [LABEL_ORDER.index(v) for v in y_train]
     )
-    y_test_for_ablation = y_test  # compute_metrics inside ablation expects string labels
+    # compute_metrics inside ablation expects string labels
     ablation_result = run_ablation(
         winner_pipeline, X_train, y_train_for_ablation, X_test, y_test, feature_columns
     )
@@ -149,7 +151,7 @@ def main():
     if winner_name in ("random_forest", "xgboost"):
         raw_tree_model = winner_pipeline.named_steps["clf"]
         # SHAP needs data in the same preprocessed form the tree model was trained on
-        X_test_preprocessed = winner_pipeline.named_steps["preprocess"].transform(X_test)
+        # SHAP needs data in the same preprocessed form the tree model was trained on
         explainer = build_explainer(raw_tree_model, feature_columns)
         save_explainer(explainer, os.path.join(ARTIFACTS_DIR, "shap_explainer.pkl"))
         print(f"SHAP explainer saved to {ARTIFACTS_DIR}/shap_explainer.pkl")

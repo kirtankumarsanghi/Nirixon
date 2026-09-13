@@ -11,16 +11,15 @@ useless - AUPRC punishes that far more honestly.
 from __future__ import annotations
 
 import numpy as np
+from columns import LABEL_ORDER
 from sklearn.metrics import (
     average_precision_score,
+    classification_report,
+    confusion_matrix,
     f1_score,
     roc_auc_score,
-    confusion_matrix,
-    classification_report,
 )
 from sklearn.preprocessing import label_binarize
-
-from columns import LABEL_ORDER
 
 
 def compute_metrics(y_true, y_pred, y_proba) -> dict:
@@ -39,9 +38,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
 
     # AUPRC specifically for Refer - the metric that matters most, called
     # out on its own since it's easy for it to hide inside a macro average.
-    refer_idx = LABEL_ORDER.index("Refer")
     refer_auprc = auprc_per_class["Refer"]
-
     macro_f1 = f1_score(y_true, y_pred, labels=LABEL_ORDER, average="macro")
 
     try:

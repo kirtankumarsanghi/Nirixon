@@ -19,6 +19,7 @@ into a CI step or a pytest wrapper later (see the note at the bottom).
 from __future__ import annotations
 
 import sys
+
 import numpy as np
 import pandas as pd
 

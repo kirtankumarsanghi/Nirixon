@@ -91,7 +91,7 @@ class ScreeningSession:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ScreeningSession":
+    def from_dict(cls, data: dict) -> ScreeningSession:
         """Reconstruct from a persisted dict. Inverse of to_dict()."""
         session = cls(
             child_id=data["child_id"],

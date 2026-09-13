@@ -26,7 +26,6 @@ recognizable rather than invented.
 
 from dataclasses import dataclass
 
-
 DOMAINS = [
     "gross_motor",
     "fine_motor",

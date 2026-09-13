@@ -16,8 +16,9 @@ trustworthy. Said here and repeated in the printed output, not glossed over.
 
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 
 def sensitivity_by_age_bin(y_test, y_pred, age_months_series) -> pd.DataFrame:
     df = pd.DataFrame({

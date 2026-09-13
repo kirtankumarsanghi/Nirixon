@@ -18,10 +18,9 @@ from which items they're passing - that's expected, not a bug.
 
 from __future__ import annotations
 
-from sklearn.base import clone
-
 from columns import AGE_COLUMN, reorder_proba
 from evaluation.metrics import compute_metrics
+from sklearn.base import clone
 
 
 def run_ablation(model_pipeline, X_train, y_train, X_test, y_test, feature_columns: list[str]) -> dict:
