@@ -25,7 +25,10 @@ from __future__ import annotations
 from typing import Literal
 
 import pytest
-import requests
+from fastapi.testclient import TestClient
+from app.stub_api import app
+
+client = TestClient(app)
 
 from app.core.imputation import impute_missing
 from app.core.mandatory_items import record_mandatory_answer
@@ -39,8 +42,6 @@ from app.core.safety_floor import (
 )
 from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion, ScreeningSession
 
-STUB_API_BASE = "http://localhost:8001"
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -51,8 +52,8 @@ def _run_full_session_via_api(corrected_age_months: float, question_cap: int) ->
     Runs a complete session through the stub API, answering every question
     with answer=1 (middle response), and returns a summary dict.
     """
-    r = requests.post(
-        f"{STUB_API_BASE}/session/start",
+    r = client.post(
+        "/session/start",
         json={
             "corrected_age_months": corrected_age_months,
             "question_cap": question_cap,
@@ -73,8 +74,8 @@ def _run_full_session_via_api(corrected_age_months: float, question_cap: int) ->
 
         # Answer with 1 for mandatory (Yes/sometimes), 1 for milestone (occasional)
         answer = 1
-        r = requests.post(
-            f"{STUB_API_BASE}/session/answer",
+        r = client.post(
+            "/session/answer",
             json={
                 "session_id": session_id,
                 "item_id": item_id,
@@ -85,7 +86,7 @@ def _run_full_session_via_api(corrected_age_months: float, question_cap: int) ->
         action = r.json()
 
     # Fetch final session state
-    state = requests.get(f"{STUB_API_BASE}/session/{session_id}").json()
+    state = client.get(f"/session/{session_id}").json()
 
     return {
         "session_id": session_id,

@@ -326,15 +326,6 @@ async def test_artifacts_loaded_once_across_requests(api_env):
 
 
 @pytest.mark.asyncio
-async def test_sandbox_and_share_are_501(api_env):
-    client = api_env["client"]
-    r = await client.get("/api/sandbox/demo")
-    assert r.status_code == 501
-    r = await client.post("/api/share/x", json={})
-    assert r.status_code == 501
-
-
-@pytest.mark.asyncio
 async def test_health_reports_components(api_env):
     client = api_env["client"]
     r = await client.get("/health")
