@@ -78,3 +78,8 @@ async def require_parent(user: Annotated[User, Depends(get_current_user)]) -> Us
     if user.role not in ("parent", "internal"):
         raise HTTPException(status_code=403, detail="Parent role required")
     return user
+
+async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> User:
+    if user.role != "internal":
+        raise HTTPException(status_code=403, detail="Internal role required")
+    return user

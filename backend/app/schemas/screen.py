@@ -20,7 +20,8 @@ class LoginResponse(BaseModel):
 
 class StartScreenRequest(BaseModel):
     child_ref: str = ""
-    corrected_age_months: float = Field(..., gt=0, le=72)
+    # ASQ-3 age valid range is 1-66 months (defined in BRACKET_LABELS)
+    corrected_age_months: float = Field(..., ge=1.0, le=66.0)
     question_cap: Literal[10, 15, 20] = 10
     # Recorded in the session audit trail; must be true to start.
     consent_given: bool = Field(..., description="Parent informed-consent acknowledgment")
@@ -48,6 +49,7 @@ class ShapFeature(BaseModel):
 class ResultPayload(BaseModel):
     final_classification: str
     ml_classification: str
+    model_name: str | None = None
     ml_score: float
     probabilities: dict[str, float]
     safety_override_triggered: bool
@@ -73,6 +75,7 @@ class SessionStateResponse(BaseModel):
     child_ref: str
     status: str
     corrected_age_months: float
+    age_bracket: str
     question_cap: int
     real_answer_count: int
     adaptive_budget_remaining: int

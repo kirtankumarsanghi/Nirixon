@@ -142,7 +142,7 @@ def _run_full_session_direct(
 
 class TestMandatoryItems:
     def test_first_two_questions_are_mandatory(self):
-        result = _run_full_session_direct(24.0, 10)
+        result = _run_full_session_direct(12.0, 10)
         first_two = result["questions_asked"][:2]
         assert set(first_two) == set(MANDATORY_IDS), (
             f"Expected first 2 questions to be mandatory items {MANDATORY_IDS}, "
@@ -150,7 +150,7 @@ class TestMandatoryItems:
         )
 
     def test_regression_flag_asked_before_family_history(self):
-        result = _run_full_session_direct(24.0, 10)
+        result = _run_full_session_direct(12.0, 10)
         q = result["questions_asked"]
         assert q.index("regression_flag") < q.index(
             "family_history_flag"
@@ -158,7 +158,7 @@ class TestMandatoryItems:
 
     def test_mandatory_items_never_repeated(self):
         for cap in (10, 15, 20):
-            result = _run_full_session_direct(24.0, cap)
+            result = _run_full_session_direct(12.0, cap)
             q = result["questions_asked"]
             for mid in MANDATORY_IDS:
                 assert (
@@ -166,13 +166,13 @@ class TestMandatoryItems:
                 ), f"{mid} appeared {q.count(mid)} times in cap={cap} session (expected exactly 1)"
 
     def test_record_mandatory_raises_on_repeat(self):
-        session = ScreeningSession("c2", 24.0, 10)
+        session = ScreeningSession("c2", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 1)
         with pytest.raises(ValueError, match="already been answered"):
             record_mandatory_answer(session, "regression_flag", 0)
 
     def test_record_mandatory_raises_on_non_mandatory(self):
-        session = ScreeningSession("c3", 24.0, 10)
+        session = ScreeningSession("c3", 12.0, 10)
         with pytest.raises(ValueError, match="not a mandatory item"):
             record_mandatory_answer(session, "GM01", 1)
 
@@ -184,14 +184,14 @@ class TestMandatoryItems:
 
 class TestSafetyFloor:
     def test_floor_blocked_before_mandatory(self):
-        session = ScreeningSession("c4", 24.0, 10)
+        session = ScreeningSession("c4", 12.0, 10)
         assert not can_stop_early(session)
         reason = stopping_blocked_reason(session)
         assert reason is not None
         assert "Mandatory" in reason
 
     def test_floor_blocked_after_mandatory_but_before_min(self):
-        session = ScreeningSession("c5", 24.0, 10)
+        session = ScreeningSession("c5", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         # 2 mandatory done, but MIN_REAL_ANSWERS is 6 — need 4 more
@@ -200,7 +200,7 @@ class TestSafetyFloor:
         assert "Safety floor" in reason
 
     def test_floor_passes_after_min_real_answers(self):
-        session = ScreeningSession("c6", 24.0, 10)
+        session = ScreeningSession("c6", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         # 4 items across 4 distinct domains to satisfy both count AND domain floor
@@ -219,7 +219,7 @@ class TestSafetyFloor:
 
 class TestImputation:
     def test_imputed_values_are_valid_item_scores(self):
-        imputed = impute_missing(["GM01", "GM02", "CM01"], corrected_age_months=24.0)
+        imputed = impute_missing(["GM01", "GM02", "CM01"], corrected_age_months=12.0)
         for item_id, val in imputed.items():
             assert val in (
                 0,
@@ -229,15 +229,15 @@ class TestImputation:
 
     def test_mandatory_items_raise_if_imputed(self):
         with pytest.raises(ValueError, match="cannot be imputed"):
-            impute_missing(["regression_flag"], corrected_age_months=24.0)
+            impute_missing(["regression_flag"], corrected_age_months=12.0)
 
     def test_empty_list_returns_empty_dict(self):
-        result = impute_missing([], corrected_age_months=24.0)
+        result = impute_missing([], corrected_age_months=12.0)
         assert result == {}
 
     def test_imputed_items_never_in_session_answers(self):
         """Key invariant: final.imputed_answers and session.answers must be disjoint."""
-        result = _run_full_session_direct(24.0, 10)
+        result = _run_full_session_direct(12.0, 10)
         final: FinalResult = result["final"]
         session: ScreeningSession = result["session"]
         overlap = set(final.imputed_answers.keys()) & set(session.answers.keys())
@@ -254,13 +254,13 @@ class TestFullSessionHTTP:
 
     @pytest.mark.parametrize("cap", [10, 15, 20])
     def test_session_completes_within_cap(self, cap: int):
-        result = _run_full_session_via_api(corrected_age_months=24.0, question_cap=cap)
+        result = _run_full_session_via_api(corrected_age_months=12.0, question_cap=cap)
         total = result["real_answer_count"]
         assert total <= cap, f"Session asked {total} questions, cap was {cap}"
 
     @pytest.mark.parametrize("cap", [10, 15, 20])
     def test_no_item_repeated_in_session(self, cap: int):
-        result = _run_full_session_via_api(corrected_age_months=24.0, question_cap=cap)
+        result = _run_full_session_via_api(corrected_age_months=12.0, question_cap=cap)
         q = result["questions_asked"]
         assert len(q) == len(set(q)), f"Duplicate items in session (cap={cap}): {q}"
 
@@ -303,20 +303,29 @@ class TestSensitivityAtCaps:
 
     @pytest.mark.parametrize("cap", [10, 15, 20])
     def test_budget_fully_utilized(self, cap: int):
-        """Session must use at least (cap - 1) questions before stopping."""
-        result = _run_full_session_via_api(corrected_age_months=24.0, question_cap=cap)
+        """Session must use at least (cap - 1) questions before stopping, bounded by available items."""
+        age_months = 12.0
+        result = _run_full_session_via_api(corrected_age_months=age_months, question_cap=cap)
         real_count = result["real_answer_count"]
-        total_items = 36
+        
+        from data.generator.item_bank import ITEM_BANK
+        from data.generator.age_brackets import map_to_bracket_label
+        
+        bracket = map_to_bracket_label(age_months)
+        valid_items = [i for i in ITEM_BANK if bracket in i.valid_brackets]
+        # Mandatory items (regression_flag, family_history_flag) are not in ITEM_BANK but are always asked
+        max_possible = len(valid_items) + 2
+        expected_min = min(cap, max_possible) - 1
 
         # Headline numbers (informational, per the verification plan)
         print(
-            f"\nCap={cap}: {real_count} real answers / {total_items} items "
-            f"({real_count/total_items:.0%} real, {total_items - real_count} imputed)"
+            f"\nCap={cap}: {real_count} real answers / {len(valid_items)} valid items "
+            f"({real_count/len(ITEM_BANK):.0%} real, {len(ITEM_BANK) - real_count} imputed)"
         )
 
-        assert real_count >= cap - 1, (
+        assert real_count >= expected_min, (
             f"Cap={cap}: session only used {real_count} questions — "
-            f"expected at least {cap - 1}. Budget not fully utilized."
+            f"expected at least {expected_min}. Budget not fully utilized."
         )
         assert (
             real_count <= cap
@@ -324,7 +333,7 @@ class TestSensitivityAtCaps:
 
     @pytest.mark.parametrize("cap", [10, 15, 20])
     def test_stopping_reason_is_valid(self, cap: int):
-        result = _run_full_session_via_api(corrected_age_months=24.0, question_cap=cap)
+        result = _run_full_session_via_api(corrected_age_months=12.0, question_cap=cap)
         assert result["stopping_reason"] in (
             "cap_reached",
             "budget_exhausted",
@@ -346,7 +355,7 @@ class TestDeterministicMLOverride:
     """
 
     def test_override_is_refer_when_regression_flag_set(self):
-        session = ScreeningSession("c-override-1", 24.0, 10)
+        session = ScreeningSession("c-override-1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 1)
         record_mandatory_answer(session, "family_history_flag", 0)
         override = get_deterministic_override(session)
@@ -355,7 +364,7 @@ class TestDeterministicMLOverride:
         ), f"Expected 'Refer' override when regression_flag=1, got {override!r}"
 
     def test_no_override_when_regression_flag_not_set(self):
-        session = ScreeningSession("c-override-2", 24.0, 10)
+        session = ScreeningSession("c-override-2", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         override = get_deterministic_override(session)
@@ -366,7 +375,7 @@ class TestDeterministicMLOverride:
     def test_override_present_in_final_result_via_orchestrator(self):
         """Regression flag override must travel through the full orchestrator
         path and appear in FinalResult.deterministic_override."""
-        result = _run_full_session_direct(24.0, 10, regression_flag_answer=1)
+        result = _run_full_session_direct(12.0, 10, regression_flag_answer=1)
         final: FinalResult = result["final"]
         assert final.deterministic_override == "Refer", (
             f"Expected FinalResult.deterministic_override='Refer', got "
@@ -374,7 +383,7 @@ class TestDeterministicMLOverride:
         )
 
     def test_override_absent_in_final_result_when_no_regression(self):
-        result = _run_full_session_direct(24.0, 10, regression_flag_answer=0)
+        result = _run_full_session_direct(12.0, 10, regression_flag_answer=0)
         final: FinalResult = result["final"]
         assert final.deterministic_override is None, (
             f"Expected no override when regression_flag=0, got "
@@ -396,7 +405,7 @@ class TestDomainCoverageFloor:
 
     def test_floor_blocked_when_only_one_domain_answered(self):
         """Satisfies count floor but not domain floor."""
-        session = ScreeningSession("c-domain-1", 24.0, 10)
+        session = ScreeningSession("c-domain-1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         # 4 answers, all from gross_motor — count floor met, domain floor not
@@ -415,7 +424,7 @@ class TestDomainCoverageFloor:
 
     def test_floor_passes_when_four_domains_covered(self):
         """Meets both count and domain floors."""
-        session = ScreeningSession("c-domain-2", 24.0, 10)
+        session = ScreeningSession("c-domain-2", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         # One item from each of 4 distinct domains
@@ -429,7 +438,7 @@ class TestDomainCoverageFloor:
 
     def test_full_session_covers_multiple_domains(self):
         """End-to-end: a completed session must touch >= MIN_DOMAINS_COVERED domains."""
-        result = _run_full_session_direct(24.0, 20)
+        result = _run_full_session_direct(12.0, 20)
         session: ScreeningSession = result["session"]
         from data.generator.item_bank import ITEM_BANK
 
@@ -482,7 +491,7 @@ class TestSessionSerialization:
 
     def test_no_cross_session_contamination(self):
         """Mutations to a restored session must not affect the source dict."""
-        session_a = ScreeningSession("c-serial-a", 24.0, 10)
+        session_a = ScreeningSession("c-serial-a", 12.0, 10)
         session_a.answers["GM01"] = 1
 
         data_a = session_a.to_dict()
@@ -506,13 +515,13 @@ class TestSanityCheckItem:
     def test_sanity_check_fails_if_honeypot_present(self):
         from app.core.sanity_item import HONEYPOT_ITEM_ID
 
-        session = ScreeningSession("c1", 24.0, 10)
+        session = ScreeningSession("c1", 12.0, 10)
         session.answers[HONEYPOT_ITEM_ID] = 1
         with pytest.raises(ValueError, match="sanity check failed"):
             get_next_action(session)
 
     def test_sanity_check_passes_if_honeypot_absent(self):
-        session = ScreeningSession("c1", 24.0, 10)
+        session = ScreeningSession("c1", 12.0, 10)
         # Should not raise ValueError
         action = get_next_action(session)
         assert action is not None
@@ -520,7 +529,7 @@ class TestSanityCheckItem:
 
 class TestMotorConfoundCaveat:
     def test_caveat_generated_when_motor_confound_failed_but_pure_item_passed(self):
-        session = ScreeningSession("c1", 24.0, 10)
+        session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
 
@@ -543,7 +552,7 @@ class TestMotorConfoundCaveat:
         assert "cognitive" in action.caveats[0]
 
     def test_no_caveat_when_all_items_failed(self):
-        session = ScreeningSession("c1", 24.0, 10)
+        session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
 
@@ -564,7 +573,7 @@ class TestMotorConfoundCaveat:
         assert len(action.caveats) == 0
 
     def test_no_caveat_when_motor_confound_passed(self):
-        session = ScreeningSession("c1", 24.0, 10)
+        session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
 
@@ -607,7 +616,7 @@ class TestAdaptiveDomainCoverageSelection:
         from app.core.safety_floor import _domains_with_real_answer
         from data.generator.item_bank import ITEM_BANK
 
-        session = ScreeningSession("c-mand-domain", 24.0, 10)
+        session = ScreeningSession("c-mand-domain", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
 
@@ -640,7 +649,7 @@ class TestAdaptiveDomainCoverageSelection:
         from app.core.safety_floor import _domains_with_real_answer
         from data.generator.item_bank import ITEM_BANK
 
-        session = ScreeningSession("c-mand-only", 24.0, 10)
+        session = ScreeningSession("c-mand-only", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
 
@@ -654,7 +663,7 @@ class TestAdaptiveDomainCoverageSelection:
         from app.core.adaptive_tree import next_question
         from data.generator.item_bank import ITEM_BANK
 
-        session = ScreeningSession("c-uncovered", 24.0, 20)
+        session = ScreeningSession("c-uncovered", 12.0, 20)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
         # Cover only one domain
@@ -673,7 +682,7 @@ class TestAdaptiveDomainCoverageSelection:
         Alternating extreme answers must still reach FinalResult — no
         infinite loop / no failure to exhaust questions.
         """
-        session = ScreeningSession("c-adversarial", 24.0, 10)
+        session = ScreeningSession("c-adversarial", 12.0, 10)
         questions: list[str] = []
         flip = 0
 

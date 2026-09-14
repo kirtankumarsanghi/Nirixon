@@ -98,7 +98,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const resumedRef = useRef(false);
 
   // Keep latest values for submit without stale closures / missing deps churn
   const sessionIdRef = useRef(sessionId);
@@ -124,8 +123,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
 
   // Resume from sessionStorage on mount
   useEffect(() => {
-    if (resumedRef.current) return;
-    resumedRef.current = true;
     const existing = loadSessionId();
     if (!existing) return;
 

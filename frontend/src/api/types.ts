@@ -1,8 +1,5 @@
 /**
  * Hand-written API types matching backend/app/schemas/screen.py.
- *
- * TODO: regenerate via scripts/export_openapi_to_zod.sh once backend is live
- * (hand-written types will drift from the real contract otherwise).
  */
 
 export type Classification = "Typical" | "Monitor" | "Refer";
@@ -50,6 +47,7 @@ export interface ShapFeature {
 export interface ResultPayload {
   final_classification: string;
   ml_classification: string;
+  model_name?: string | null;
   ml_score: number;
   probabilities: Record<string, number>;
   safety_override_triggered: boolean;
@@ -75,6 +73,7 @@ export interface SessionStateResponse {
   child_ref: string;
   status: string;
   corrected_age_months: number;
+  age_bracket: string;
   question_cap: number;
   real_answer_count: number;
   adaptive_budget_remaining: number;

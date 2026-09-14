@@ -8,18 +8,26 @@ instead of each file re-deriving its own column list and risking drift.
 FEATURE COLUMNS (what the model is trained on):
   - 36 raw item columns (GM01..SH06)
   - corrected_age_months
+  - age_bracket_ordinal  (integer 0–16, ordinal encoding of the 17 ASQ-3
+                          brackets; gives the model explicit access to the
+                          non-linear developmental density that the continuous
+                          float alone doesn't express to a tree model)
   - family_history_flag
   - regression_flag
 
 EXCLUDED FROM TRAINING:
   - child_id                 -> identifier, not a feature
-  - age_months                -> superseded by corrected_age_months
+  - age_months               -> superseded by corrected_age_months
+  - age_bracket              -> string label; ordinal encoding (age_bracket_ordinal)
+                                is used instead as the model feature. age_bracket
+                                is kept in the DataFrame for per-bracket analysis
+                                and subgroup evaluation.
   - multilingual_home_flag   -> held out deliberately; used ONLY as a
                                  grouping variable in the fairness check,
                                  never as a model input. See fairness_check.py
                                  for why this is a stronger test than
                                  including it and checking its coefficient.
-  - risk_label                -> the target, not a feature
+  - risk_label               -> the target, not a feature
 """
 
 import numpy as np
@@ -29,6 +37,7 @@ ITEM_PREFIXES = ("GM", "FM", "CM", "CG", "PS", "SH")
 NON_FEATURE_COLUMNS = {
     "child_id",
     "age_months",
+    "age_bracket",          # string; age_bracket_ordinal is the model feature
     "multilingual_home_flag",
     "risk_label",
 }

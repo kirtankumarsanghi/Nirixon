@@ -33,13 +33,15 @@ def _int_to_label(y_int):
 
 def build_preprocessor(feature_columns: list[str]) -> ColumnTransformer:
     """
-    The 36 items are already small ordinal integers (0/1/2) - fine to
-    pass through as-is. corrected_age_months has a much larger, continuous
-    range, so it's standardized to keep Logistic Regression's coefficients
-    (and its regularization) well-behaved. Tree-based models don't need
-    this, but applying it uniformly keeps one preprocessing pipeline
-    shared across all three candidates, which is simpler and safer than
-    maintaining three slightly different ones.
+    The 36 items are already small ordinal integers (0/1/2) — fine to
+    pass through as-is. age_bracket_ordinal is an integer 0–16 — also
+    passed through (same rationale: tree splits don't need scaling).
+    corrected_age_months has a much larger, continuous range, so it's
+    standardized to keep Logistic Regression's coefficients (and its
+    regularization) well-behaved. Tree-based models don't need this, but
+    applying it uniformly keeps one preprocessing pipeline shared across
+    all three candidates, which is simpler and safer than maintaining
+    three slightly different ones.
     """
     scale_cols = [AGE_COLUMN] if AGE_COLUMN in feature_columns else []
     passthrough_cols = [c for c in feature_columns if c not in scale_cols]

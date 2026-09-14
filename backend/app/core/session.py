@@ -30,6 +30,8 @@ class ScreeningSession:
     child_id: str
     corrected_age_months: float
     question_cap: Literal[10, 15, 20]
+    age_bracket: str = "Unknown"
+    model_name: str | None = None
 
     # item_id -> 0/1/2 — REAL caregiver answers only, never imputed values
     answers: dict[str, int] = field(default_factory=dict)
@@ -45,6 +47,9 @@ class ScreeningSession:
             raise ValueError(
                 f"question_cap must be one of {ALLOWED_CAPS}, got {self.question_cap}"
             )
+        if self.age_bracket == "Unknown":
+            from data.generator.age_brackets import map_to_bracket_label
+            self.age_bracket = map_to_bracket_label(self.corrected_age_months)
 
     @property
     def real_answer_count(self) -> int:
@@ -79,29 +84,36 @@ class ScreeningSession:
     # under multiple Uvicorn workers. See Stage 4 implementation notes.
     # ------------------------------------------------------------------
 
-    def to_dict(self) -> dict:
-        """Serialize to a JSON-safe dict for Stage 4 to persist."""
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize for storage or transmission."""
         return {
             "child_id": self.child_id,
             "corrected_age_months": self.corrected_age_months,
+            "age_bracket": self.age_bracket,
             "question_cap": self.question_cap,
-            "answers": dict(self.answers),
-            "mandatory_answered": dict(self.mandatory_answered),
+            "model_name": self.model_name,
+            "answers": self.answers.copy(),
+            "mandatory_answered": self.mandatory_answered.copy(),
             "completed": self.completed,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> ScreeningSession:
-        """Reconstruct from a persisted dict. Inverse of to_dict()."""
-        session = cls(
+    def from_dict(cls, data: dict[str, Any]) -> ScreeningSession:
+        """Deserialize from storage or transmission."""
+        # Provide graceful defaults if age_bracket or model_name are missing from old DB rows
+        # age_bracket fallback relies on the mapping function, but for safety we'll require it
+        # to be passed, or we backfill it if missing in older schema manually.
+        age_bracket = data.get("age_bracket", "Unknown") 
+        return cls(
             child_id=data["child_id"],
-            corrected_age_months=data["corrected_age_months"],
+            corrected_age_months=float(data["corrected_age_months"]),
+            age_bracket=age_bracket,
             question_cap=data["question_cap"],
+            model_name=data.get("model_name"),
+            answers=data.get("answers", {}).copy(),
+            mandatory_answered=data.get("mandatory_answered", {}).copy(),
+            completed=bool(data.get("completed", False)),
         )
-        session.answers = dict(data.get("answers", {}))
-        session.mandatory_answered = dict(data.get("mandatory_answered", {}))
-        session.completed = data.get("completed", False)
-        return session
 
 
 @dataclass

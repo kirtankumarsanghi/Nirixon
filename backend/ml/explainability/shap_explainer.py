@@ -31,11 +31,13 @@ import shap
 from columns import LABEL_ORDER
 
 
-def build_explainer(tree_model, feature_columns: list[str]):
+def build_explainer(tree_model, feature_columns: list[str], model_name: str | None = None):
     """
     tree_model: the raw, uncalibrated tree-based estimator (e.g. the
                 fitted XGBClassifier or RandomForestClassifier itself -
                 NOT wrapped in a sklearn Pipeline or CalibratedClassifierCV).
+    model_name: optional name string (e.g. "xgboost", "random_forest") —
+                informational only; TreeExplainer handles both identically.
     """
     explainer = shap.TreeExplainer(tree_model)
     return explainer

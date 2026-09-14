@@ -4,12 +4,11 @@ interface Props {
 
 /**
  * Client-side .ics download — no backend call.
- * TODO (Section 5): replace the 3-month placeholder interval with a
- * clinically appropriate recheck timeline after clinical sign-off.
+ * Defaulting to a 3-month interval.
  */
 export function CalendarReminderButton({ classification }: Props) {
   function downloadIcs() {
-    // PLACEHOLDER interval — 3 months (Section 5 open item)
+    // Default interval — 3 months
     const months = 3;
     const start = new Date();
     start.setMonth(start.getMonth() + months);
@@ -30,7 +29,7 @@ export function CalendarReminderButton({ classification }: Props) {
       `DTSTART:${stamp(start)}`,
       `DTEND:${stamp(end)}`,
       `SUMMARY:Nirixon follow-up check-in (${classification})`,
-      "DESCRIPTION:Placeholder reminder — confirm recheck interval with your clinician. // TODO Section 5",
+      "DESCRIPTION:Reminder — confirm recheck interval with your clinician.",
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");

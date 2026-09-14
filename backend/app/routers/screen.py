@@ -77,6 +77,7 @@ def _question_payload(q: NextQuestion) -> QuestionPayload:
 def _result_payload_from_prediction(
     pred,
     *,
+    model_name: str | None,
     stopping_reason: str | None,
     caveats: list[str],
     real_answer_count: int | None = None,
@@ -85,6 +86,7 @@ def _result_payload_from_prediction(
     return ResultPayload(
         final_classification=pred.final_classification,
         ml_classification=pred.ml_classification,
+        model_name=model_name,
         ml_score=pred.ml_score,
         probabilities=pred.probabilities,
         safety_override_triggered=pred.safety_override_triggered,
@@ -153,6 +155,7 @@ async def _run_completion(
         session_id=db_row.id,
         ml_score=pred.ml_score,
         ml_classification=pred.ml_classification,
+        model_name=inference.production_model_name or "unknown",
         final_classification=pred.final_classification,
         safety_override_triggered=pred.safety_override_triggered,
         override_rule=pred.override_rule,
@@ -193,6 +196,7 @@ async def _run_completion(
 
     return _result_payload_from_prediction(
         pred,
+        model_name=inference.production_model_name,
         stopping_reason=final.stopping_reason,
         caveats=list(final.caveats),
         real_answer_count=len(final.real_answers),
@@ -220,9 +224,14 @@ async def start_screen(
         )
 
     session_id = str(uuid.uuid4())
+    
+    from data.generator.age_brackets import map_to_bracket_label
+    age_bracket = map_to_bracket_label(body.corrected_age_months)
+
     core = CoreSession(
         child_id=body.child_ref or session_id,
         corrected_age_months=body.corrected_age_months,
+        age_bracket=age_bracket,
         question_cap=body.question_cap,
     )
 
@@ -232,6 +241,7 @@ async def start_screen(
         parent_user_id=user.id,
         status="in_progress",
         corrected_age_months=body.corrected_age_months,
+        age_bracket=age_bracket,
         question_cap=body.question_cap,
         state_json=core.to_dict(),
     )
@@ -366,6 +376,7 @@ async def get_result(
     return ResultPayload(
         final_classification=rr.final_classification,
         ml_classification=rr.ml_classification,
+        model_name=rr.model_name,
         ml_score=rr.ml_score,
         probabilities=rr.probabilities or {},
         safety_override_triggered=rr.safety_override_triggered,
@@ -402,6 +413,7 @@ async def get_session(
         result_payload = ResultPayload(
             final_classification=rr.final_classification,
             ml_classification=rr.ml_classification,
+            model_name=rr.model_name,
             ml_score=rr.ml_score,
             probabilities=rr.probabilities or {},
             safety_override_triggered=rr.safety_override_triggered,
@@ -422,6 +434,7 @@ async def get_session(
         child_ref=db_row.child_ref,
         status=db_row.status,
         corrected_age_months=core.corrected_age_months,
+        age_bracket=core.age_bracket,
         question_cap=core.question_cap,
         real_answer_count=core.real_answer_count,
         adaptive_budget_remaining=core.adaptive_budget_remaining,

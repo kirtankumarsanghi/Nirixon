@@ -172,7 +172,9 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
     candidate_ids = [
         iid
         for iid in all_item_ids
-        if iid not in already_asked and iid not in mandatory_set
+        if iid not in already_asked 
+        and iid not in mandatory_set
+        and session.age_bracket in ITEM_BY_ID[iid].valid_brackets
     ]
 
     if not candidate_ids:

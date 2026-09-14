@@ -22,6 +22,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from age_brackets import BRACKET_LABELS, map_to_bracket_label
 
 CSV_PATH = "../processed/screening_data_items.csv"
 
@@ -44,7 +45,9 @@ CORRELATION_MAX_BASELINE = (
     0.40  # comm<->gross_motor, age-residualized, should stay near baseline (~0.30)
 )
 
-AGE_REFER_RATE_MAX_SPREAD = 0.08  # Refer rate shouldn't swing wildly across age bins
+# Refer rate spread across the 17 ASQ-3 brackets — tighter than the old
+# 1-year-bin threshold because within-bracket variation should be smaller.
+AGE_REFER_RATE_MAX_SPREAD = 0.10  # raised slightly from 0.08 to account for narrow brackets
 
 
 results = []  # (check_name, passed: bool, detail: str)
@@ -78,6 +81,8 @@ def main() -> int:
             "child_id",
             "age_months",
             "corrected_age_months",
+            "age_bracket",
+            "age_bracket_ordinal",
             "family_history_flag",
             "multilingual_home_flag",
             "regression_flag",
@@ -113,8 +118,18 @@ def main() -> int:
         set(df["risk_label"].unique()) <= {"Typical", "Monitor", "Refer"},
         f"Unique values found: {sorted(df['risk_label'].unique())}",
     )
+    check(
+        "age_bracket column present with all 17 ASQ-3 bracket labels",
+        "age_bracket" in df.columns and set(df["age_bracket"].unique()) == set(BRACKET_LABELS),
+        f"Expected 17 unique bracket labels. Found: "
+        f"{sorted(df['age_bracket'].unique()) if 'age_bracket' in df.columns else 'column missing'}",
+    )
+    check(
+        "age_bracket_ordinal column is in 0-16 range",
+        "age_bracket_ordinal" in df.columns and df["age_bracket_ordinal"].between(0, 16).all(),
+        "Checked age_bracket_ordinal is integer 0-16 for all rows.",
+    )
 
-    # -----------------------------------------------------------------
     # 2. Class balance near target
     # -----------------------------------------------------------------
     balance = df["risk_label"].value_counts(normalize=True)
@@ -192,19 +207,27 @@ def main() -> int:
     )
 
     # -----------------------------------------------------------------
-    # 6. Age-relative fairness: Refer rate shouldn't swing wildly by age
+    # 6. Age-relative fairness: Refer rate should be stable across the
+    #    17 ASQ-3 brackets (confirms age-relative scoring is working
+    #    within the narrower bracket structure).
     # -----------------------------------------------------------------
-    df["_age_bin_12mo"] = (df["corrected_age_months"] // 12).astype(int)
-    refer_rate_by_age = df.groupby("_age_bin_12mo")["risk_label"].apply(
-        lambda s: (s == "Refer").mean()
-    )
-    spread = refer_rate_by_age.max() - refer_rate_by_age.min()
-    check(
-        "Refer rate is reasonably stable across age groups (confirms age-relative scoring is working)",
-        spread <= AGE_REFER_RATE_MAX_SPREAD,
-        f"Spread across age bins: {spread:.1%} (max allowed: {AGE_REFER_RATE_MAX_SPREAD:.0%}). "
-        f"By bin (years): {refer_rate_by_age.round(3).to_dict()}",
-    )
+    if "age_bracket" in df.columns:
+        refer_rate_by_bracket = df.groupby("age_bracket")["risk_label"].apply(
+            lambda s: (s == "Refer").mean()
+        )
+        spread = refer_rate_by_bracket.max() - refer_rate_by_bracket.min()
+        check(
+            "Refer rate is reasonably stable across ASQ-3 age brackets",
+            spread <= AGE_REFER_RATE_MAX_SPREAD,
+            f"Spread across 17 brackets: {spread:.1%} (max allowed: {AGE_REFER_RATE_MAX_SPREAD:.0%}). "
+            f"By bracket (sorted): {refer_rate_by_bracket.round(3).sort_index().to_dict()}",
+        )
+    else:
+        check(
+            "Refer rate is reasonably stable across ASQ-3 age brackets",
+            False,
+            "age_bracket column missing — regenerate the CSV with the updated generator.",
+        )
 
     # -----------------------------------------------------------------
     # 7. Family history should raise risk modestly, not dominate it

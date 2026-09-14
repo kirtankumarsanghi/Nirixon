@@ -67,6 +67,7 @@ class ScreeningSession(Base):
         String(32), default="in_progress"
     )  # in_progress|completed
     corrected_age_months: Mapped[float] = mapped_column(Float)
+    age_bracket: Mapped[str] = mapped_column(String(16), default="Unknown")
     question_cap: Mapped[int] = mapped_column(Integer, default=10)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
@@ -116,6 +117,7 @@ class RiskResult(Base):
     )
     ml_score: Mapped[float] = mapped_column(Float)
     ml_classification: Mapped[str] = mapped_column(String(32))
+    model_name: Mapped[str] = mapped_column(String(64), default="unknown")
     final_classification: Mapped[str] = mapped_column(String(32))
     safety_override_triggered: Mapped[bool] = mapped_column(Boolean, default=False)
     override_rule: Mapped[str | None] = mapped_column(String(128), nullable=True)
