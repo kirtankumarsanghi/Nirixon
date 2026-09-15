@@ -41,8 +41,8 @@ Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Fo
 
 | Model | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---|---|---|
-| logistic_regression | 6.42 | 8.93 | 11.06 |
-| random_forest | 57.32 | 79.56 | 103.55 |
-| xgboost | 12.08 | 17.05 | 27.73 |
+| logistic_regression | 6.07 | 7.95 | 10.38 |
+| random_forest | 55.60 | 63.19 | 71.46 |
+| xgboost | 10.73 | 15.74 | 23.18 |
 
 > Latency is measured as sequential single-row `predict_proba()` calls, reflecting the Clinician Sandbox / What-If re-score use case, not batch throughput. n=1000 calls per model.

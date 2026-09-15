@@ -169,6 +169,12 @@ body {
   color: var(--ink);
 }
 
+.field__hint {
+  font-size: 0.8rem;
+  color: var(--muted, #6b6860);
+  margin-top: -0.25rem;
+}
+
 .btn {
   font: inherit;
   font-weight: 600;

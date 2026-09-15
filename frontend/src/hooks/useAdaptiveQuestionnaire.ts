@@ -188,6 +188,16 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
       child_ref?: string;
       question_cap?: 10 | 15 | 20;
     }) => {
+      // Clear any in-flight or stale session BEFORE starting a new one.
+      // Without this, changing the age and clicking Begin would resume the
+      // old session (for a different bracket) from sessionStorage, causing
+      // the wrong age-bracket questions to appear.
+      clearSessionId();
+      setSessionId(null);
+      setQuestion(null);
+      setResult(null);
+      setAnswers({});
+      setCoveredDomains(new Set());
       setPhase("loading");
       setError(null);
       saveCoveredDomains(new Set());

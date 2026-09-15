@@ -13,11 +13,34 @@ export function ScreeningPage() {
   const [childRef, setChildRef] = useState("");
   const [starting, setStarting] = useState(false);
 
+  // Compute the ASQ-3 bracket label to display live as age changes
+  const ageBracketLabel = (() => {
+    const n = Number(ageMonths);
+    if (!Number.isFinite(n) || n < 1 || n > 66) return null;
+    if (n < 3) return "2 months";
+    if (n < 5) return "4 months";
+    if (n < 7.5) return "6 months";
+    if (n < 10.5) return "9 months";
+    if (n < 13.5) return "12 months";
+    if (n < 16.5) return "15 months";
+    if (n < 19.5) return "18 months";
+    if (n < 22.5) return "21 months";
+    if (n < 25.5) return "24 months";
+    if (n < 28.5) return "27 months";
+    if (n < 31.5) return "30 months";
+    if (n < 34.5) return "33 months";
+    if (n < 39) return "36 months";
+    if (n < 45) return "42 months";
+    if (n < 51) return "48 months";
+    if (n < 57) return "54 months";
+    return "60 months";
+  })();
+
   async function onStart(e: FormEvent) {
     e.preventDefault();
     const age = Number(ageMonths);
-    if (!Number.isFinite(age) || age <= 0 || age > 72) {
-      push("Please enter a corrected age between 0 and 72 months.", "error");
+    if (!Number.isFinite(age) || age < 1 || age > 66) {
+      push("Please enter a corrected age between 1 and 66 months (ASQ-3 range).", "error");
       return;
     }
     setStarting(true);
@@ -114,13 +137,18 @@ export function ScreeningPage() {
           <span>Child’s corrected age (months)</span>
           <input
             type="number"
-            min={0.1}
-            max={72}
-            step={0.1}
+            min={1}
+            max={66}
+            step={0.5}
             required
             value={ageMonths}
             onChange={(e) => setAgeMonths(e.target.value)}
           />
+          {ageBracketLabel && (
+            <span className="field__hint" aria-live="polite">
+              ASQ-3 bracket: <strong>{ageBracketLabel}</strong>
+            </span>
+          )}
         </label>
         <label className="field">
           <span>Optional label for this session only</span>

@@ -19,7 +19,7 @@ Design choices:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Any
 
 ALLOWED_CAPS = {10, 15, 20}
 MANDATORY_IDS = ("regression_flag", "family_history_flag")
