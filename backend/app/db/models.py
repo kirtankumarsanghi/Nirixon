@@ -47,7 +47,9 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(32), default="parent")  # parent|internal
+    role: Mapped[str] = mapped_column(
+        String(32), default="parent"
+    )  # parent | internal | teacher | specialist
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )
@@ -75,6 +77,15 @@ class ScreeningSession(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Module discriminator: "A" = early-childhood screener (0–60 months),
+    # "B" = school-age screener (60–144 months). Null on legacy rows means A.
+    module: Mapped[str] = mapped_column(String(8), default="A", nullable=False)
+
+    # SHA-256 hash of the free-text intake (Module B only).
+    # The raw text is never stored; the hash enables server-side dedup and
+    # audit without persisting identifiable language.
+    intake_text_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     # Serialized orchestrator state (to_dict) for resume — SessionRepository
     # is the live source during a request; this column is the durable backup.
@@ -125,6 +136,18 @@ class RiskResult(Base):
     probabilities: Mapped[dict] = mapped_column(JsonType, default=dict)
     caveats: Mapped[list] = mapped_column(JsonType, default=list)
     stopping_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Module B: per-domain classification map, e.g.
+    # {"attention": "Monitor", "reading": "Refer", "motor": "Typical", ...}
+    # Empty dict for Module A sessions.
+    domain_classifications: Mapped[dict] = mapped_column(JsonType, default=dict)
+
+    # Module B: cross-context consistency score in [0, 1].
+    # 1.0 = parent and teacher responses perfectly aligned;
+    # <0.6 = meaningful divergence flagged in the results view.
+    # None for Module A sessions or when teacher form was not completed.
+    consistency_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )

@@ -1,8 +1,8 @@
 /**
  * Next-step resource for Refer outcomes (Section 0.5 / Section 5).
  *
- * PLACEHOLDER: jurisdiction-correct early-intervention text/links need
- * clinical/content sign-off. Do not invent a specific URL here.
+ * PLACEHOLDER: India-focused early-support text needs clinical/content
+ * sign-off. Do not invent a specific URL here.
  */
 export function EarlyInterventionResource() {
   return (
@@ -13,14 +13,14 @@ export function EarlyInterventionResource() {
     >
       <h2 className="h-sm">A suggested next step</h2>
       <p>
-        {/* PLACEHOLDER (Section 5): replace with reviewed IDEA Part C /
-            jurisdiction-correct resource copy — do not invent a live URL */}
-        In the U.S., families can contact their state’s{" "}
-        <strong>early intervention program</strong> (IDEA Part C) for children
-        under age 3, or ask their pediatrician how to get connected. Search for
-        “find your state’s early intervention program” for the official locator
-        for your area — we are not linking a specific URL until that content is
-        reviewed.
+        {/* PLACEHOLDER (Section 5): India early-support copy pending review */}
+        In India, talk with your child’s <strong>paediatrician</strong> or a
+        developmental specialist, and ask about support through your nearest{" "}
+        <strong>District Early Intervention Centre (DEIC)</strong> under the
+        Rashtriya Bal Swasthya Karyakram (RBSK) programme, or through your local{" "}
+        <strong>Anganwadi / ICDS</strong> centre. Your paediatrician or PHC can
+        help you get connected — we are not linking a specific URL until that
+        content is reviewed.
       </p>
     </aside>
   );

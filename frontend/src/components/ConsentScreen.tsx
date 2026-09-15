@@ -1,9 +1,10 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { PageNav } from "./PageNav";
 
 export function ConsentScreen() {
-  const { setConsentGiven, consentGiven } = useAuth();
+  const { setConsentGiven, consentGiven, logout } = useAuth();
   const navigate = useNavigate();
   const [checked, setChecked] = useState(consentGiven);
 
@@ -16,6 +17,15 @@ export function ConsentScreen() {
 
   return (
     <section className="consent" aria-labelledby="consent-title">
+      <PageNav
+        showBack
+        backLabel="Sign out"
+        preferHistoryBack={false}
+        onBack={() => {
+          logout();
+          navigate("/login", { replace: true });
+        }}
+      />
       <h1 id="consent-title" className="display">
         Before we begin
       </h1>
@@ -57,6 +67,13 @@ export function ConsentScreen() {
           Continue to screening
         </button>
       </form>
+      <p className="consent__nav-hint">
+        After consent you can move between{" "}
+        <Link to="/growth">Growth trends</Link>,{" "}
+        <Link to="/share">Family sharing</Link>, and{" "}
+        <Link to="/sandbox">Clinician tools</Link> from the top bar or the
+        section links above.
+      </p>
     </section>
   );
 }

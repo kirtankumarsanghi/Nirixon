@@ -1,13 +1,22 @@
+import { useEffect } from "react";
 import type { ResultPayload } from "../api/types";
+import { saveCheckIn } from "../lib/checkInHistory";
 import { DomainBreakdownChart } from "./DomainBreakdownChart";
 import { StigmaReassurance } from "./StigmaReassurance";
 import { ExportableSummary } from "./ExportableSummary";
 import { CalendarReminderButton } from "./CalendarReminderButton";
 import { ScreeningDisclaimer } from "./ScreeningDisclaimer";
 import { EarlyInterventionResource } from "./EarlyInterventionResource";
+import { CheckInSnapshotCard } from "./CheckInSnapshotCard";
+import { Link } from "react-router-dom";
+import { PageNav } from "./PageNav";
 
 interface Props {
   result: ResultPayload;
+  sessionId?: string | null;
+  correctedAgeMonths?: number | null;
+  childRef?: string;
+  coveredDomainCount?: number;
   onStartOver?: () => void;
 }
 
@@ -16,20 +25,65 @@ interface Props {
  * not one template with swapped strings.
  * Clay (not red) on override is intentional — clarity over alarm (Section 0.5).
  */
-export function ResultsView({ result, onStartOver }: Props) {
+export function ResultsView({
+  result,
+  sessionId,
+  correctedAgeMonths,
+  childRef,
+  coveredDomainCount,
+  onStartOver,
+}: Props) {
+  useEffect(() => {
+    if (!sessionId || correctedAgeMonths == null) return;
+    saveCheckIn({
+      sessionId,
+      result,
+      correctedAgeMonths,
+      childRef,
+      coveredDomainCount,
+      module: result.module ?? "A",
+    });
+  }, [sessionId, result, correctedAgeMonths, childRef, coveredDomainCount]);
+
   if (result.safety_override_triggered) {
     return (
-      <OverrideResultsLayout result={result} onStartOver={onStartOver} />
+      <OverrideResultsLayout
+        result={result}
+        correctedAgeMonths={correctedAgeMonths}
+        childRef={childRef}
+        coveredDomainCount={coveredDomainCount}
+        onStartOver={onStartOver}
+      />
     );
   }
-  return <StandardResultsLayout result={result} onStartOver={onStartOver} />;
+  return (
+    <StandardResultsLayout
+      result={result}
+      correctedAgeMonths={correctedAgeMonths}
+      childRef={childRef}
+      coveredDomainCount={coveredDomainCount}
+      onStartOver={onStartOver}
+    />
+  );
 }
 
-function StandardResultsLayout({ result, onStartOver }: Props) {
+function StandardResultsLayout({
+  result,
+  correctedAgeMonths,
+  childRef,
+  coveredDomainCount,
+  onStartOver,
+}: Omit<Props, "sessionId">) {
   const isRefer = result.final_classification === "Refer";
 
   return (
     <section className="results results--standard" aria-labelledby="results-title">
+      <PageNav
+        current="/screen"
+        backLabel="Start another check-in"
+        onBack={onStartOver}
+        preferHistoryBack={false}
+      />
       <p className="eyebrow">Your check-in result</p>
       <h1 id="results-title" className="display">
         {classificationHeadline(result.final_classification)}
@@ -37,12 +91,41 @@ function StandardResultsLayout({ result, onStartOver }: Props) {
       <p className="lede">
         Based on the answers you shared in this check-in, Nirixon places the
         result in the <strong>{result.final_classification}</strong> category.
+        Below, each of the six developmental areas is explained in everyday
+        language so you know what the check-in was looking at.
       </p>
       <ScreeningDisclaimer />
       {isRefer ? <EarlyInterventionResource /> : null}
       <StigmaReassurance override={false} classification={result.final_classification} />
+      <CheckInSnapshotCard
+        result={result}
+        correctedAgeMonths={correctedAgeMonths}
+        coveredDomainCount={coveredDomainCount}
+      />
       <DomainBreakdownChart result={result} />
-      <ExportableSummary result={result} />
+      <nav className="results__related" aria-label="Related tools">
+        <p className="eyebrow">Explore from this result</p>
+        <ul>
+          <li>
+            <Link to="/growth">Growth trends</Link> — timeline of check-ins on
+            this device
+          </li>
+          <li>
+            <Link to="/share">Family sharing</Link> — copy or print a summary
+            for caregivers
+          </li>
+          <li>
+            <Link to="/sandbox">Clinician tools</Link> — probabilities and
+            model detail for a paediatrician visit
+          </li>
+        </ul>
+      </nav>
+      <ExportableSummary
+        result={result}
+        correctedAgeMonths={correctedAgeMonths}
+        childRef={childRef}
+        coveredDomainCount={coveredDomainCount}
+      />
       <div className="results__actions">
         <CalendarReminderButton classification={result.final_classification} />
         {onStartOver ? (
@@ -65,12 +148,24 @@ function StandardResultsLayout({ result, onStartOver }: Props) {
   );
 }
 
-function OverrideResultsLayout({ result, onStartOver }: Props) {
+function OverrideResultsLayout({
+  result,
+  correctedAgeMonths,
+  childRef,
+  coveredDomainCount,
+  onStartOver,
+}: Omit<Props, "sessionId">) {
   return (
     <section
       className="results results--override"
       aria-labelledby="override-title"
     >
+      <PageNav
+        current="/screen"
+        backLabel="Start another check-in"
+        onBack={onStartOver}
+        preferHistoryBack={false}
+      />
       <p className="eyebrow eyebrow--clay">Safety recommendation</p>
       <h1 id="override-title" className="display display--clay">
         {/* PLACEHOLDER (Section 5): clinical sign-off on override wording */}
@@ -94,8 +189,32 @@ function OverrideResultsLayout({ result, onStartOver }: Props) {
       <ScreeningDisclaimer />
       <EarlyInterventionResource />
       <StigmaReassurance override classification={result.final_classification} />
+      <CheckInSnapshotCard
+        result={result}
+        correctedAgeMonths={correctedAgeMonths}
+        coveredDomainCount={coveredDomainCount}
+      />
       <DomainBreakdownChart result={result} />
-      <ExportableSummary result={result} />
+      <nav className="results__related" aria-label="Related tools">
+        <p className="eyebrow">Explore from this result</p>
+        <ul>
+          <li>
+            <Link to="/growth">Growth trends</Link>
+          </li>
+          <li>
+            <Link to="/share">Family sharing</Link>
+          </li>
+          <li>
+            <Link to="/sandbox">Clinician tools</Link>
+          </li>
+        </ul>
+      </nav>
+      <ExportableSummary
+        result={result}
+        correctedAgeMonths={correctedAgeMonths}
+        childRef={childRef}
+        coveredDomainCount={coveredDomainCount}
+      />
       <div className="results__actions">
         <CalendarReminderButton classification="Refer" />
         {onStartOver ? (
@@ -115,7 +234,7 @@ function classificationHeadline(c: string): string {
     case "Monitor":
       return "Worth keeping an eye on";
     case "Refer":
-      return "Worth discussing with a pediatrician";
+      return "Worth discussing with a paediatrician";
     default:
       return c;
   }

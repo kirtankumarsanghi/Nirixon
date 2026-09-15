@@ -354,5 +354,12 @@ def build_feature_vector(
     return {col: combined.get(col) for col in feature_columns}
 
 
-# Process-wide singleton filled by FastAPI lifespan
+# Process-wide singletons filled by FastAPI lifespan.
+# Module A — early-childhood screener (ages 0–60 months).
 inference_service = InferenceService()
+# Module B — school-age screener (ages 60–144 months).
+# Loaded from ML_ARTIFACTS_DIR_B (default: ml/artifacts/module_b/).
+# If Module B artifacts are not yet present (train.py --module B has not been
+# run), inference_service_b.is_loaded is False and Module B prediction
+# endpoints return 503 with a clear "model not trained" message.
+inference_service_b = InferenceService()

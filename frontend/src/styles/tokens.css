@@ -1,10 +1,15 @@
 :root {
-  /* Design tokens — Stage 5 (exact values from brief) */
+  /* Design tokens — Stage 5 (exact brand values preserved) */
   --paper: #f6f3ec;
   --ink: #26241f;
   --teal: #2e6b69;
   --moss: #6c7a52;
   --clay: #a45a34;
+  --muted: #6b6860;
+  --surface: #fffcf6;
+  --surface-soft: rgba(255, 252, 246, 0.72);
+  --line: rgba(38, 36, 31, 0.1);
+  --line-strong: rgba(38, 36, 31, 0.16);
 
   --font-display: "Source Serif 4", "Georgia", serif;
   --font-body: "Public Sans", "Segoe UI", sans-serif;
@@ -16,8 +21,13 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
   --space-7: 3rem;
-  --radius: 0.35rem;
-  --max-width: 40rem;
+  --space-8: 4rem;
+  --radius: 0.4rem;
+  --radius-lg: 0.75rem;
+  --max-width: 42rem;
+  --max-width-wide: 54rem;
+  --nav-height: 3.75rem;
+  --ease: 180ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -42,13 +42,24 @@ import pandas as pd
 
 # Allow imports from the generator — use absolute path from this file
 from data.generator.item_bank import DOMAINS, ITEM_BANK, Item
+from data.generator.item_bank_b import (
+    MODULE_B_DOMAINS,
+    MODULE_B_ITEM_BANK,
+    MODULE_B_ITEM_BY_ID,
+    MODULE_B_ITEMS_BY_DOMAIN,
+)
 
-from .safety_floor import MIN_DOMAINS_COVERED, _domains_with_real_answer
+from .safety_floor import MIN_DOMAINS_COVERED, MIN_DOMAINS_COVERED_B, _domains_with_real_answer
 from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
 DATA_PATH = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__), "../../data/processed/screening_data_items.csv"
+    )
+)
+DATA_PATH_B = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), "../../data/processed/screening_data_module_b.csv"
     )
 )
 
@@ -91,23 +102,34 @@ def _domain_quota_fallback(
     session: ScreeningSession, candidate_ids: list[str]
 ) -> str | None:
     """
-    Round-robin fallback: pick the age-appropriate item from the domain
-    that has been answered the least so far.
+    Round-robin fallback: pick the item from the domain that has been
+    answered the least so far.
 
-    Returns item_id of the chosen item, or None if all candidates are
-    exhausted (should not happen under normal operation).
+    Works for both Module A (filters by age-appropriate domain items) and
+    Module B (filters by detected-domain items). Returns item_id or None.
     """
-    # Count how many non-mandatory, non-imputed items have been answered per domain
-    domain_answered_count: dict[str, int] = {d: 0 for d in DOMAINS}
+    if session.module == "B":
+        domain_list = session.detected_domains or MODULE_B_DOMAINS
+        item_by_id = MODULE_B_ITEM_BY_ID
+        items_by_domain = MODULE_B_ITEMS_BY_DOMAIN
+    else:
+        domain_list = DOMAINS
+        item_by_id = ITEM_BY_ID
+        items_by_domain = ITEMS_BY_DOMAIN
+
+    # Count how many non-mandatory items have been answered per domain
+    domain_answered_count: dict[str, int] = {d: 0 for d in domain_list}
     for item_id in session.answers:
-        if item_id in ITEM_BY_ID:
-            domain_answered_count[ITEM_BY_ID[item_id].domain] += 1
+        if item_id in item_by_id:
+            dom = item_by_id[item_id].domain
+            if dom in domain_answered_count:
+                domain_answered_count[dom] += 1
 
     candidate_set = set(candidate_ids)
-    candidate_items = [ITEM_BY_ID[iid] for iid in candidate_ids if iid in ITEM_BY_ID]
+    candidate_items = [item_by_id[iid] for iid in candidate_ids if iid in item_by_id]
 
-    # Sort domains by least answered, break ties by DOMAINS order (stable)
-    sorted_domains = sorted(DOMAINS, key=lambda d: domain_answered_count[d])
+    # Sort domains by least answered, break ties by domain list order (stable)
+    sorted_domains = sorted(domain_list, key=lambda d: domain_answered_count.get(d, 0))
 
     for domain in sorted_domains:
         domain_candidates = [
@@ -117,13 +139,15 @@ def _domain_quota_fallback(
         ]
         if not domain_candidates:
             continue
-        # Within domain, pick item whose typical_age_months is closest to child's age
-        best = min(
-            domain_candidates,
-            key=lambda item: abs(
-                item.typical_age_months - session.corrected_age_months
-            ),
-        )
+        # Module A: pick item closest to child's age.
+        # Module B: all items are age-agnostic; pick first in stable order.
+        if session.module == "A":
+            best = min(
+                domain_candidates,
+                key=lambda item: abs(item.typical_age_months - session.corrected_age_months),
+            )
+        else:
+            best = domain_candidates[0]
         return best.item_id
 
     return None
@@ -134,22 +158,23 @@ def _restrict_to_uncovered_domains(
 ) -> list[str]:
     """
     While domain-coverage floor is unmet, only consider items from domains
-    that do not yet have a real answer. Uses the same
-    `_domains_with_real_answer` helper as safety_floor so mandatory and
-    adaptive coverage are not separate counters.
+    that do not yet have a real answer.
+
+    Module A: uses ITEM_BY_ID (age-bracket items).
+    Module B: uses MODULE_B_ITEM_BY_ID (domain-filtered items).
     """
     covered = _domains_with_real_answer(session)
-    if len(covered) >= MIN_DOMAINS_COVERED:
+    min_domains = MIN_DOMAINS_COVERED
+
+    if len(covered) >= min_domains:
         return candidate_ids
 
+    active_item_by_id = MODULE_B_ITEM_BY_ID if session.module == "B" else ITEM_BY_ID
     uncovered = [
         iid
         for iid in candidate_ids
-        if iid in ITEM_BY_ID and ITEM_BY_ID[iid].domain not in covered
+        if iid in active_item_by_id and active_item_by_id[iid].domain not in covered
     ]
-    # If every remaining candidate is already in a covered domain (e.g.
-    # uncovered domains fully exhausted), fall back to the full set so
-    # selection can still terminate rather than looping forever.
     return uncovered if uncovered else candidate_ids
 
 
@@ -158,13 +183,14 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
     Returns the item_id of the next question to ask, or None if the
     candidate pool is fully exhausted (all items answered).
 
-    Selection priority:
-      1. Mandatory items (handled by mandatory_items.py — not this function)
-      2. While domain coverage < MIN_DOMAINS_COVERED, restrict candidates to
-         uncovered domains, then pick by MI within that set
-      3. Once the floor is met, unrestricted global MI selection
-      4. Domain-quota fallback if subpopulation too small or MI all zero
+    Module A: candidates are filtered by age bracket (existing logic).
+    Module B: candidates are filtered by NLP-detected domains.
+    Both modules then use the same MI scoring and domain-quota fallback.
     """
+    if session.module == "B":
+        return _next_question_b(session, data_path=DATA_PATH_B)
+
+    # --- Module A (unchanged) ---
     all_item_ids = {item.item_id for item in ITEM_BANK}
     mandatory_set = set(MANDATORY_IDS)
 
@@ -172,17 +198,16 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
     candidate_ids = [
         iid
         for iid in all_item_ids
-        if iid not in already_asked 
+        if iid not in already_asked
         and iid not in mandatory_set
         and session.age_bracket in ITEM_BY_ID[iid].valid_brackets
     ]
 
     if not candidate_ids:
-        return None  # all items exhausted
+        return None
 
     candidate_ids = _restrict_to_uncovered_domains(session, candidate_ids)
 
-    # Load Stage 1 data and filter to subpopulation matching current answers
     df = pd.read_csv(data_path)
 
     for item_id, answer_val in session.answers.items():
@@ -190,28 +215,154 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
             df = df[df[item_id] == answer_val]
 
     if len(df) < MIN_SUBPOP:
-        # Subpopulation too small — fall back to domain quota
         return _domain_quota_fallback(session, candidate_ids)
 
-    # Compute MI for each candidate item against risk_label
     mi_scores: dict[str, float] = {}
     for item_id in candidate_ids:
         if item_id in df.columns:
             mi_scores[item_id] = _mutual_information(df[item_id], df["risk_label"])
 
     if not mi_scores or max(mi_scores.values()) == 0.0:
-        # No information remaining — fall back to domain quota
         return _domain_quota_fallback(session, candidate_ids)
 
     return max(mi_scores.keys(), key=lambda k: mi_scores[k])
+
+
+def _next_question_b(session: ScreeningSession, data_path: str = DATA_PATH_B) -> str | None:
+    """
+    Module B item selection with answer-driven follow-ons.
+
+    1. Limit candidates to NLP-detected domains (or all eight if none).
+    2. Cap depth per domain from the answers so far:
+         - high concern (any Often / high mean) → dig deeper (follow-ons)
+         - moderate → a few more probes
+         - low / all Never → one probe then move on
+    3. Prefer uncovered domains until the coverage floor is met.
+    4. Prefer domains that still need follow-ons after a concerning answer.
+    5. If a Module B CSV exists, break ties with mutual information.
+    """
+    active_domains = (
+        list(session.detected_domains)
+        if session.detected_domains
+        else list(MODULE_B_DOMAINS)
+    )
+    already_asked = set(session.answers.keys()) | set(session.mandatory_answered.keys())
+
+    domain_answers: dict[str, list[int]] = {d: [] for d in active_domains}
+    for iid, val in session.answers.items():
+        if iid not in MODULE_B_ITEM_BY_ID:
+            continue
+        dom = MODULE_B_ITEM_BY_ID[iid].domain
+        if dom in domain_answers:
+            domain_answers[dom].append(val)
+
+    def max_items_for_domain(domain: str) -> int:
+        vals = domain_answers.get(domain, [])
+        if not vals:
+            return 2  # initial probe pair
+        mean = sum(vals) / len(vals)
+        peak = max(vals)
+        # Concerning answers open follow-on depth in that domain
+        if peak >= 2 or mean >= 1.25:
+            return 5
+        if mean >= 0.5 or peak >= 1:
+            return 3
+        return 1  # reassuring answers — do not keep asking the same area
+
+    covered = {d for d, vals in domain_answers.items() if vals}
+    floor_met = len(covered) >= MIN_DOMAINS_COVERED_B
+
+    # Build remaining candidates that are still within their depth budget
+    candidate_ids: list[str] = []
+    for domain in active_domains:
+        answered_n = len(domain_answers.get(domain, []))
+        if answered_n >= max_items_for_domain(domain):
+            continue
+        for item in MODULE_B_ITEMS_BY_DOMAIN.get(domain, []):
+            if item.item_id not in already_asked:
+                candidate_ids.append(item.item_id)
+
+    if not candidate_ids:
+        # Depth caps exhausted but floor unmet — allow one more from uncovered
+        if not floor_met:
+            for domain in active_domains:
+                if domain in covered:
+                    continue
+                for item in MODULE_B_ITEMS_BY_DOMAIN.get(domain, []):
+                    if item.item_id not in already_asked:
+                        return item.item_id
+        return None
+
+    # Priority: hot follow-ons after a concerning answer, then uncovered domains
+    def domain_priority(domain: str) -> tuple[int, int, int]:
+        vals = domain_answers.get(domain, [])
+        hot_follow = 0
+        # Only dig deeper when the latest answer in this domain was concerning
+        if (
+            vals
+            and vals[-1] >= 2
+            and len(vals) < max_items_for_domain(domain)
+        ):
+            hot_follow = -1
+        uncovered = 0 if domain not in covered else 1
+        return (hot_follow, uncovered, len(vals))
+
+    sorted_domains = sorted(active_domains, key=domain_priority)
+
+    # Prefer MI when CSV is available, but only among the top-priority domain pool
+    priority_domain = None
+    for domain in sorted_domains:
+        domain_cands = [
+            iid
+            for iid in candidate_ids
+            if MODULE_B_ITEM_BY_ID[iid].domain == domain
+        ]
+        if domain_cands:
+            priority_domain = domain
+            candidate_ids = domain_cands
+            break
+
+    if priority_domain is None:
+        return None
+
+    # Within the chosen domain, try MI if CSV exists
+    import os as _os
+
+    if _os.path.isfile(data_path):
+        df = pd.read_csv(data_path)
+        for item_id, answer_val in session.answers.items():
+            if item_id in df.columns:
+                df = df[df[item_id] == answer_val]
+        if len(df) >= MIN_SUBPOP:
+            mi_scores: dict[str, float] = {}
+            for item_id in candidate_ids:
+                if item_id in df.columns:
+                    mi_scores[item_id] = _mutual_information(
+                        df[item_id], df["risk_label"]
+                    )
+            if mi_scores and max(mi_scores.values()) > 0.0:
+                return max(mi_scores.keys(), key=lambda k: mi_scores[k])
+
+    # Deterministic follow-on: next unanswered item in stable bank order
+    for item in MODULE_B_ITEMS_BY_DOMAIN.get(priority_domain, []):
+        if item.item_id in candidate_ids:
+            return item.item_id
+
+    return candidate_ids[0] if candidate_ids else None
 
 
 def build_next_question_response(
     session: ScreeningSession,
     item_id: str,
 ) -> NextQuestion:
-    """Wraps a chosen item_id into a NextQuestion response object."""
-    item = ITEM_BY_ID[item_id]
+    """Wraps a chosen item_id into a NextQuestion response object.
+
+    Works for both modules: looks up the item in the appropriate bank.
+    """
+    if session.module == "B" and item_id in MODULE_B_ITEM_BY_ID:
+        item = MODULE_B_ITEM_BY_ID[item_id]
+    else:
+        item = ITEM_BY_ID[item_id]
     return NextQuestion(
         item_id=item_id,
         question_text=item.text,

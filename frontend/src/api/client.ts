@@ -2,10 +2,15 @@ import type {
   AnswerRequest,
   LoginRequest,
   LoginResponse,
+  ResultPayload,
   ScreenActionResponse,
   SessionStateResponse,
   StartScreenRequest,
-  ResultPayload,
+  IntakeRequest,
+  IntakeResponse,
+  TeacherAnswerRequest,
+  TeacherAnswerResponse,
+  TeacherItemsResponse,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -156,5 +161,31 @@ export const api = {
 
   getResult(sessionId: string): Promise<ResultPayload> {
     return request<ResultPayload>(`/api/screen/${sessionId}/result`);
+  },
+
+  /** Module B: submit free-text observation for NLP domain routing. */
+  submitIntake(sessionId: string, body: IntakeRequest): Promise<IntakeResponse> {
+    return request<IntakeResponse>(`/api/screen/${sessionId}/intake`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** Module B: items for the teacher form (matched to parent answers). */
+  getTeacherItems(sessionId: string): Promise<TeacherItemsResponse> {
+    return request<TeacherItemsResponse>(
+      `/api/screen/${sessionId}/teacher-items`,
+    );
+  },
+
+  /** Module B: submit teacher answers for cross-context consistency scoring. */
+  submitTeacher(
+    sessionId: string,
+    body: TeacherAnswerRequest,
+  ): Promise<TeacherAnswerResponse> {
+    return request<TeacherAnswerResponse>(`/api/screen/${sessionId}/teacher`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 };

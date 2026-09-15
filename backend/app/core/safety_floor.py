@@ -38,10 +38,12 @@ from __future__ import annotations
 # dependency chain clean (no circular import through adaptive_tree).
 # ------------------------------------------------------------------
 from data.generator.item_bank import DOMAINS, ITEM_BANK
+from data.generator.item_bank_b import RULE_OUT_ITEMS, MODULE_B_ITEM_BANK
 
 from .session import MANDATORY_IDS, ScreeningSession
 
 ITEM_DOMAIN_MAP: dict[str, str] = {item.item_id: item.domain for item in ITEM_BANK}
+ITEM_DOMAIN_MAP.update({item.item_id: item.domain for item in MODULE_B_ITEM_BANK})
 
 # Minimum total real answers (mandatory + milestone) before any early stop.
 # Changing this changes the clinical defensibility bar, not just performance.
@@ -52,6 +54,16 @@ MIN_REAL_ANSWERS: int = 6  # 2 mandatory + at least 4 milestone items
 # 4 of 6 means the ML feature vector has real signal in the majority of
 # domains — not just a single-domain picture.
 MIN_DOMAINS_COVERED: int = 4
+
+# Module B equivalents — domain count is larger but some may be skipped
+# when not detected by the NLP router, so the floor is lower in absolute
+# terms (3 of detected). real_answer floor is higher because there is no
+# imputation in Module B (all items are real answers).
+MIN_REAL_ANSWERS_B: int = 8
+MIN_DOMAINS_COVERED_B: int = 3
+
+# Pre-build a set of rule-out item IDs for fast O(1) membership tests.
+_RULE_OUT_IDS: frozenset[str] = frozenset(item.item_id for item in RULE_OUT_ITEMS)
 
 
 # ------------------------------------------------------------------
@@ -152,23 +164,29 @@ def get_deterministic_override(session: ScreeningSession) -> str | None:
     Returns a forced prediction label if clinical rules mandate one,
     or None if the ML model's prediction should be used as-is.
 
-    Rules (evaluated in priority order — highest severity wins):
+    Module A rules (evaluated in priority order — highest severity wins):
       1. regression_flag == 1 → "Refer"
          Any skill regression is an automatic Refer per the design doc.
-         The ML model may not have learned this perfectly on synthetic data;
-         the override guarantees it regardless of model confidence.
+
+    Module B rules:
+      1. Any rule-out item answered positively (value == 2) → "Refer".
+         Rule-out items flag vision/hearing/global-delay signals that
+         require specialist evaluation; they are never scored by the ML
+         model and always result in a direct referral.
 
     Stage 4 MUST call this function after ML inference and, if it returns
     a non-None value, substitute that value for the model's prediction in
     the API response. The ML model's raw output should still be logged for
     monitoring purposes.
     """
-    if session.mandatory_answered.get("regression_flag") == 1:
-        return "Refer"
+    if session.module == "A":
+        if session.mandatory_answered.get("regression_flag") == 1:
+            return "Refer"
+        return None
 
-    # Future rules would go here, in order from most to least severe.
-    # Examples (not yet implemented):
-    #   family_history_flag == 1 AND score < threshold → "Monitor"
-    #   extremely low score on >=3 domains → "Refer"
+    # Module B: any rule-out item answered positively forces Refer
+    for rule_out_id in _RULE_OUT_IDS:
+        if session.answers.get(rule_out_id) == 2:
+            return "Refer"
 
     return None

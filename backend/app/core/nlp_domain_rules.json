@@ -1,0 +1,196 @@
+{
+  "min_tokens": 4,
+  "specificity_min_keywords": 1,
+  "recall_help_options": [
+    "Work/attention",
+    "Reading/writing",
+    "Numbers",
+    "Movement",
+    "Friends",
+    "Fear/anger/school",
+    "Hearing/seeing",
+    "Something else"
+  ],
+  "recall_help_domain_map": {
+    "Work/attention": ["attention"],
+    "Reading/writing": ["reading", "writing"],
+    "Numbers": ["numbers"],
+    "Movement": ["motor"],
+    "Friends": ["social"],
+    "Fear/anger/school": ["emotion_conduct"],
+    "Hearing/seeing": ["rule_out"],
+    "Something else": [
+      "attention",
+      "reading",
+      "writing",
+      "numbers",
+      "listening_speaking",
+      "motor",
+      "social",
+      "emotion_conduct"
+    ]
+  },
+  "domain_rules": {
+    "attention": {
+      "keywords": [
+        "distracted", "distract", "focus", "focusing", "concentrate", "concentration",
+        "can't focus", "cant focus", "loses focus", "can't sit still", "cant sit still",
+        "fidgets", "fidgety", "fidget", "hyperactive", "hyper", "forgets", "forgetful",
+        "forget", "doesn't finish", "doesnt finish", "leaves tasks", "doesn't listen",
+        "doesnt listen", "daydreams", "daydreaming", "daydream", "loses things",
+        "impulsive", "interrupts", "inattentive", "inattention", "wanders", "restless",
+        "cannot concentrate", "work habits", "homework", "can't complete", "cant complete",
+        "misses steps", "doesn't follow instructions", "acts before thinking",
+        "attention", "attentive", "on task", "off task", "careless", "careless mistakes",
+        "organising", "organizing", "disorganised", "disorganized", "loses belongings",
+        "blurts", "blurts out", "squirms", "seat", "staying seated"
+      ],
+      "phrases": [
+        "can't sit still", "can't stay on task", "loses track", "mind wanders",
+        "hard to focus", "trouble focusing", "trouble concentrating", "doesn't pay attention",
+        "forgets homework", "leaves work unfinished", "can't finish homework",
+        "hard to concentrate", "won't sit still", "always fidgeting", "loses concentration",
+        "gets distracted easily", "difficulty staying focused", "doesn't listen when spoken to"
+      ]
+    },
+    "reading": {
+      "keywords": [
+        "reads", "reading", "reader", "reads slowly", "slow reader", "can't read", "cant read",
+        "struggles to read", "avoids reading", "skips words", "guesses words", "reverses letters",
+        "mixes up letters", "confuses letters", "b and d", "p and q", "was and saw",
+        "loses place", "loses their place", "reading difficulty", "reading problem",
+        "doesn't like reading", "doesnt like reading", "decoding", "phonics",
+        "syllables", "rhyming", "comprehension", "reading level", "below reading level",
+        "dyslexia", "books", "story", "stories", "literacy"
+      ],
+      "phrases": [
+        "reads much slower", "can't keep up with reading", "doesn't like books",
+        "struggles with words", "mixing up letters", "hard to read", "trouble reading",
+        "struggles with reading", "can't sound out", "falls behind in reading",
+        "hates reading", "avoids reading aloud", "loses place when reading"
+      ]
+    },
+    "writing": {
+      "keywords": [
+        "handwriting", "messy handwriting", "bad handwriting", "can't write", "cant write",
+        "writes", "writing", "writes slowly", "slow writing", "reverses numbers",
+        "writes backwards", "mirror writing", "spelling", "spelling mistakes", "poor spelling",
+        "can't spell", "cant spell", "pencil", "pencil grip", "awkward grip",
+        "writing difficulty", "writing problem", "can't copy", "cant copy",
+        "skips words when writing", "leaves out words", "letters", "forming letters"
+      ],
+      "phrases": [
+        "writing is very messy", "can't form letters", "hard to hold a pencil",
+        "can't put thoughts on paper", "can say it but not write it",
+        "messy writing", "struggles with writing", "trouble with spelling",
+        "handwriting is hard to read", "writes too slowly"
+      ]
+    },
+    "numbers": {
+      "keywords": [
+        "maths", "math", "mathematics", "numeracy", "numbers", "counting", "addition",
+        "subtraction", "multiplication", "division", "times tables", "tables",
+        "number facts", "arithmetic", "sums", "can't count", "cant count",
+        "doesn't understand numbers", "confused by numbers", "number sense",
+        "can't tell time", "cant tell time", "money", "place value", "word problems",
+        "maths problem", "maths difficulty", "dyscalculia", "number line",
+        "less than more than", "calculations", "calculate"
+      ],
+      "phrases": [
+        "struggles with maths", "struggles with math", "can't do sums", "forgets tables",
+        "doesn't understand money", "mixed up with numbers", "trouble with maths",
+        "trouble with math", "falls behind in maths", "can't remember times tables",
+        "hard with numbers", "confused by sums"
+      ]
+    },
+    "listening_speaking": {
+      "keywords": [
+        "doesn't understand", "doesnt understand", "can't follow instructions",
+        "cant follow instructions", "misunderstands", "can't explain", "cant explain",
+        "finds it hard to speak", "stammers", "stutters", "stutter", "vocabulary",
+        "limited vocabulary", "can't find the right word", "cant find the right word",
+        "language delay", "speech delay", "speech", "doesn't express", "doesnt express",
+        "talks around the word", "difficulty speaking", "speaking problem",
+        "hard to understand when they speak", "listening", "instructions",
+        "directions", "explaining", "expresses", "verbal"
+      ],
+      "phrases": [
+        "can't follow what's said", "doesn't understand jokes",
+        "hard to understand when speaking", "can't say what they mean",
+        "trouble following instructions", "hard to follow directions",
+        "struggles to explain", "doesn't understand what is said",
+        "speech is hard to understand"
+      ]
+    },
+    "motor": {
+      "keywords": [
+        "clumsy", "clumsiness", "falls", "trips", "bumps into things", "drops things",
+        "poor coordination", "bad coordination", "coordination", "can't catch", "cant catch",
+        "can't kick", "cant kick", "can't throw", "cant throw", "avoids sports",
+        "avoids physical activity", "tires quickly", "low muscle tone", "weak grip",
+        "trouble with scissors", "difficulty cutting", "motor delay", "uncoordinated",
+        "balance", "loses balance", "dcd", "dyspraxia", "sports", "pe class",
+        "physical education", "bike", "ball", "scissors", "running", "catching"
+      ],
+      "phrases": [
+        "bumps into things", "drops things a lot", "very clumsy",
+        "can't ride a bike", "can't use scissors", "always tripping",
+        "poor hand-eye", "falls over a lot", "awkward with sports",
+        "struggles in pe", "trouble with ball games"
+      ]
+    },
+    "social": {
+      "keywords": [
+        "friends", "friend", "no friends", "doesn't have friends", "trouble making friends",
+        "plays alone", "lonely", "left out", "bullied", "bullying", "bully", "excluded",
+        "socially awkward", "doesn't relate to peers", "prefers adults", "peers",
+        "doesn't like playing with others", "difficulty sharing", "can't take turns",
+        "fights with others", "aggressive with peers", "misreads social cues",
+        "can't read the room", "social skills", "social difficulty", "classmate",
+        "classmates", "playdate", "sharing", "turns"
+      ],
+      "phrases": [
+        "doesn't have any friends", "always plays alone", "gets left out",
+        "can't get along with others", "prefers younger children",
+        "trouble with friends", "hard to make friends", "doesn't play with other kids",
+        "gets bullied", "fights with classmates"
+      ]
+    },
+    "emotion_conduct": {
+      "keywords": [
+        "anxious", "anxiety", "worried", "worries", "worries a lot", "fears", "phobia",
+        "fear", "scared", "sad", "sadness", "depressed", "unhappy", "cries", "cries often",
+        "tearful", "refuses school", "school refusal", "doesn't want to go to school",
+        "angry", "anger", "tantrums", "tantrum", "outbursts", "outburst", "aggressive",
+        "aggression", "defiant", "defiance", "oppositional", "lies", "steals", "conduct",
+        "behaviour", "behavior", "behaviour problem", "behavior problem", "emotional",
+        "emotionally", "worried all the time", "stress", "school stress", "school anxiety",
+        "scared of school", "school avoidance", "meltdown", "meltdowns", "mood",
+        "temper", "irritable", "frustration", "frustrated"
+      ],
+      "phrases": [
+        "scared of school", "doesn't want to go", "cries before school",
+        "very angry", "can't control anger", "very anxious", "worries about everything",
+        "refuses to go to school", "big temper", "emotional outbursts",
+        "gets very upset", "melts down", "anxious about school"
+      ]
+    },
+    "rule_out": {
+      "keywords": [
+        "can't see", "cant see", "poor vision", "squints", "squint", "vision problem",
+        "vision", "glasses", "eye problem", "can't hear", "cant hear", "hearing problem",
+        "hearing", "hearing loss", "deaf", "doesn't respond to name", "doesnt respond to name",
+        "global delay", "overall delay", "behind in everything", "developmental delay",
+        "autism", "asd", "sensory", "sensory issues", "rigid routines",
+        "very limited interests", "repetitive behaviour", "unusual behaviour",
+        "far behind all peers", "blind", "sight"
+      ],
+      "phrases": [
+        "can't see the board", "squints at things", "mishears everything",
+        "seems far behind in every way", "behind in all areas",
+        "much more different than other kids", "possible hearing problem",
+        "possible vision problem", "needs an eye check", "needs a hearing check"
+      ]
+    }
+  }
+}

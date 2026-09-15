@@ -9,8 +9,13 @@ export function AppLayout() {
       </a>
       <NavBar />
       <main id="main-content" className="app-main" tabIndex={-1}>
-        <Outlet />
+        <div className="app-stage">
+          <Outlet />
+        </div>
       </main>
+      <footer className="app-footer no-print">
+        <p>Nirixon — a screening check-in, not a diagnosis.</p>
+      </footer>
     </div>
   );
 }

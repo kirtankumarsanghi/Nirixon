@@ -58,6 +58,10 @@ class Settings(BaseSettings):
         default=str(_BACKEND_ROOT / "ml" / "artifacts"),
         alias="ML_ARTIFACTS_DIR",
     )
+    ml_artifacts_dir_b: str = Field(
+        default=str(_BACKEND_ROOT / "ml" / "artifacts" / "module_b"),
+        alias="ML_ARTIFACTS_DIR_B",
+    )
 
     # Rate limiting
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")

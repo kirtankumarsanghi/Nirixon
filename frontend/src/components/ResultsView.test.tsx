@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { ResultsView } from "./ResultsView";
 import type { ResultPayload } from "../api/types";
 
@@ -23,11 +25,15 @@ function baseResult(overrides: Partial<ResultPayload> = {}): ResultPayload {
   };
 }
 
+function renderResults(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
 const DISCLAIMER = /screening check-in, not a medical diagnosis/i;
 
 describe("ResultsView", () => {
   it("renders the standard layout when safety_override_triggered is false", () => {
-    render(<ResultsView result={baseResult()} />);
+    renderResults(<ResultsView result={baseResult()} />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       /keeping an eye/i,
     );
@@ -37,7 +43,7 @@ describe("ResultsView", () => {
   });
 
   it("renders a distinct override layout when safety_override_triggered is true", () => {
-    render(
+    renderResults(
       <ResultsView
         result={baseResult({
           safety_override_triggered: true,
@@ -60,7 +66,7 @@ describe("ResultsView", () => {
   it.each(["Typical", "Monitor", "Refer"] as const)(
     "shows the fixed screening disclaimer for %s (standard path)",
     (classification) => {
-      render(
+      renderResults(
         <ResultsView
           result={baseResult({ final_classification: classification })}
         />,
@@ -72,17 +78,18 @@ describe("ResultsView", () => {
   );
 
   it("shows early-intervention next-step resource on Refer (standard path)", () => {
-    render(
+    renderResults(
       <ResultsView result={baseResult({ final_classification: "Refer" })} />,
     );
     const resource = screen.getByTestId("early-intervention-resource");
     expect(resource).toBeInTheDocument();
-    expect(resource).toHaveTextContent(/early intervention/i);
-    expect(resource).toHaveTextContent(/IDEA Part C/i);
+    expect(resource).toHaveTextContent(/District Early Intervention Centre/i);
+    expect(resource).toHaveTextContent(/RBSK/i);
+    expect(resource).not.toHaveTextContent(/IDEA Part C/i);
   });
 
   it("shows disclaimer + early-intervention resource on safety-floor override", () => {
-    render(
+    renderResults(
       <ResultsView
         result={baseResult({
           safety_override_triggered: true,
@@ -98,13 +105,28 @@ describe("ResultsView", () => {
   });
 
   it("does not show early-intervention resource for Typical / Monitor", () => {
-    const { rerender } = render(
+    const { rerender } = renderResults(
       <ResultsView result={baseResult({ final_classification: "Typical" })} />,
     );
     expect(screen.queryByTestId("early-intervention-resource")).toBeNull();
     rerender(
-      <ResultsView result={baseResult({ final_classification: "Monitor" })} />,
+      <MemoryRouter>
+        <ResultsView result={baseResult({ final_classification: "Monitor" })} />
+      </MemoryRouter>,
     );
     expect(screen.queryByTestId("early-intervention-resource")).toBeNull();
+  });
+
+  it("explains the six developmental areas for parents", () => {
+    renderResults(<ResultsView result={baseResult()} />);
+    expect(
+      screen.getByRole("heading", {
+        name: /The six areas this check-in looks at/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Big movements/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: /Growth trends/i }).length,
+    ).toBeGreaterThan(0);
   });
 });

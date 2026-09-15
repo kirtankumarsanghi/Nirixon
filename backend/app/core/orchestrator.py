@@ -29,7 +29,13 @@ from .adaptive_tree import next_question as pick_next_item
 from .confound_caveat import evaluate_motor_confounds
 from .imputation import impute_missing
 from .mandatory_items import next_mandatory_question
-from .safety_floor import get_deterministic_override, stopping_blocked_reason
+from .safety_floor import (
+    MIN_DOMAINS_COVERED_B,
+    MIN_REAL_ANSWERS_B,
+    can_stop_early,
+    get_deterministic_override,
+    stopping_blocked_reason,
+)
 from .sanity_item import check_sanity
 from .session import FinalResult, NextQuestion, ScreeningSession
 
@@ -52,8 +58,14 @@ def get_next_action(
     This function is pure with respect to session state — it does NOT
     mutate `session`. The caller (Stage 4 endpoint) is responsible for
     recording answers into `session` before calling this again.
-    """
 
+    Dispatches to _get_next_action_b() for Module B sessions. Module A
+    logic is unchanged.
+    """
+    if session.module == "B":
+        return _get_next_action_b(session)
+
+    # --- Module A (unchanged) ---
     # Check honeypot item to catch bots/scrapers
     if not check_sanity(session):
         raise ValueError("Invalid session: sanity check failed")
@@ -92,8 +104,8 @@ def _build_final_result(
     data_path: str,
 ) -> FinalResult:
     """
-    Assembles real answers and imputes the remaining items, then returns
-    a FinalResult for Stage 4 to pass to the Stage 2 model.
+    Module A: Assembles real answers and imputes the remaining items, then
+    returns a FinalResult for Stage 4 to pass to the Stage 2 model.
     """
 
     from data.generator.item_bank import ITEM_BANK
@@ -121,6 +133,72 @@ def _build_final_result(
         session=session,
         real_answers=real_answers,
         imputed_answers=imputed_answers,
+        stopping_reason=stopping_reason,
+        deterministic_override=override,
+        caveats=caveats,
+    )
+
+
+def _get_next_action_b(
+    session: ScreeningSession,
+) -> NextQuestion | FinalResult:
+    """
+    Module B adaptive loop.
+
+    No mandatory items (regression_flag / family_history_flag are Module A
+    specific). No imputation — all Module B answers are real caregiver responses.
+    Stopping floor uses Module B constants.
+    """
+    # Step 1 — Check stopping floor with Module B thresholds.
+    # Domain floor is capped by how many domains the intake actually opened.
+    detected_n = len(session.detected_domains) if session.detected_domains else MIN_DOMAINS_COVERED_B
+    domain_floor = min(MIN_DOMAINS_COVERED_B, max(1, detected_n))
+    floor_met = can_stop_early(
+        session,
+        min_real_answers=MIN_REAL_ANSWERS_B,
+        min_domains=domain_floor,
+    )
+
+    cap_reached = session.real_answer_count >= session.question_cap
+    budget_exhausted = session.adaptive_budget_remaining == 0
+
+    if floor_met and (cap_reached or budget_exhausted):
+        stopping_reason: Literal["cap_reached", "budget_exhausted"] = (
+            "cap_reached" if cap_reached else "budget_exhausted"
+        )
+        return _build_final_result_b(session, stopping_reason)
+
+    # Step 2 — Pick next item (dispatches to _next_question_b in adaptive_tree)
+    item_id = pick_next_item(session)
+
+    if item_id is None:
+        return _build_final_result_b(session, "budget_exhausted")
+
+    return build_next_question_response(session, item_id)
+
+
+def _build_final_result_b(
+    session: ScreeningSession,
+    stopping_reason: Literal["cap_reached", "budget_exhausted"],
+) -> FinalResult:
+    """
+    Module B: no imputation — FinalResult carries only real answers.
+    The feature vector for inference is assembled per-domain from answers.
+    """
+    from data.generator.item_bank_b import MODULE_B_ITEM_BANK
+
+    real_answers: dict[str, int] = dict(session.answers)
+
+    override = get_deterministic_override(session)
+    # Module B has no motor confound caveats (that concept is Module A-specific).
+    # Per-domain caveats (e.g. "teacher and parent differ on attention") are
+    # added post-hoc by the inference service when it computes consistency_score.
+    caveats: list[str] = []
+
+    return FinalResult(
+        session=session,
+        real_answers=real_answers,
+        imputed_answers={},  # Module B never imputes
         stopping_reason=stopping_reason,
         deterministic_override=override,
         caveats=caveats,

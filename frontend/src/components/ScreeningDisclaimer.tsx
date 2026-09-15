@@ -10,7 +10,7 @@ export function ScreeningDisclaimer() {
       <p>
         <strong>This is a screening check-in, not a medical diagnosis.</strong>{" "}
         Nirixon cannot diagnose developmental conditions. Please discuss any
-        concerns — including this result — with your child’s pediatrician or
+        concerns — including this result — with your child’s paediatrician or
         another qualified clinician.
       </p>
     </aside>

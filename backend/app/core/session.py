@@ -14,12 +14,21 @@ Design choices:
   mandatory-first logic never has to scan `answers` for their presence.
 - `question_cap` is carried on the session so the orchestrator can vary
   it per caregiver without a global config change. Allowed values: 10/15/20.
+- `module` distinguishes Module A (ages 0–5) from Module B (ages 5–12).
+  Adaptive engine, safety floor, and orchestrator dispatch on this field.
+- `detected_domains` is populated by the NLP domain router (Module B only)
+  and used to filter the item pool in adaptive_tree.py.
+- `teacher_answers` stores the school-context item subset for the
+  cross-context consistency score (Module B only).
+- `microtask_telemetry` stores numeric-only task telemetry (reaction times,
+  accuracy ratios) for the optional micro-tasks (Module B only). No
+  audio/video is ever stored here — numeric scalars only.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Any
+from typing import Any, Literal
 
 ALLOWED_CAPS = {10, 15, 20}
 MANDATORY_IDS = ("regression_flag", "family_history_flag")
@@ -33,11 +42,30 @@ class ScreeningSession:
     age_bracket: str = "Unknown"
     model_name: str | None = None
 
+    # "A" = early-childhood screener (0–60 months)
+    # "B" = school-age screener (60–144 months)
+    module: Literal["A", "B"] = "A"
+
     # item_id -> 0/1/2 — REAL caregiver answers only, never imputed values
     answers: dict[str, int] = field(default_factory=dict)
 
     # tracks which mandatory items are done; keys are always MANDATORY_IDS
     mandatory_answered: dict[str, int] = field(default_factory=dict)
+
+    # Module B: functioning domains detected by the NLP router.
+    # Populated from IntakeRequest; used by adaptive_tree to filter item pool.
+    detected_domains: list[str] = field(default_factory=list)
+
+    # Module B: teacher/mentor item responses (Vanderbilt/SDQ teacher form).
+    # Used to compute the cross-context consistency score.
+    # Stored as item_id -> 0/1/2, NEVER merged into `answers`.
+    teacher_answers: dict[str, int] = field(default_factory=dict)
+
+    # Module B: numeric-only micro-task telemetry.
+    # Keys are task identifiers (e.g. "go_no_go", "reading_fluency");
+    # values are scalar metrics (reaction_time_ms, accuracy_ratio, etc.).
+    # No audio/video — scalar numerics only.
+    microtask_telemetry: dict[str, Any] = field(default_factory=dict)
 
     # set True once the orchestrator decides to stop asking
     completed: bool = False
@@ -64,14 +92,17 @@ class ScreeningSession:
     @property
     def adaptive_budget_remaining(self) -> int:
         """
-        Adaptive budget = question_cap minus the 2 mandatory items.
-        Mandatory items are always asked regardless of cap, so the real
-        adaptive window is 8 (cap=10), 13 (cap=15), or 18 (cap=20).
+        Remaining adaptive question slots.
+
+        Module A: question_cap minus the 2 mandatory items, minus answers so far.
+        Module B: no mandatory items — budget is question_cap minus answers.
         """
-        mandatory_slots = len(MANDATORY_IDS)
+        mandatory_slots = 0 if self.module == "B" else len(MANDATORY_IDS)
         return max(0, self.question_cap - mandatory_slots - len(self.answers))
 
     def all_mandatory_answered(self) -> bool:
+        if self.module == "B":
+            return True
         return all(mid in self.mandatory_answered for mid in MANDATORY_IDS)
 
     def item_already_answered(self, item_id: str) -> bool:
@@ -92,26 +123,36 @@ class ScreeningSession:
             "age_bracket": self.age_bracket,
             "question_cap": self.question_cap,
             "model_name": self.model_name,
+            "module": self.module,
             "answers": self.answers.copy(),
             "mandatory_answered": self.mandatory_answered.copy(),
+            "detected_domains": list(self.detected_domains),
+            "teacher_answers": self.teacher_answers.copy(),
+            "microtask_telemetry": dict(self.microtask_telemetry),
             "completed": self.completed,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ScreeningSession:
-        """Deserialize from storage or transmission."""
-        # Provide graceful defaults if age_bracket or model_name are missing from old DB rows
-        # age_bracket fallback relies on the mapping function, but for safety we'll require it
-        # to be passed, or we backfill it if missing in older schema manually.
-        age_bracket = data.get("age_bracket", "Unknown") 
+        """Deserialize from storage or transmission.
+
+        All new fields (module, detected_domains, teacher_answers,
+        microtask_telemetry) default gracefully so old DB rows that
+        predate Module B continue to deserialize correctly as Module A.
+        """
+        age_bracket = data.get("age_bracket", "Unknown")
         return cls(
             child_id=data["child_id"],
             corrected_age_months=float(data["corrected_age_months"]),
             age_bracket=age_bracket,
             question_cap=data["question_cap"],
             model_name=data.get("model_name"),
+            module=data.get("module", "A"),
             answers=data.get("answers", {}).copy(),
             mandatory_answered=data.get("mandatory_answered", {}).copy(),
+            detected_domains=list(data.get("detected_domains", [])),
+            teacher_answers=data.get("teacher_answers", {}).copy(),
+            microtask_telemetry=dict(data.get("microtask_telemetry", {})),
             completed=bool(data.get("completed", False)),
         )
 

@@ -35,10 +35,15 @@ export function LoginScreen() {
 
   return (
     <section className="login" aria-labelledby="login-title">
-      <h1 id="login-title" className="display">
-        Nirixon
-      </h1>
-      <p className="lede">A calm check-in — not a diagnosis.</p>
+      <div className="login__brand">
+        <p className="eyebrow">Developmental check-in</p>
+        <h1 id="login-title" className="display display--hero">
+          Nirixon
+        </h1>
+        <p className="lede login__lede">
+          A calm check-in for young children — not a diagnosis. Sign in to begin.
+        </p>
+      </div>
       <form className="login__form" onSubmit={onSubmit}>
         <label className="field">
           <span>Email</span>
@@ -60,7 +65,7 @@ export function LoginScreen() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        <button type="submit" className="btn btn--primary" disabled={busy}>
+        <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>

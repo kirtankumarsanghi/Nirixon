@@ -19,7 +19,7 @@ from app.config import get_settings
 from app.db.models import User
 from app.db.session import get_engine, get_session_factory, init_db
 from app.middleware.rate_limit import RateLimitMiddleware
-from app.ml.inference_service import inference_service
+from app.ml.inference_service import inference_service, inference_service_b
 from app.routers import auth, predict, sandbox, screen, share
 
 logger = logging.getLogger(__name__)
@@ -80,10 +80,23 @@ async def lifespan(app: FastAPI):
         _health["artifacts_loaded"] = True
         _health["artifacts_error"] = None
     except Exception as exc:  # noqa: BLE001
-        logger.error("ML artifact load failed: %s", exc)
+        logger.error("ML artifact load failed (Module A): %s", exc)
         _health["artifacts_loaded"] = False
         _health["artifacts_error"] = str(exc)
         # App still starts so /health can report failure; predict/screen return 503
+
+    # Module B artifacts — non-fatal if not yet trained
+    try:
+        inference_service_b.load(settings.ml_artifacts_dir_b)
+        _health["artifacts_b_loaded"] = True
+        _health["artifacts_b_error"] = None
+        logger.info("Module B artifacts loaded from %s", settings.ml_artifacts_dir_b)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Module B artifacts not loaded (run train.py --module B to enable): %s", exc
+        )
+        _health["artifacts_b_loaded"] = False
+        _health["artifacts_b_error"] = str(exc)
 
     if settings.redis_url:
         _health["redis_ok"] = False  # RedisSessionRepo not implemented
@@ -152,8 +165,18 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
             "status": status,
             "db": {"ok": db_ok, "error": _health.get("db_error")},
             "artifacts": {
-                "ok": inference_service.is_loaded,
-                "error": _health.get("artifacts_error"),
+                "module_a": {
+                    "ok": inference_service.is_loaded,
+                    "error": _health.get("artifacts_error"),
+                },
+                "module_b": {
+                    "ok": inference_service_b.is_loaded,
+                    "error": _health.get("artifacts_b_error"),
+                    "note": (
+                        None if inference_service_b.is_loaded
+                        else "Run 'python train.py --module B' to enable Module B screening"
+                    ),
+                },
             },
             "redis": {
                 "configured": settings.redis_url is not None,
