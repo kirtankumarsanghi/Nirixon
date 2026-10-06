@@ -19,7 +19,16 @@ from sqlalchemy.orm import selectinload
 
 from app.auth import require_parent
 from app.core.mandatory_items import record_mandatory_answer
-from app.core.nlp_router import route_recall_chip, route_text
+from app.core.module_b.age import months_to_module_b_age
+from app.core.module_b.domains import to_api_domain, to_engine_domain
+from app.core.module_b.engine_b import POOL_NAME
+from app.core.module_b.engine_b import Session as EngineSession
+from app.core.module_b.screen_bridge import (
+    build_action_response,
+    build_result_payload,
+)
+from app.core.module_b.service import module_b_service
+from app.core.nlp_router import DomainRouterResult, route_recall_chip, route_text
 from app.core.orchestrator import get_next_action
 from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion
 from app.core.session import ScreeningSession as CoreSession
@@ -40,6 +49,7 @@ from app.schemas.screen import (
     IntakeRequest,
     IntakeResponse,
     QuestionPayload,
+    RecallChoiceRequest,
     ResultPayload,
     ScreenActionResponse,
     SessionStateResponse,
@@ -90,7 +100,11 @@ async def _get_inference_for_session(
 def _override_rule_name(override: str | None, session: CoreSession) -> str | None:
     if override is None:
         return None
-    if session.module == "A" and session.mandatory_answered.get("regression_flag") == 1 and override == "Refer":
+    if (
+        session.module == "A"
+        and session.mandatory_answered.get("regression_flag") == 1
+        and override == "Refer"
+    ):
         return "regression_flag"
     if session.module == "B" and override == "Refer":
         return "rule_out_item"
@@ -145,21 +159,82 @@ async def _run_completion_b(
     *,
     core: CoreSession,
     db_row: DbSession,
-    final: FinalResult,
+    final: FinalResult | None,
     db: AsyncSession,
     actor_id: str,
+    engine_session: EngineSession | None = None,
 ) -> ResultPayload:
-    from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
-
     core.completed = True
     db_row.status = "completed"
     db_row.completed_at = datetime.now(timezone.utc)
+
+    # Use the finished Module B engine result if loaded
+    if module_b_service.is_loaded and (
+        engine_session is not None or core.module_b_state is not None
+    ):
+        if engine_session is None and core.module_b_state is not None:
+            engine_session = EngineSession.from_dict(core.module_b_state)
+
+        if engine_session is not None:
+            raw_res = module_b_service.engine.result(engine_session)
+            payload = build_result_payload(raw_res)
+
+            # Rule-outs: vision_hearing or global_asd positive rule-out forces Refer override
+            ro_flagged = bool(raw_res.get("ruleout_flags"))
+            final_cls = "Refer" if ro_flagged else payload.final_classification
+            override_triggered = payload.safety_override_triggered or ro_flagged
+            override_rule = payload.override_rule or (
+                "rule_out_item" if ro_flagged else None
+            )
+
+            payload.final_classification = final_cls
+            payload.ml_classification = final_cls
+            payload.safety_override_triggered = override_triggered
+            payload.override_rule = override_rule
+
+            db_row.module_b_state = engine_session.to_dict()
+            core.module_b_state = db_row.module_b_state
+            db_row.state_json = core.to_dict()
+
+            risk = RiskResult(
+                session_id=db_row.id,
+                ml_score=0.0,
+                ml_classification=final_cls,
+                model_name="module_b_engine",
+                final_classification=final_cls,
+                safety_override_triggered=override_triggered,
+                override_rule=override_rule,
+                shap_values={},
+                probabilities={"Typical": 0.0, "Monitor": 0.0, "Refer": 0.0},
+                caveats=payload.caveats,
+                stopping_reason=payload.stopping_reason or "module_b_engine",
+                domain_classifications=payload.domain_classifications,
+            )
+            db.add(risk)
+            db.add(
+                AuditLog(
+                    actor_id=actor_id,
+                    action="screen.complete",
+                    target_id=db_row.id,
+                    detail=(
+                        f"final={final_cls} "
+                        f"override={override_triggered} "
+                        f"rule={override_rule}"
+                    ),
+                )
+            )
+            await db.flush()
+            return payload
+
+    from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
+
     db_row.state_json = core.to_dict()
 
+    real_answers = final.real_answers if final else core.answers
     # Calculate domain scores and question counts
     domain_scores: dict[str, int] = {}
     domain_counts: dict[str, int] = {}
-    for item_id, answer in final.real_answers.items():
+    for item_id, answer in real_answers.items():
         if item_id in MODULE_B_ITEM_BY_ID:
             domain = MODULE_B_ITEM_BY_ID[item_id].domain
             domain_scores[domain] = domain_scores.get(domain, 0) + answer
@@ -181,12 +256,16 @@ async def _run_completion_b(
                 domain_classifications[domain] = "Refer"
                 has_refer = True
 
-    final_classification = "Refer" if has_refer else ("Monitor" if has_monitor else "Typical")
-    safety_override_triggered = final.deterministic_override is not None
-    if safety_override_triggered:
+    final_classification = (
+        "Refer" if has_refer else ("Monitor" if has_monitor else "Typical")
+    )
+    safety_override_triggered = bool(final and final.deterministic_override is not None)
+    if safety_override_triggered and final:
         final_classification = final.deterministic_override  # type: ignore[assignment]
-    
-    override_rule = _override_rule_name(final.deterministic_override, core)
+
+    override_rule = (
+        _override_rule_name(final.deterministic_override, core) if final else None
+    )
 
     risk = RiskResult(
         session_id=db_row.id,
@@ -198,8 +277,8 @@ async def _run_completion_b(
         override_rule=override_rule,
         shap_values={},
         probabilities={"Typical": 0.0, "Monitor": 0.0, "Refer": 0.0},
-        caveats=list(final.caveats),
-        stopping_reason=final.stopping_reason,
+        caveats=list(final.caveats) if final else [],
+        stopping_reason=final.stopping_reason if final else "domain_quota_b",
         domain_classifications=domain_classifications,
     )
     db.add(risk)
@@ -227,9 +306,9 @@ async def _run_completion_b(
         override_rule=override_rule,
         shap_top_features=[],
         shap_values={},
-        stopping_reason=final.stopping_reason,
-        caveats=list(final.caveats),
-        real_answer_count=len(final.real_answers),
+        stopping_reason=final.stopping_reason if final else "domain_quota_b",
+        caveats=list(final.caveats) if final else [],
+        real_answer_count=len(real_answers),
         imputed_count=0,
         domain_classifications=domain_classifications,
         module=core.module,
@@ -372,7 +451,8 @@ async def start_screen(
         if not svc.is_loaded:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=svc.load_error or f"Module {module} model not trained — run train.py --module {module}",
+                detail=svc.load_error
+                or f"Module {module} model not trained — run train.py --module {module}",
             )
 
     if not body.consent_given:
@@ -384,6 +464,7 @@ async def start_screen(
     session_id = str(uuid.uuid4())
 
     from data.generator.age_brackets import map_to_bracket_label
+
     age_bracket = map_to_bracket_label(min(body.corrected_age_months, 66))
 
     core = CoreSession(
@@ -435,7 +516,7 @@ async def start_screen(
             db_row=db_row,
             final=action,
             db=db,
-            inference=inference,
+            inference=inference_service,
             actor_id=user.id,
         )
         repo.save(session_id, core)
@@ -475,6 +556,123 @@ async def submit_answer(
     if core.completed:
         raise HTTPException(status_code=400, detail="Session already completed")
 
+    # Module B adaptive engine loop
+    if (
+        core.module == "B"
+        and module_b_service.is_loaded
+        and core.module_b_state is not None
+    ):
+        if core.item_already_answered(body.item_id):
+            raise HTTPException(status_code=400, detail="Item already answered")
+
+        if core.pending_item_id is not None and body.item_id != core.pending_item_id:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Item mismatch: expected {core.pending_item_id}, got {body.item_id}",
+            )
+
+        try:
+            row = module_b_service.engine.bank.row(body.item_id)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"Unknown item {body.item_id}"
+            ) from exc
+
+        rt = str(row["response_type"])
+        val: int | str
+        if rt == "likert5":
+            try:
+                val = int(body.answer)
+                if val < 1 or val > 5:
+                    raise HTTPException(
+                        status_code=422,
+                        detail="Likert answer must be an integer between 1 and 5",
+                    )
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Likert answer must be an integer between 1 and 5",
+                ) from exc
+        elif rt == "yesno":
+            str_val = str(body.answer).strip().lower()
+            if str_val in ("yes", "1", "true"):
+                val = "Yes"
+            elif str_val in ("no", "0", "false"):
+                val = "No"
+            elif str_val in ("not sure", "not_sure", "2"):
+                val = "Not sure"
+            else:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Yes/No answer must be Yes, No, or Not sure",
+                )
+        else:
+            val = body.answer
+
+        # Never trust client-supplied track; derive it from the item
+        dom = str(row["domain"])
+        derived_track = (
+            "safety"
+            if dom == "safety"
+            else {v: k for k, v in POOL_NAME.items()}.get(dom, dom)
+        )
+
+        eng_sess = EngineSession.from_dict(core.module_b_state)
+        module_b_service.engine.answer(eng_sess, body.item_id, val, track=derived_track)
+
+        resp_num = (
+            val
+            if isinstance(val, int)
+            else (1 if val == "Yes" else (0 if val == "No" else 2))
+        )
+        core.answers[body.item_id] = resp_num
+        db.add(
+            Answer(
+                session_id=session_id,
+                item_id=body.item_id,
+                response_value=resp_num,
+            )
+        )
+
+        b_action = module_b_service.engine.next_action(eng_sess)
+        if b_action.get("type") == "done":
+            result = await _run_completion_b(
+                core=core,
+                db_row=db_row,
+                final=None,
+                db=db,
+                actor_id=user.id,
+                engine_session=eng_sess,
+            )
+            core.pending_item_id = None
+            db_row.pending_item_id = None
+            core.module_b_state = eng_sess.to_dict()
+            db_row.module_b_state = core.module_b_state
+            db_row.state_json = core.to_dict()
+            repo.save(session_id, core)
+            await db.flush()
+            return ScreenActionResponse(
+                type="complete",
+                session_id=session_id,
+                status="completed",
+                result=result,
+            )
+
+        if b_action.get("type") == "question":
+            core.pending_item_id = str(b_action["item_id"])
+            db_row.pending_item_id = core.pending_item_id
+
+        core.module_b_state = eng_sess.to_dict()
+        db_row.module_b_state = core.module_b_state
+        db_row.state_json = core.to_dict()
+        repo.save(session_id, core)
+        await db.flush()
+
+        return build_action_response(
+            session_id=session_id, engine_session="", action=b_action
+        )
+
+    # --- Module A / legacy fallback path ---
     if core.item_already_answered(body.item_id):
         raise HTTPException(status_code=400, detail="Item already answered")
 
@@ -667,7 +865,9 @@ async def submit_intake(
 
     db_row = await _load_owned_session(db, session_id, user.id)
     if db_row.module != "B":
-        raise HTTPException(status_code=400, detail="Intake is only for Module B sessions")
+        raise HTTPException(
+            status_code=400, detail="Intake is only for Module B sessions"
+        )
     if db_row.status == "completed":
         raise HTTPException(status_code=400, detail="Session already completed")
 
@@ -675,28 +875,100 @@ async def submit_intake(
     if core is None:
         core = CoreSession.from_dict(db_row.state_json)
 
+    # Module B engine path
+    if module_b_service.is_loaded:
+        if body.chips and core.module_b_state is not None:
+            eng_sess = EngineSession.from_dict(core.module_b_state)
+            module_b_service.engine.apply_recall_choice(
+                eng_sess, [to_engine_domain(c) for c in body.chips]
+            )
+        else:
+            if not body.text.strip() and not body.chips:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Please describe what you've noticed, or select areas of concern.",
+                )
+            age_years = months_to_module_b_age(core.corrected_age_months)
+            eng_sess = module_b_service.engine.start(
+                body.text, age_years, form="parent", seed=body.seed
+            )
+            if body.chips:
+                module_b_service.engine.apply_recall_choice(
+                    eng_sess, [to_engine_domain(c) for c in body.chips]
+                )
+
+        hash_source = body.text.strip() or "|".join(body.chips)
+        db_row.intake_text_hash = hashlib.sha256(hash_source.encode()).hexdigest()
+
+        action = module_b_service.engine.next_action(eng_sess)
+        if action.get("type") == "question":
+            core.pending_item_id = str(action["item_id"])
+            db_row.pending_item_id = core.pending_item_id
+
+        core.module_b_state = eng_sess.to_dict()
+        db_row.module_b_state = core.module_b_state
+
+        detected = [
+            to_api_domain(d)
+            for d, p in eng_sess.prior.items()
+            if p > 0.35 and d not in ("vision_hearing", "global_asd")
+        ]
+        core.detected_domains = detected
+        db_row.state_json = core.to_dict()
+        repo.save(session_id, core)
+        await db.flush()
+
+        action_resp = build_action_response(
+            session_id=session_id, engine_session="", action=action
+        )
+        atype = action.get("type")
+
+        return IntakeResponse(
+            recall_help_needed=(atype == "recall_help"),
+            recall_help_options=(
+                list(action_resp.recall_options.keys())
+                if action_resp.recall_options
+                else []
+            ),
+            detected_domains=detected,
+            rule_out_flagged=False,
+            next_action=(
+                "recall_help"
+                if atype == "recall_help"
+                else ("safety_notice" if atype == "safety_notice" else "question")
+            ),
+            action=action_resp,
+            safety_message=action_resp.safety_message,
+            helplines=action_resp.helplines,
+            recall_message=action_resp.recall_message,
+            recall_options=action_resp.recall_options,
+            question=action_resp.question,
+        )
+
+    # Legacy fallback path
     # Chip path: merge domains from each selected recall chip (+ optional text)
+    router_result: DomainRouterResult
     if body.chips:
-        detected: set[str] = set()
+        detected_set: set[str] = set()
         rule_out_flagged = False
         for chip in body.chips:
             chip_result = route_recall_chip(chip)
-            detected.update(chip_result["detected_domains"])
+            detected_set.update(chip_result["detected_domains"])
             if chip_result["rule_out_flagged"]:
                 rule_out_flagged = True
         if body.text.strip():
             text_result = route_text(body.text)
-            detected.update(text_result["detected_domains"])
+            detected_set.update(text_result["detected_domains"])
             if text_result["rule_out_flagged"]:
                 rule_out_flagged = True
-        router_result = {
-            "detected_domains": sorted(detected),
-            "rule_out_flagged": rule_out_flagged,
-            "recall_help_needed": False,
-            "recall_help_options": [],
-            "setting": body.setting,
-            "token_count": 0,
-        }
+        router_result = DomainRouterResult(
+            detected_domains=sorted(detected_set),
+            rule_out_flagged=rule_out_flagged,
+            recall_help_needed=False,
+            recall_help_options=[],
+            setting=body.setting or "unknown",
+            token_count=0,
+        )
     else:
         if not body.text.strip():
             raise HTTPException(
@@ -721,12 +993,14 @@ async def submit_intake(
 
     if router_result["rule_out_flagged"]:
         db_row.status = "completed"
-        db.add(AuditLog(
-            actor_id=user.id,
-            action="screen.rule_out",
-            target_id=session_id,
-            detail="rule_out_flagged=true",
-        ))
+        db.add(
+            AuditLog(
+                actor_id=user.id,
+                action="screen.rule_out",
+                target_id=session_id,
+                detail="rule_out_flagged=true",
+            )
+        )
         await db.flush()
         return IntakeResponse(
             recall_help_needed=False,
@@ -744,7 +1018,9 @@ async def submit_intake(
 
         domains = list(MODULE_B_DOMAINS)
     core.detected_domains = domains
-    core.microtask_telemetry["intake_setting"] = router_result.get("setting", body.setting)
+    core.microtask_telemetry["intake_setting"] = router_result.get(
+        "setting", body.setting
+    )
     db_row.state_json = core.to_dict()
     repo.save(session_id, core)
     await db.flush()
@@ -756,6 +1032,123 @@ async def submit_intake(
         rule_out_flagged=False,
         next_action="question",
     )
+
+
+@router.post("/{session_id}/recall", response_model=ScreenActionResponse)
+@router.post("/{session_id}/b/recall", response_model=ScreenActionResponse)
+async def submit_recall_choice(
+    session_id: str,
+    body: RecallChoiceRequest,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Module B: apply selected domain chips from recall help."""
+    db_row = await _load_owned_session(db, session_id, user.id)
+    if db_row.status == "completed":
+        raise HTTPException(status_code=400, detail="Session already completed")
+
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    if not module_b_service.is_loaded or core.module_b_state is None:
+        raise HTTPException(
+            status_code=400, detail="Module B engine not active for this session"
+        )
+
+    eng_sess = EngineSession.from_dict(core.module_b_state)
+    module_b_service.engine.apply_recall_choice(
+        eng_sess, [to_engine_domain(d) for d in body.domains]
+    )
+    action = module_b_service.engine.next_action(eng_sess)
+
+    if action.get("type") == "question":
+        core.pending_item_id = str(action["item_id"])
+        db_row.pending_item_id = core.pending_item_id
+
+    core.module_b_state = eng_sess.to_dict()
+    db_row.module_b_state = core.module_b_state
+    db_row.state_json = core.to_dict()
+    repo.save(session_id, core)
+    await db.flush()
+
+    return build_action_response(
+        session_id=session_id, engine_session="", action=action
+    )
+
+
+@router.get("/{session_id}/next", response_model=ScreenActionResponse)
+@router.post("/{session_id}/next", response_model=ScreenActionResponse)
+@router.post("/{session_id}/b/next", response_model=ScreenActionResponse)
+async def get_next_screen_action(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Module B: advance to next action after an informational notice."""
+    db_row = await _load_owned_session(db, session_id, user.id)
+    if db_row.status == "completed":
+        raise HTTPException(status_code=400, detail="Session already completed")
+
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    if not module_b_service.is_loaded or core.module_b_state is None:
+        raise HTTPException(
+            status_code=400, detail="Module B engine not active for this session"
+        )
+
+    eng_sess = EngineSession.from_dict(core.module_b_state)
+    action = module_b_service.engine.next_action(eng_sess)
+
+    if action.get("type") == "done":
+        result = await _run_completion_b(
+            core=core,
+            db_row=db_row,
+            final=None,
+            db=db,
+            actor_id=user.id,
+            engine_session=eng_sess,
+        )
+        core.pending_item_id = None
+        db_row.pending_item_id = None
+        core.module_b_state = eng_sess.to_dict()
+        db_row.module_b_state = core.module_b_state
+        db_row.state_json = core.to_dict()
+        repo.save(session_id, core)
+        await db.flush()
+        return ScreenActionResponse(
+            type="complete",
+            session_id=session_id,
+            status="completed",
+            result=result,
+        )
+
+    if action.get("type") == "question":
+        core.pending_item_id = str(action["item_id"])
+        db_row.pending_item_id = core.pending_item_id
+
+    core.module_b_state = eng_sess.to_dict()
+    db_row.module_b_state = core.module_b_state
+    db_row.state_json = core.to_dict()
+    repo.save(session_id, core)
+    await db.flush()
+
+    return build_action_response(
+        session_id=session_id, engine_session="", action=action
+    )
+
+
+@router.post("/{session_id}/b/result", response_model=ResultPayload)
+async def get_b_result(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return await get_result(session_id, user, db)
 
 
 @router.get("/{session_id}/teacher-items", response_model=TeacherItemsResponse)
@@ -773,7 +1166,9 @@ async def get_teacher_items(
 
     db_row = await _load_owned_session(db, session_id, user.id)
     if db_row.module != "B":
-        raise HTTPException(status_code=400, detail="Teacher form is only for Module B sessions")
+        raise HTTPException(
+            status_code=400, detail="Teacher form is only for Module B sessions"
+        )
 
     core = repo.get(session_id)
     if core is None:
@@ -823,7 +1218,9 @@ async def submit_teacher_form(
     """
     db_row = await _load_owned_session(db, session_id, user.id, with_result=True)
     if db_row.module != "B":
-        raise HTTPException(status_code=400, detail="Teacher form is only for Module B sessions")
+        raise HTTPException(
+            status_code=400, detail="Teacher form is only for Module B sessions"
+        )
 
     core = repo.get(session_id)
     if core is None:
@@ -879,9 +1276,13 @@ def _compute_consistency(
 
     shared_ids = set(parent_answers) & set(teacher_answers)
     if not shared_ids:
-        return 1.0, {}, [
-            "No overlapping home/school items were compared — consistency could not be scored."
-        ]
+        return (
+            1.0,
+            {},
+            [
+                "No overlapping home/school items were compared — consistency could not be scored."
+            ],
+        )
 
     # Per-domain absolute differences
     domain_diffs: dict[str, list[float]] = {}
@@ -889,13 +1290,19 @@ def _compute_consistency(
         if iid not in MODULE_B_ITEM_BY_ID:
             continue
         domain = MODULE_B_ITEM_BY_ID[iid].domain
-        diff = abs(parent_answers[iid] - teacher_answers[iid]) / 2.0  # normalise to [0,1]
+        diff = (
+            abs(parent_answers[iid] - teacher_answers[iid]) / 2.0
+        )  # normalise to [0,1]
         domain_diffs.setdefault(domain, []).append(diff)
 
     if not domain_diffs:
-        return 1.0, {}, [
-            "Teacher answers did not match known school-age items — consistency could not be scored."
-        ]
+        return (
+            1.0,
+            {},
+            [
+                "Teacher answers did not match known school-age items — consistency could not be scored."
+            ],
+        )
 
     domain_mean: dict[str, float] = {
         d: sum(diffs) / len(diffs) for d, diffs in domain_diffs.items()
@@ -904,6 +1311,7 @@ def _compute_consistency(
     flags: dict[str, bool] = {d: mean > 0.25 for d, mean in domain_mean.items()}
     caveats: list[str] = [
         f"Parent and teacher perspectives differ notably on {d.replace('_', ' ')}."
-        for d, flagged in flags.items() if flagged
+        for d, flagged in flags.items()
+        if flagged
     ]
     return round(overall_score, 3), flags, caveats

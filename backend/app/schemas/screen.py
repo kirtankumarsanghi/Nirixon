@@ -27,12 +27,33 @@ class StartScreenRequest(BaseModel):
     # When None the module is auto-detected: <60 months → A, ≥60 months → B.
     module: Literal["A", "B"] | None = None
     # Recorded in the session audit trail; must be true to start.
-    consent_given: bool = Field(..., description="Parent informed-consent acknowledgment")
+    consent_given: bool = Field(
+        ..., description="Parent informed-consent acknowledgment"
+    )
 
 
 class AnswerRequest(BaseModel):
     item_id: str
-    answer: int
+    answer: Any
+    track: str | None = None
+    engine_session: str | None = None
+
+
+class ActivityPayload(BaseModel):
+    title: str
+    minutes: int | None = None
+    setting: str | None = None
+    steps: list[str] | str | None = None
+
+
+class DomainTrackPayload(BaseModel):
+    state: str = "Not asked"
+    score: float | None = None
+    n: int = 0
+    endorsed: int | None = None
+    borderline: int | bool | None = None
+    brief: bool | None = None
+    because: list[str] = Field(default_factory=list)
 
 
 class QuestionPayload(BaseModel):
@@ -41,7 +62,9 @@ class QuestionPayload(BaseModel):
     domain: str
     question_number: int
     question_cap: int
-    response_type: Literal["yes_no", "frequency"] = "frequency"
+    response_type: Literal["yes_no", "frequency", "yesno", "likert5"] = "frequency"
+    scale_labels: str | None = None
+    track: str | None = None
 
 
 class ShapFeature(BaseModel):
@@ -71,14 +94,39 @@ class ResultPayload(BaseModel):
     consistency_flags: dict[str, bool] = {}
     # Module identifier propagated to the frontend for render branching
     module: Literal["A", "B"] = "A"
+    # Module B additive fields
+    summary: str | None = None
+    activities: dict[str, list[ActivityPayload]] = Field(default_factory=dict)
+    domain_details: dict[str, DomainTrackPayload] = Field(default_factory=dict)
+    ruleouts: dict[str, DomainTrackPayload] = Field(default_factory=dict)
+    flagged_domains: list[str] = Field(default_factory=list)
+    ruleout_flags: list[str] = Field(default_factory=list)
+    context_flags: list[str] = Field(default_factory=list)
+    red_flags: list[dict[str, Any]] = Field(default_factory=list)
+    help_routes: dict[str, Any] = Field(default_factory=dict)
+    safety: bool = False
+    disclaimer: str | None = None
 
 
 class ScreenActionResponse(BaseModel):
-    type: Literal["question", "complete", "intake_required"]
+    type: Literal[
+        "question",
+        "complete",
+        "intake_required",
+        "recall_help",
+        "safety_notice",
+        "done",
+    ]
     session_id: str
     status: str
     question: QuestionPayload | None = None
     result: ResultPayload | None = None
+    # Additive fields
+    safety_message: str | None = None
+    helplines: dict[str, str] | None = None
+    recall_message: str | None = None
+    recall_options: dict[str, str] | None = None
+    engine_session: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -91,16 +139,33 @@ class IntakeRequest(BaseModel):
     setting: Literal["home", "school", "both"] = "both"
     # Optional recall-help chip labels selected by the caregiver
     chips: list[str] = Field(default_factory=list)
+    seed: int = 0
 
 
 class IntakeResponse(BaseModel):
-    recall_help_needed: bool
-    recall_help_options: list[str]
-    detected_domains: list[str]
-    rule_out_flagged: bool
+    recall_help_needed: bool = False
+    recall_help_options: list[str] = Field(default_factory=list)
+    detected_domains: list[str] = Field(default_factory=list)
+    rule_out_flagged: bool = False
     # "question" = proceed to adaptive questions
     # "rule_out_referral" = stop immediately; show specialist-referral message
-    next_action: Literal["question", "rule_out_referral"]
+    # "recall_help" = show recall chips
+    # "safety_notice" = show safety helpline
+    next_action: Literal[
+        "question", "rule_out_referral", "recall_help", "safety_notice"
+    ] = "question"
+    action: ScreenActionResponse | None = None
+    safety_message: str | None = None
+    helplines: dict[str, str] | None = None
+    recall_message: str | None = None
+    recall_options: dict[str, str] | None = None
+    engine_session: str | None = None
+    question: QuestionPayload | None = None
+
+
+class RecallChoiceRequest(BaseModel):
+    domains: list[str] = Field(default_factory=list)
+    engine_session: str | None = None
 
 
 class TeacherAnswerRequest(BaseModel):

@@ -37,6 +37,7 @@ from __future__ import annotations
 import math
 import os
 from collections import Counter
+from typing import Any
 
 import pandas as pd
 
@@ -108,6 +109,8 @@ def _domain_quota_fallback(
     Works for both Module A (filters by age-appropriate domain items) and
     Module B (filters by detected-domain items). Returns item_id or None.
     """
+    item_by_id: dict[str, Any]
+    items_by_domain: dict[str, Any]
     if session.module == "B":
         domain_list = session.detected_domains or MODULE_B_DOMAINS
         item_by_id = MODULE_B_ITEM_BY_ID
@@ -359,14 +362,33 @@ def build_next_question_response(
 
     Works for both modules: looks up the item in the appropriate bank.
     """
-    if session.module == "B" and item_id in MODULE_B_ITEM_BY_ID:
-        item = MODULE_B_ITEM_BY_ID[item_id]
-    else:
-        item = ITEM_BY_ID[item_id]
+    if session.module == "B":
+        from app.core.module_b.domains import to_api_domain
+        from app.core.module_b.service import module_b_service
+
+        if module_b_service.is_loaded and item_id in module_b_service.engine.bank.df.index:
+            row = module_b_service.engine.bank.row(item_id)
+            return NextQuestion(
+                item_id=item_id,
+                question_text=str(row["text"]),
+                domain=to_api_domain(str(row["domain"])),
+                question_number=session.real_answer_count + 1,
+                question_cap=session.question_cap,
+            )
+        if item_id in MODULE_B_ITEM_BY_ID:
+            item_b = MODULE_B_ITEM_BY_ID[item_id]
+            return NextQuestion(
+                item_id=item_id,
+                question_text=item_b.text,
+                domain=item_b.domain,
+                question_number=session.real_answer_count + 1,
+                question_cap=session.question_cap,
+            )
+    item_a = ITEM_BY_ID[item_id]
     return NextQuestion(
         item_id=item_id,
-        question_text=item.text,
-        domain=item.domain,
+        question_text=item_a.text,
+        domain=item_a.domain,
         question_number=session.real_answer_count + 1,
         question_cap=session.question_cap,
     )
