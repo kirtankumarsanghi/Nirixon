@@ -91,6 +91,10 @@ class ScreeningSession(Base):
     # is the live source during a request; this column is the durable backup.
     state_json: Mapped[dict] = mapped_column(JsonType, default=dict)
 
+    # Module B adaptive session state and pending item
+    pending_item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    module_b_state: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+
     parent: Mapped[User] = relationship(back_populates="sessions")
     answers: Mapped[list[Answer]] = relationship(
         back_populates="session", cascade="all, delete-orphan"

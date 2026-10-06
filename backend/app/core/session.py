@@ -67,6 +67,12 @@ class ScreeningSession:
     # No audio/video — scalar numerics only.
     microtask_telemetry: dict[str, Any] = field(default_factory=dict)
 
+    # Module B: pending item ID last presented to user for validation
+    pending_item_id: str | None = None
+
+    # Module B: serialized engine session state
+    module_b_state: dict[str, Any] | None = None
+
     # set True once the orchestrator decides to stop asking
     completed: bool = False
 
@@ -77,6 +83,7 @@ class ScreeningSession:
             )
         if self.age_bracket == "Unknown":
             from data.generator.age_brackets import map_to_bracket_label
+
             self.age_bracket = map_to_bracket_label(self.corrected_age_months)
 
     @property
@@ -130,6 +137,10 @@ class ScreeningSession:
             "teacher_answers": self.teacher_answers.copy(),
             "microtask_telemetry": dict(self.microtask_telemetry),
             "completed": self.completed,
+            "pending_item_id": self.pending_item_id,
+            "module_b_state": self.module_b_state.copy()
+            if self.module_b_state
+            else None,
         }
 
     @classmethod
@@ -137,8 +148,9 @@ class ScreeningSession:
         """Deserialize from storage or transmission.
 
         All new fields (module, detected_domains, teacher_answers,
-        microtask_telemetry) default gracefully so old DB rows that
-        predate Module B continue to deserialize correctly as Module A.
+        microtask_telemetry, pending_item_id, module_b_state) default
+        gracefully so old DB rows that predate Module B continue to
+        deserialize correctly as Module A.
         """
         age_bracket = data.get("age_bracket", "Unknown")
         return cls(
@@ -154,6 +166,8 @@ class ScreeningSession:
             teacher_answers=data.get("teacher_answers", {}).copy(),
             microtask_telemetry=dict(data.get("microtask_telemetry", {})),
             completed=bool(data.get("completed", False)),
+            pending_item_id=data.get("pending_item_id"),
+            module_b_state=data.get("module_b_state"),
         )
 
 
