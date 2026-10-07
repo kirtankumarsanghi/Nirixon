@@ -1097,3 +1097,246 @@ section.intake {
   font-weight: 600;
   line-height: 1.35;
 }
+
+/* ----------------------------------
+   Module B — Safety Notice Screen
+   ---------------------------------- */
+
+.safety-notice {
+  max-width: 36rem;
+  padding: var(--space-5);
+  margin: 0 0 var(--space-5);
+  background: rgba(164, 90, 52, 0.06);
+  border-left: 3px solid var(--clay);
+  border-radius: var(--radius);
+}
+
+.safety-notice__message {
+  font-size: 1.05rem;
+  margin: 0 0 var(--space-5);
+  line-height: 1.6;
+}
+
+.safety-notice__helplines {
+  margin: 0 0 var(--space-5);
+}
+
+.safety-notice__list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.safety-notice__link {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  background: #fffdf8;
+  border: 1px solid rgba(38, 36, 31, 0.15);
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 1rem;
+  min-height: 3.25rem;
+}
+
+.safety-notice__link:hover {
+  border-color: var(--clay);
+  background: rgba(164, 90, 52, 0.06);
+}
+
+.safety-notice__icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.safety-notice__meta {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.safety-notice__continue {
+  margin-top: var(--space-4);
+}
+
+/* Persistent safety link */
+.safety-persistent {
+  margin: 0 0 var(--space-4);
+}
+
+.safety-persistent__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(164, 90, 52, 0.08);
+  border-radius: var(--radius);
+  color: var(--clay);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.safety-persistent__link:hover {
+  background: rgba(164, 90, 52, 0.14);
+}
+
+/* ----------------------------------
+   Module B — Recall Help Screen
+   ---------------------------------- */
+
+.recall-help {
+  max-width: 36rem;
+}
+
+.recall-help__hint {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  margin: 0 0 var(--space-4);
+}
+
+/* ----------------------------------
+   Module B — Likert-5 large buttons
+   ---------------------------------- */
+
+.question__options--moduleb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.btn--option-lg {
+  padding: 0.9rem 1.1rem;
+  font-size: 1rem;
+  min-height: 3rem;
+}
+
+/* ----------------------------------
+   Module B — Enriched Result View
+   ---------------------------------- */
+
+.moduleb-result {
+  max-width: 42rem;
+}
+
+.moduleb-result__safety-top {
+  padding: var(--space-4) var(--space-5);
+  margin: 0 0 var(--space-5);
+  background: rgba(164, 90, 52, 0.08);
+  border-left: 3px solid var(--clay);
+  border-radius: var(--radius);
+}
+
+.moduleb-result__reassurance {
+  margin: 0 0 var(--space-5);
+}
+
+.moduleb-result__domains {
+  margin: 0 0 var(--space-6);
+}
+
+.moduleb-domain-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.moduleb-domain-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid rgba(38, 36, 31, 0.08);
+}
+
+.moduleb-domain-item__name {
+  font-weight: 600;
+}
+
+.moduleb-result__ruleout {
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0;
+  background: rgba(164, 90, 52, 0.06);
+  border-left: 3px solid var(--clay);
+  border-radius: var(--radius);
+}
+
+.moduleb-result__ruleout p {
+  margin: 0 0 var(--space-2);
+}
+
+.moduleb-result__summary {
+  margin: 0 0 var(--space-5);
+}
+
+.moduleb-result__summary p {
+  line-height: 1.6;
+}
+
+.moduleb-result__activities {
+  margin: 0 0 var(--space-6);
+}
+
+.moduleb-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.moduleb-activity-card {
+  padding: var(--space-4);
+  background: rgba(38, 36, 31, 0.04);
+  border-radius: var(--radius);
+}
+
+.moduleb-activity-card__title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2);
+}
+
+.moduleb-activity-card__desc {
+  margin: 0 0 var(--space-2);
+  font-size: 0.95rem;
+}
+
+.moduleb-activity-card__freq {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.moduleb-result__help {
+  margin: 0 0 var(--space-5);
+}
+
+.moduleb-result__flagged {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: var(--space-2);
+}
+
+.moduleb-result__disclaimer {
+  padding: var(--space-4);
+  margin: 0 0 var(--space-5);
+  border: 1px solid rgba(38, 36, 31, 0.12);
+  border-radius: var(--radius);
+  background: rgba(246, 243, 236, 0.9);
+}
+
+.moduleb-result__disclaimer p {
+  margin: 0;
+  font-size: 0.95rem;
+}

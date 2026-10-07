@@ -4,7 +4,7 @@
 
 export type Classification = "Typical" | "Monitor" | "Refer";
 
-export type ResponseType = "yes_no" | "frequency";
+export type ResponseType = "yes_no" | "frequency" | "likert5" | "yesno";
 
 export interface LoginRequest {
   email: string;
@@ -39,11 +39,40 @@ export interface QuestionPayload {
   question_number: number;
   question_cap: number;
   response_type: ResponseType;
+  /** Module B: track label (e.g. "attention"). */
+  track?: string;
+  /**
+   * Module B Likert-5 scale descriptor, e.g.
+   * "1=Never|2=Rarely|3=Sometimes|4=Often|5=Very often"
+   */
+  scale?: string;
 }
 
 export interface ShapFeature {
   feature: string;
   shap_value: number;
+}
+
+/** Module B: per-domain result detail. */
+export interface DomainResult {
+  status: Classification;
+  answers: Record<string, number>;
+  score: number;
+}
+
+/** Module B: practice activity from the API. */
+export interface ActivityPayload {
+  title: string;
+  domain: string;
+  setting: string;
+  description: string;
+  frequency: string;
+}
+
+/** Module B: progress counter from the backend. */
+export interface ProgressPayload {
+  answered: number;
+  max: number;
 }
 
 export interface ResultPayload {
@@ -68,14 +97,45 @@ export interface ResultPayload {
   consistency_flags?: Record<string, boolean>;
   /** Module identifier — used by frontend to select render path. */
   module?: "A" | "B";
+  /** Module B: structured per-domain results. */
+  domains?: Record<string, DomainResult>;
+  /** Module B: domain keys flagged for follow-up. */
+  flagged_domains?: string[];
+  /** Module B: rule-out flags (vision/hearing, broader development). */
+  rule_out_flags?: Record<string, boolean>;
+  /** Module B: plain-language summary from the API. */
+  summary?: string;
+  /** Module B: practice activities per flagged domain. */
+  activities?: ActivityPayload[];
+  /** Module B: contact/help text from the API (free options first). */
+  help?: string;
+  /** Module B: whether safety helplines should appear prominently. */
+  safety?: boolean;
+  /** Module B: disclaimer text from the API. */
+  disclaimer?: string;
 }
 
+/** Module B action types include recall_help, safety_notice, and done. */
+export type ScreenActionType =
+  | "question"
+  | "complete"
+  | "intake_required"
+  | "recall_help"
+  | "safety_notice"
+  | "done";
+
 export interface ScreenActionResponse {
-  type: "question" | "complete" | "intake_required";
+  type: ScreenActionType;
   session_id: string;
   status: string;
   question: QuestionPayload | null;
   result: ResultPayload | null;
+  /** Module B: domain keys for recall-help chip selection. */
+  recall_help_options?: string[];
+  /** Module B: safety helpline text to display prominently. */
+  safety_message?: string;
+  /** Module B: progress counter (answered / max). */
+  progress?: ProgressPayload;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +154,10 @@ export interface IntakeResponse {
   detected_domains: string[];
   rule_out_flagged: boolean;
   next_action: "question" | "rule_out_referral";
+}
+
+export interface RecallRequest {
+  selected_domains: string[];
 }
 
 export interface TeacherAnswerRequest {

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "../api/client";
-import type { QuestionPayload, ResultPayload } from "../api/types";
+import type {
+  ProgressPayload,
+  QuestionPayload,
+  ResultPayload,
+  ScreenActionResponse,
+} from "../api/types";
 import {
   clearSessionId,
   loadCoveredDomains,
@@ -20,7 +25,9 @@ export type ScreenPhase =
   | "question"
   | "complete"
   | "error"
-  | "intake";
+  | "intake"
+  | "recall_help"
+  | "safety_notice";
 
 export interface AdaptiveQuestionnaireState {
   phase: ScreenPhase;
@@ -35,6 +42,14 @@ export interface AdaptiveQuestionnaireState {
   childRef: string;
   error: string | null;
   submitting: boolean;
+  /** Module B: progress counter from the backend. */
+  progress: ProgressPayload | null;
+  /** Module B: domain keys for recall-help chip selection. */
+  recallOptions: string[];
+  /** Module B: safety helpline text to display prominently. */
+  safetyMessage: string | null;
+  /** Module B: whether the safety link should remain visible. */
+  showSafetyLink: boolean;
   start: (opts: {
     corrected_age_months: number;
     child_ref?: string;
@@ -44,6 +59,8 @@ export interface AdaptiveQuestionnaireState {
   }) => Promise<{ type: string } | undefined>;
   advanceAfterIntake: (detectedDomains: string[]) => Promise<void>;
   submitAnswer: (answer: number) => Promise<void>;
+  submitRecall: (selectedDomains: string[]) => Promise<void>;
+  dismissSafety: () => void;
   reset: () => void;
 }
 
@@ -65,48 +82,72 @@ function coveredFromAnswerKeys(
   return covered;
 }
 
+interface ApplyResult {
+  phase: ScreenPhase;
+  sessionId: string;
+  question: QuestionPayload | null;
+  result: ResultPayload | null;
+  coveredDomains: Set<string>;
+  answers: Record<string, number>;
+  progress: ProgressPayload | null;
+  recallOptions: string[];
+  safetyMessage: string | null;
+}
+
 function applyAction(
-  action: {
-    session_id: string;
-    type: string;
-    question: QuestionPayload | null;
-    result: ResultPayload | null;
-  },
+  action: ScreenActionResponse,
   prevCovered: Set<string>,
   prevAnswers: Record<string, number>,
-): Pick<
-  AdaptiveQuestionnaireState,
-  "phase" | "sessionId" | "question" | "result" | "coveredDomains" | "answers"
-> {
+): ApplyResult {
   saveSessionId(action.session_id);
   saveCoveredDomains(prevCovered);
-  if (action.type === "complete" && action.result) {
+
+  const base = {
+    sessionId: action.session_id,
+    coveredDomains: prevCovered,
+    answers: prevAnswers,
+    progress: action.progress ?? null,
+    recallOptions: action.recall_help_options ?? [],
+    safetyMessage: action.safety_message ?? null,
+  };
+
+  if ((action.type === "complete" || action.type === "done") && action.result) {
     return {
+      ...base,
       phase: "complete",
-      sessionId: action.session_id,
       question: null,
       result: action.result,
-      coveredDomains: prevCovered,
-      answers: prevAnswers,
     };
   }
   if (action.type === "intake_required") {
     return {
+      ...base,
       phase: "intake",
-      sessionId: action.session_id,
       question: null,
       result: null,
-      coveredDomains: prevCovered,
-      answers: prevAnswers,
+    };
+  }
+  if (action.type === "recall_help") {
+    return {
+      ...base,
+      phase: "recall_help",
+      question: null,
+      result: null,
+    };
+  }
+  if (action.type === "safety_notice") {
+    return {
+      ...base,
+      phase: "safety_notice",
+      question: null,
+      result: null,
     };
   }
   return {
+    ...base,
     phase: "question",
-    sessionId: action.session_id,
     question: action.question,
     result: null,
-    coveredDomains: prevCovered,
-    answers: prevAnswers,
   };
 }
 
@@ -126,6 +167,10 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
   const [childRef, setChildRef] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<ProgressPayload | null>(null);
+  const [recallOptions, setRecallOptions] = useState<string[]>([]);
+  const [safetyMessage, setSafetyMessage] = useState<string | null>(null);
+  const [showSafetyLink, setShowSafetyLink] = useState(false);
 
   const sessionIdRef = useRef(sessionId);
   const questionRef = useRef(question);
@@ -137,6 +182,21 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
   answersRef.current = answers;
   coveredRef.current = coveredDomains;
   moduleRef.current = module;
+
+  function applyNext(next: ApplyResult) {
+    setSessionId(next.sessionId);
+    setQuestion(next.question);
+    setResult(next.result);
+    setAnswers(next.answers);
+    setCoveredDomains(next.coveredDomains);
+    setPhase(next.phase);
+    setProgress(next.progress);
+    setRecallOptions(next.recallOptions);
+    if (next.safetyMessage) {
+      setSafetyMessage(next.safetyMessage);
+      setShowSafetyLink(true);
+    }
+  }
 
   const reset = useCallback(() => {
     clearSessionId();
@@ -151,6 +211,10 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     setChildRef("");
     setError(null);
     setSubmitting(false);
+    setProgress(null);
+    setRecallOptions([]);
+    setSafetyMessage(null);
+    setShowSafetyLink(false);
   }, []);
 
   useEffect(() => {
@@ -245,6 +309,10 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
       setModule(inferred);
       setPhase("loading");
       setError(null);
+      setProgress(null);
+      setRecallOptions([]);
+      setSafetyMessage(null);
+      setShowSafetyLink(false);
       saveCoveredDomains(new Set());
       try {
         const action = await api.startScreen({
@@ -255,12 +323,7 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
           module: opts.module,
         });
         const next = applyAction(action, new Set(), {});
-        setSessionId(next.sessionId);
-        setQuestion(next.question);
-        setResult(next.result);
-        setAnswers(next.answers);
-        setCoveredDomains(next.coveredDomains);
-        setPhase(next.phase);
+        applyNext(next);
         return action;
       } catch (err) {
         setPhase("error");
@@ -292,22 +355,76 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
         nextCovered.add(domain);
       }
       const next = applyAction(action, nextCovered, nextAnswers);
-      setSessionId(next.sessionId);
-      setQuestion(next.question);
-      setResult(next.result);
-      setAnswers(next.answers);
-      setCoveredDomains(next.coveredDomains);
-      setPhase(next.phase);
+      applyNext(next);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 422) {
+        setError("That answer could not be saved. Please try a different option.");
+      } else if (err instanceof ApiError && err.status === 404) {
+        setError("Your session has expired. Please start a new check-in.");
+        setPhase("error");
+      } else {
+        setError(
+          err instanceof ApiError
+            ? err.detail
+            : "Could not submit your answer. Please try again.",
+        );
+      }
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const submitRecallCb = useCallback(async (selectedDomains: string[]) => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const action = await api.submitRecall(sid, {
+        selected_domains: selectedDomains,
+      });
+      const next = applyAction(action, coveredRef.current, answersRef.current);
+      applyNext(next);
     } catch (err) {
       setError(
         err instanceof ApiError
           ? err.detail
-          : "Could not submit your answer. Please try again.",
+          : "Could not submit your selection. Please try again.",
       );
       throw err;
     } finally {
       setSubmitting(false);
     }
+  }, []);
+
+  const dismissSafety = useCallback(() => {
+    // After dismissing the safety screen, fetch the next action from the session
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    setPhase("loading");
+    setError(null);
+    (async () => {
+      try {
+        const state = await api.getSession(sid);
+        if (state.completed && state.result) {
+          setPhase("complete");
+          setResult(state.result);
+          setQuestion(null);
+        } else if (state.next_question) {
+          setPhase("question");
+          setQuestion(state.next_question);
+          setResult(null);
+        } else {
+          setPhase("question");
+        }
+      } catch (err) {
+        setError(
+          err instanceof ApiError ? err.detail : "Could not load next question.",
+        );
+        setPhase("error");
+      }
+    })();
   }, []);
 
   const advanceAfterIntake = useCallback(async (_detectedDomains: string[]) => {
@@ -352,9 +469,15 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     childRef,
     error,
     submitting,
+    progress,
+    recallOptions,
+    safetyMessage,
+    showSafetyLink,
     start,
     advanceAfterIntake,
     submitAnswer,
+    submitRecall: submitRecallCb,
+    dismissSafety,
     reset,
   };
 }
