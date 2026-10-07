@@ -177,11 +177,15 @@ export const api = {
     sessionId: string,
     body: RecallRequest,
   ): Promise<ScreenActionResponse> {
+    const payload = {
+      ...body,
+      domains: body.domains ?? body.selected_domains ?? [],
+    };
     return request<ScreenActionResponse>(
       `/api/screen/${sessionId}/recall`,
       {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       },
     );
   },

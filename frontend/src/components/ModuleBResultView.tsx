@@ -75,7 +75,13 @@ export function ModuleBResultView({
 
   const flaggedDomains = result.flagged_domains ?? [];
   const ruleOutFlags = result.rule_out_flags ?? {};
-  const activities = result.activities ?? [];
+  const activities: ActivityPayload[] = Array.isArray(result.activities)
+    ? result.activities
+    : result.activities && typeof result.activities === "object"
+      ? Object.entries(result.activities).flatMap(([dom, acts]) =>
+          acts.map((a) => ({ ...a, domain: a.domain ?? dom }))
+        )
+      : [];
   const hasSafety = result.safety === true;
 
   return (
@@ -197,16 +203,21 @@ export function ModuleBResultView({
             {t("moduleb.result.activities.title", "Things you can try at home or school")}
           </h2>
           <ul className="moduleb-activity-list" role="list">
-            {activities.map((act: ActivityPayload, i: number) => (
-              <li key={`${act.domain}-${i}`} className="moduleb-activity-card">
-                <p className="eyebrow">
-                  {DOMAIN_LABELS[act.domain] ?? act.domain} · {act.setting}
-                </p>
-                <h3 className="moduleb-activity-card__title">{act.title}</h3>
-                <p className="moduleb-activity-card__desc">{act.description}</p>
-                <p className="moduleb-activity-card__freq">{act.frequency}</p>
-              </li>
-            ))}
+            {activities.map((act: ActivityPayload, i: number) => {
+              const domLabel = act.domain ? (DOMAIN_LABELS[act.domain] ?? act.domain) : "";
+              return (
+                <li key={`${act.domain ?? "act"}-${i}`} className="moduleb-activity-card">
+                  {(domLabel || act.setting) ? (
+                    <p className="eyebrow">
+                      {domLabel}{act.setting ? ` · ${act.setting}` : ""}
+                    </p>
+                  ) : null}
+                  <h3 className="moduleb-activity-card__title">{act.title}</h3>
+                  {act.description ? <p className="moduleb-activity-card__desc">{act.description}</p> : null}
+                  {act.frequency ? <p className="moduleb-activity-card__freq">{act.frequency}</p> : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

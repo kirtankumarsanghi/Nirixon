@@ -60,11 +60,12 @@ export function ModuleBQuestionForm({
   );
 
   let options: LikertOption[];
+  const scaleString = question.scale_labels || question.scale;
   if (
     (question.response_type === "likert5" || question.response_type === "frequency") &&
-    question.scale
+    scaleString
   ) {
-    options = parseLikertScale(question.scale);
+    options = parseLikertScale(scaleString);
   } else if (question.response_type === "yesno" || question.response_type === "yes_no") {
     options = [
       { value: 1, label: t("moduleb.yesno.yes", "Yes") },

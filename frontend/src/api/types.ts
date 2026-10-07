@@ -42,10 +42,12 @@ export interface QuestionPayload {
   /** Module B: track label (e.g. "attention"). */
   track?: string;
   /**
-   * Module B Likert-5 scale descriptor, e.g.
-   * "1=Never|2=Rarely|3=Sometimes|4=Often|5=Very often"
-   */
+    * Module B Likert-5 scale descriptor, e.g.
+    * "1=Never|2=Rarely|3=Sometimes|4=Often|5=Very often"
+    */
   scale?: string;
+  /** Live backend field for Likert scale descriptor */
+  scale_labels?: string | null;
 }
 
 export interface ShapFeature {
@@ -63,10 +65,12 @@ export interface DomainResult {
 /** Module B: practice activity from the API. */
 export interface ActivityPayload {
   title: string;
-  domain: string;
-  setting: string;
-  description: string;
-  frequency: string;
+  domain?: string;
+  setting?: string | null;
+  description?: string;
+  frequency?: string;
+  minutes?: number | null;
+  steps?: string[] | string | null;
 }
 
 /** Module B: progress counter from the backend. */
@@ -103,16 +107,20 @@ export interface ResultPayload {
   flagged_domains?: string[];
   /** Module B: rule-out flags (vision/hearing, broader development). */
   rule_out_flags?: Record<string, boolean>;
+  ruleout_flags?: string[];
+  context_flags?: string[];
+  red_flags?: Record<string, unknown>[];
   /** Module B: plain-language summary from the API. */
-  summary?: string;
+  summary?: string | null;
   /** Module B: practice activities per flagged domain. */
-  activities?: ActivityPayload[];
+  activities?: ActivityPayload[] | Record<string, ActivityPayload[]>;
   /** Module B: contact/help text from the API (free options first). */
   help?: string;
+  help_routes?: Record<string, unknown>;
   /** Module B: whether safety helplines should appear prominently. */
   safety?: boolean;
   /** Module B: disclaimer text from the API. */
-  disclaimer?: string;
+  disclaimer?: string | null;
 }
 
 /** Module B action types include recall_help, safety_notice, and done. */
@@ -133,9 +141,13 @@ export interface ScreenActionResponse {
   /** Module B: domain keys for recall-help chip selection. */
   recall_help_options?: string[];
   /** Module B: safety helpline text to display prominently. */
-  safety_message?: string;
+  safety_message?: string | null;
+  helplines?: Record<string, string> | null;
+  recall_message?: string | null;
+  recall_options?: Record<string, string> | null;
+  engine_session?: string | null;
   /** Module B: progress counter (answered / max). */
-  progress?: ProgressPayload;
+  progress?: ProgressPayload | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +158,7 @@ export interface IntakeRequest {
   text: string;
   setting?: "home" | "school" | "both";
   chips?: string[];
+  seed?: number;
 }
 
 export interface IntakeResponse {
@@ -153,11 +166,20 @@ export interface IntakeResponse {
   recall_help_options: string[];
   detected_domains: string[];
   rule_out_flagged: boolean;
-  next_action: "question" | "rule_out_referral";
+  next_action: "question" | "rule_out_referral" | "recall_help" | "safety_notice";
+  action?: ScreenActionResponse | null;
+  safety_message?: string | null;
+  helplines?: Record<string, string> | null;
+  recall_message?: string | null;
+  recall_options?: Record<string, string> | null;
+  engine_session?: string | null;
+  question?: QuestionPayload | null;
 }
 
 export interface RecallRequest {
-  selected_domains: string[];
+  domains?: string[];
+  selected_domains?: string[];
+  engine_session?: string | null;
 }
 
 export interface TeacherAnswerRequest {

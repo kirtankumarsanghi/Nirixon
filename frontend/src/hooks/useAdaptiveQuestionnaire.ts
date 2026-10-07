@@ -42,9 +42,9 @@ export interface AdaptiveQuestionnaireState {
   childRef: string;
   error: string | null;
   submitting: boolean;
-  /** Module B: progress counter from the backend. */
+  /** Module B: progress counter. */
   progress: ProgressPayload | null;
-  /** Module B: domain keys for recall-help chip selection. */
+  /** Module B: domain keys for recall-help chip selection (extracted from recall_options dict). */
   recallOptions: string[];
   /** Module B: safety helpline text to display prominently. */
   safetyMessage: string | null;
@@ -57,7 +57,7 @@ export interface AdaptiveQuestionnaireState {
     consent_given?: boolean;
     module?: "A" | "B";
   }) => Promise<{ type: string } | undefined>;
-  advanceAfterIntake: (detectedDomains: string[]) => Promise<void>;
+  advanceAfterIntake: (detectedDomains: string[], intakeAction?: ScreenActionResponse | null) => Promise<void>;
   submitAnswer: (answer: number) => Promise<void>;
   submitRecall: (selectedDomains: string[]) => Promise<void>;
   dismissSafety: () => void;
@@ -89,7 +89,6 @@ interface ApplyResult {
   result: ResultPayload | null;
   coveredDomains: Set<string>;
   answers: Record<string, number>;
-  progress: ProgressPayload | null;
   recallOptions: string[];
   safetyMessage: string | null;
 }
@@ -102,12 +101,16 @@ function applyAction(
   saveSessionId(action.session_id);
   saveCoveredDomains(prevCovered);
 
+  // recall_options is a dict[str, str] — extract keys as the domain list
+  const recallKeys = action.recall_options
+    ? Object.keys(action.recall_options)
+    : [];
+
   const base = {
     sessionId: action.session_id,
     coveredDomains: prevCovered,
     answers: prevAnswers,
-    progress: action.progress ?? null,
-    recallOptions: action.recall_help_options ?? [],
+    recallOptions: recallKeys,
     safetyMessage: action.safety_message ?? null,
   };
 
@@ -167,7 +170,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
   const [childRef, setChildRef] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [progress, setProgress] = useState<ProgressPayload | null>(null);
   const [recallOptions, setRecallOptions] = useState<string[]>([]);
   const [safetyMessage, setSafetyMessage] = useState<string | null>(null);
   const [showSafetyLink, setShowSafetyLink] = useState(false);
@@ -190,7 +192,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     setAnswers(next.answers);
     setCoveredDomains(next.coveredDomains);
     setPhase(next.phase);
-    setProgress(next.progress);
     setRecallOptions(next.recallOptions);
     if (next.safetyMessage) {
       setSafetyMessage(next.safetyMessage);
@@ -211,7 +212,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     setChildRef("");
     setError(null);
     setSubmitting(false);
-    setProgress(null);
     setRecallOptions([]);
     setSafetyMessage(null);
     setShowSafetyLink(false);
@@ -309,7 +309,6 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
       setModule(inferred);
       setPhase("loading");
       setError(null);
-      setProgress(null);
       setRecallOptions([]);
       setSafetyMessage(null);
       setShowSafetyLink(false);
@@ -382,7 +381,7 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     setError(null);
     try {
       const action = await api.submitRecall(sid, {
-        selected_domains: selectedDomains,
+        domains: selectedDomains,
       });
       const next = applyAction(action, coveredRef.current, answersRef.current);
       applyNext(next);
@@ -455,6 +454,13 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
       setPhase("error");
     }
   }, []);
+
+  const progress: ProgressPayload | null = question
+    ? {
+        answered: Math.max(0, question.question_number - 1),
+        max: question.question_cap || 20,
+      }
+    : null;
 
   return {
     phase,
