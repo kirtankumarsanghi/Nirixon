@@ -388,3 +388,53 @@ async def test_bad_input_and_invalid_session(api_env):
         json={"item_id": valid_item_id, "answer": 3},
     )
     assert r_bad_sess.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_privacy_no_parent_text_or_evidence_saved(api_env):
+    """Parent text and router evidence snippets must NOT be persisted in the DB."""
+    client = api_env["client"]
+    token = await _login(client)
+    headers = _auth(token)
+    session_factory = api_env["session_factory"]
+
+    r = await client.post(
+        "/api/screen/start",
+        headers=headers,
+        json={
+            "corrected_age_months": 108,
+            "consent_given": True,
+            "question_cap": 20,
+            "module": "B",
+        },
+    )
+    assert r.status_code == 200
+    session_id = r.json()["session_id"]
+
+    secret_raw_text = "Mera beta homework ke time ek jagah baith hi nahi pata aur notebook bhool jata hai"
+    r = await client.post(
+        f"/api/screen/{session_id}/intake",
+        headers=headers,
+        json={"text": secret_raw_text},
+    )
+    assert r.status_code == 200
+
+    from sqlalchemy import select
+    from app.db.models import ScreeningSession as DbSession
+
+    async with session_factory() as db:
+        res = await db.execute(select(DbSession).where(DbSession.id == session_id))
+        row = res.scalar_one()
+
+        state = row.module_b_state or {}
+        # text must be empty
+        assert state.get("text") == "", f"Expected empty text, got {state.get('text')}"
+        # router_evidence must be empty or absent
+        evidence = state.get("router_evidence") or {}
+        assert evidence == {}, f"Expected empty router_evidence, got {evidence}"
+        # raw sensitive substrings must not exist in serialized states
+        import json
+        state_str = json.dumps(state)
+        assert "baith hi nahi" not in state_str
+        assert "notebook bhool" not in state_str
+

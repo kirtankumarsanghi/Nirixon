@@ -251,7 +251,7 @@ class Engine:
             s.unclear = r.unclear
             s.context_flags = list(r.context_flags)
             s.ruleout_flags = list(r.ruleouts)
-            s.router_evidence = {k: v[:3] for k, v in r.evidence.items()}
+            s.router_evidence = {}  # Privacy: do not persist snippets of caregiver text
             if not r.unclear:
                 s.prior = {
                     d: max(self.cfg["prior_floor"], r.domain_prior[d]) for d in DOMAINS
