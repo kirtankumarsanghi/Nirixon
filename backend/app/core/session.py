@@ -73,6 +73,16 @@ class ScreeningSession:
     # Module B: serialized engine session state
     module_b_state: dict[str, Any] | None = None
 
+    # Caregiver, Child & Location Profile
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = "Parent"
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
+
     # set True once the orchestrator decides to stop asking
     completed: bool = False
 
@@ -136,6 +146,14 @@ class ScreeningSession:
             "detected_domains": list(self.detected_domains),
             "teacher_answers": self.teacher_answers.copy(),
             "microtask_telemetry": dict(self.microtask_telemetry),
+            "child_name": self.child_name,
+            "parent_name": self.parent_name,
+            "parent_phone": self.parent_phone,
+            "relationship_to_child": self.relationship_to_child,
+            "location_pincode": self.location_pincode,
+            "location_city": self.location_city,
+            "location_state": self.location_state,
+            "location_address": self.location_address,
             "completed": self.completed,
             "pending_item_id": self.pending_item_id,
             "module_b_state": (
@@ -148,9 +166,8 @@ class ScreeningSession:
         """Deserialize from storage or transmission.
 
         All new fields (module, detected_domains, teacher_answers,
-        microtask_telemetry, pending_item_id, module_b_state) default
-        gracefully so old DB rows that predate Module B continue to
-        deserialize correctly as Module A.
+        microtask_telemetry, pending_item_id, module_b_state, profile fields) default
+        gracefully so old DB rows continue to deserialize correctly.
         """
         age_bracket = data.get("age_bracket", "Unknown")
         return cls(
@@ -165,6 +182,14 @@ class ScreeningSession:
             detected_domains=list(data.get("detected_domains", [])),
             teacher_answers=data.get("teacher_answers", {}).copy(),
             microtask_telemetry=dict(data.get("microtask_telemetry", {})),
+            child_name=data.get("child_name"),
+            parent_name=data.get("parent_name"),
+            parent_phone=data.get("parent_phone"),
+            relationship_to_child=data.get("relationship_to_child", "Parent"),
+            location_pincode=data.get("location_pincode"),
+            location_city=data.get("location_city"),
+            location_state=data.get("location_state"),
+            location_address=data.get("location_address"),
             completed=bool(data.get("completed", False)),
             pending_item_id=data.get("pending_item_id"),
             module_b_state=data.get("module_b_state"),

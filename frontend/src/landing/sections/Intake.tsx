@@ -5,6 +5,10 @@ import { PHOTOS } from "../data";
 import { EASE, Kicker, MaskedHeadline, TextTabs } from "../components/editorial";
 import { EvaluatorNote, SampleBadge, TIER_COLORS } from "../components/ViewContext";
 import { cn } from "../utils/cn";
+import { VERIFIED_HELPLINES } from "../helplines";
+import claimsRegister from "../claims_register.json";
+
+const claims = claimsRegister.claims;
 
 /* ================================================================== */
 /*  01 · Tell us in your own words — annotated, like a marked-up page  */
@@ -162,17 +166,24 @@ function OwnWords() {
               <LifeBuoy className="h-4 w-4" /> This sounds urgent. Please reach out now.
             </p>
             <p className="mt-1 text-[14px] text-bone">
-              <a href="tel:14416" className="font-bold underline underline-offset-4">Tele-MANAS 14416</a> ·{" "}
-              <a href="tel:18005990019" className="font-bold underline underline-offset-4">KIRAN 1800-599-0019</a> ·{" "}
-              <a href="tel:1098" className="font-bold underline underline-offset-4">Childline 1098</a>
+              <a href={VERIFIED_HELPLINES.telemanas.tel} className="font-bold underline underline-offset-4">
+                {VERIFIED_HELPLINES.telemanas.name} {VERIFIED_HELPLINES.telemanas.number}
+              </a> ·{" "}
+              <a href={VERIFIED_HELPLINES.kiran.tel} className="font-bold underline underline-offset-4">
+                {VERIFIED_HELPLINES.kiran.name} {VERIFIED_HELPLINES.kiran.number}
+              </a> ·{" "}
+              <a href={VERIFIED_HELPLINES.childline.tel} className="font-bold underline underline-offset-4">
+                {VERIFIED_HELPLINES.childline.name} {VERIFIED_HELPLINES.childline.number}
+              </a>
             </p>
           </div>
         )}
 
-        <p className="mt-6 text-[12px] leading-relaxed text-faint">This preview runs a simple keyword match in your browser. The app uses the trained model below.</p>
+        <p className="mt-6 text-[12px] leading-relaxed text-faint">This preview demonstrates the keyword matcher. The backend uses the hybrid TF-IDF + rules model.</p>
         <EvaluatorNote>
-          TF-IDF with One-vs-Rest logistic regression plus a rule-based safety scanner. 72.4% of notes with true clinical domains
-          flagged on first pass, 100% recall on self-harm and crisis flags in testing.
+          Hybrid TF-IDF One-vs-Rest model plus regex safety rule scanner. {claims.module_b_any_hit_rate.display} of notes with true clinical domains
+          flagged on first pass (n={claims.module_b_any_hit_rate.sample_size} unseen test scenarios), {claims.module_b_safety_recall.display} recall on crisis flags (n={claims.module_b_safety_recall.sample_size}),
+          and {claims.module_b_handwritten_eval.notes_n} independent handwritten clinical notes evaluated with {claims.module_b_handwritten_eval.safety_recall}% safety recall.
         </EvaluatorNote>
       </div>
 
@@ -353,7 +364,7 @@ function TrustChecks() {
       ok: "We notice if answers are too good to be true.",
       bad: `Flagged: ${endorsed} of ${aheadIdx.length} skills 6+ months ahead were marked “yes”. A short video check is suggested.`,
       flag: acq,
-      eval: "Acquiescence guard: flags when 60% or more of items 6+ months ahead are endorsed, and suggests a video check.",
+      eval: `Acquiescence guard: flags when ${claims.acquiescence_guard_threshold.display} or more of items 6+ months ahead are endorsed, and suggests a video check.`,
     },
     {
       title: "Consistency check",
@@ -479,7 +490,7 @@ export function Intake() {
   return (
     <section id="intake" className="relative overflow-hidden py-20 md:py-28" aria-labelledby="intake-title">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <Kicker index="08">Ages 6–12 · listening and checking</Kicker>
+        <Kicker index="08">Ages 5–12 (60–144 mo) · listening and checking</Kicker>
         <MaskedHeadline
           id="intake-title"
           lines={[{ text: "We listen first," }, { text: "then we check.", className: "text-apricot" }]}

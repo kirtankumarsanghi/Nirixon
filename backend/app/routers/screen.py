@@ -37,7 +37,8 @@ from app.core.triage_guard import (
     evaluate_live_tiered_triage,
     evaluate_response_guards,
 )
-from app.db.models import Answer, AuditLog, RiskResult, User
+from app.core.worker_service import get_suggested_workers
+from app.db.models import Answer, AuditLog, RiskResult, User, WorkerContactLog
 from app.db.models import ScreeningSession as DbSession
 from app.db.session import get_db
 from app.db.session_repo import SessionRepository, get_session_repo
@@ -65,6 +66,9 @@ from app.schemas.screen import (
     TeacherInviteResponse,
     TeacherItemPayload,
     TeacherItemsResponse,
+    WorkerContactRequest,
+    WorkerContactResponse,
+    WorkerSuggestion,
 )
 
 logger = logging.getLogger(__name__)
@@ -243,6 +247,26 @@ async def _run_completion_b(
                 )
             )
             await db.flush()
+
+            # Community & healthcare worker suggestions based on location and triage
+            suggested = await get_suggested_workers(
+                db,
+                city=db_row.location_city,
+                state=db_row.location_state,
+                pincode=db_row.location_pincode,
+                triage_tier=payload.triage_tier,
+                final_classification=payload.final_classification,
+                flagged_domains=payload.flagged_domains,
+            )
+            payload.suggested_workers = [WorkerSuggestion(**w) for w in suggested]
+            payload.child_name = db_row.child_name
+            payload.parent_name = db_row.parent_name
+            payload.parent_phone = db_row.parent_phone
+            payload.relationship_to_child = db_row.relationship_to_child
+            payload.location_pincode = db_row.location_pincode
+            payload.location_city = db_row.location_city
+            payload.location_state = db_row.location_state
+            payload.location_address = db_row.location_address
             return payload
 
     from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
@@ -315,6 +339,30 @@ async def _run_completion_b(
     )
     await db.flush()
 
+    flagged_b = [
+        dom
+        for dom, cls_val in domain_classifications.items()
+        if cls_val in ("Monitor", "Refer")
+    ]
+    triage_tier_b = (
+        "Tier 3: Direct Referral"
+        if final_classification == "Refer"
+        else (
+            "Tier 2: In-App Reflex Monitor"
+            if final_classification == "Monitor"
+            else "Tier 1: Routine Pass"
+        )
+    )
+    suggested_b = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier_b,
+        final_classification=final_classification,
+        flagged_domains=flagged_b,
+    )
+
     return ResultPayload(
         final_classification=final_classification,
         ml_classification=final_classification,
@@ -331,6 +379,16 @@ async def _run_completion_b(
         imputed_count=0,
         domain_classifications=domain_classifications,
         module=core.module,
+        triage_tier=triage_tier_b,
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+        suggested_workers=[WorkerSuggestion(**w) for w in suggested_b],
     )
 
 
@@ -484,7 +542,7 @@ async def _run_completion(
         )
     await db.flush()
 
-    return _result_payload_from_prediction(
+    res = _result_payload_from_prediction(
         pred,
         model_name=inference.production_model_name,
         stopping_reason=final.stopping_reason,
@@ -499,6 +557,26 @@ async def _run_completion(
         guard_flags=guard_flags,
         guard_advisories=guard_advisories,
     )
+    flagged_a = [dom for dom, score in domain_scores.items() if score > 0.3]
+    suggested_a = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=pred.final_classification,
+        flagged_domains=flagged_a,
+    )
+    res.suggested_workers = [WorkerSuggestion(**w) for w in suggested_a]
+    res.child_name = db_row.child_name
+    res.parent_name = db_row.parent_name
+    res.parent_phone = db_row.parent_phone
+    res.relationship_to_child = db_row.relationship_to_child
+    res.location_pincode = db_row.location_pincode
+    res.location_city = db_row.location_city
+    res.location_state = db_row.location_state
+    res.location_address = db_row.location_address
+    return res
 
 
 @router.post("/start", response_model=ScreenActionResponse)
@@ -540,6 +618,14 @@ async def start_screen(
         age_bracket=age_bracket,
         question_cap=body.question_cap,
         module=module,  # type: ignore[arg-type]
+        child_name=body.child_name,
+        parent_name=body.parent_name,
+        parent_phone=body.parent_phone,
+        relationship_to_child=body.relationship_to_child or "Parent",
+        location_pincode=body.location_pincode,
+        location_city=body.location_city,
+        location_state=body.location_state,
+        location_address=body.location_address,
     )
 
     db_row = DbSession(
@@ -551,6 +637,14 @@ async def start_screen(
         age_bracket=age_bracket,
         question_cap=body.question_cap,
         module=module,
+        child_name=body.child_name,
+        parent_name=body.parent_name,
+        parent_phone=body.parent_phone,
+        relationship_to_child=body.relationship_to_child or "Parent",
+        location_pincode=body.location_pincode,
+        location_city=body.location_city,
+        location_state=body.location_state,
+        location_address=body.location_address,
         state_json=core.to_dict(),
     )
     db.add(db_row)
@@ -559,7 +653,10 @@ async def start_screen(
             actor_id=user.id,
             action="screen.start",
             target_id=session_id,
-            detail=f"consent_given=true module={module}",
+            detail=(
+                f"consent_given=true module={module} "
+                f"city={body.location_city} pin={body.location_pincode}"
+            ),
         )
     )
     await db.flush()
@@ -807,6 +904,29 @@ async def get_result(
         raise HTTPException(status_code=409, detail="Session not yet complete")
 
     rr = db_row.risk_result
+    flagged = [
+        k
+        for k, v in (rr.domain_classifications or {}).items()
+        if v in ("Monitor", "Refer")
+    ]
+    triage_tier = (
+        "Tier 3: Direct Referral"
+        if rr.final_classification == "Refer"
+        else (
+            "Tier 2: In-App Reflex Monitor"
+            if rr.final_classification == "Monitor"
+            else "Tier 1: Routine Pass"
+        )
+    )
+    workers = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=rr.final_classification,
+        flagged_domains=flagged,
+    )
     return ResultPayload(
         final_classification=rr.final_classification,
         ml_classification=rr.ml_classification,
@@ -826,6 +946,18 @@ async def get_result(
         shap_values=rr.shap_values or {},
         stopping_reason=rr.stopping_reason,
         caveats=list(rr.caveats or []),
+        domain_classifications=getattr(rr, "domain_classifications", None) or {},
+        module=db_row.module,  # type: ignore[arg-type]
+        triage_tier=triage_tier,
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+        suggested_workers=[WorkerSuggestion(**w) for w in workers],
     )
 
 
@@ -861,6 +993,14 @@ async def get_session(
             consistency_flags=dict(telemetry.get("consistency_flags") or {}),
             module=core.module if core else "A",  # type: ignore[arg-type]
             real_answer_count=core.real_answer_count if core else None,
+            child_name=db_row.child_name,
+            parent_name=db_row.parent_name,
+            parent_phone=db_row.parent_phone,
+            relationship_to_child=db_row.relationship_to_child,
+            location_pincode=db_row.location_pincode,
+            location_city=db_row.location_city,
+            location_state=db_row.location_state,
+            location_address=db_row.location_address,
         )
 
     next_q = None
@@ -885,6 +1025,100 @@ async def get_session(
         next_question=next_q,
         module=core.module,  # type: ignore[arg-type]
         detected_domains=list(core.detected_domains),
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+    )
+
+
+@router.get("/{session_id}/workers", response_model=list[WorkerSuggestion])
+async def list_suggested_workers(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    db_row = await _load_owned_session(db, session_id, user.id, with_result=True)
+    final_cls = "Typical"
+    flagged = []
+    triage_tier = "Tier 1: Routine Pass"
+    if db_row.risk_result is not None:
+        final_cls = db_row.risk_result.final_classification
+        flagged = [
+            k
+            for k, v in (db_row.risk_result.domain_classifications or {}).items()
+            if v in ("Monitor", "Refer")
+        ]
+        triage_tier = (
+            "Tier 3: Direct Referral"
+            if final_cls == "Refer"
+            else (
+                "Tier 2: In-App Reflex Monitor"
+                if final_cls == "Monitor"
+                else "Tier 1: Routine Pass"
+            )
+        )
+
+    workers = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=final_cls,
+        flagged_domains=flagged,
+    )
+    return [WorkerSuggestion(**w) for w in workers]
+
+
+@router.post("/{session_id}/contact_worker", response_model=WorkerContactResponse)
+async def contact_worker(
+    session_id: str,
+    body: WorkerContactRequest,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    db_row = await _load_owned_session(db, session_id, user.id)
+    from app.db.models import CommunityWorker
+
+    stmt = select(CommunityWorker).where(CommunityWorker.id == body.worker_id)
+    res = await db.execute(stmt)
+    worker = res.scalar_one_or_none()
+
+    worker_name = worker.name if worker else "Community Health Worker"
+    worker_phone = worker.phone if worker else "104"
+    worker_role = worker.role if worker else "Healthcare Worker"
+
+    log_entry = WorkerContactLog(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        worker_id=body.worker_id,
+        worker_name=worker_name,
+        worker_role=worker_role,
+        parent_phone=db_row.parent_phone,
+        contact_channel=body.contact_method,
+        notes=body.notes,
+    )
+    db.add(log_entry)
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            action="worker.contact_initiated",
+            target_id=session_id,
+            detail=f"worker_id={body.worker_id} method={body.contact_method}",
+        )
+    )
+    await db.commit()
+
+    return WorkerContactResponse(
+        status="success",
+        worker_name=worker_name,
+        contact_phone=worker_phone,
+        message=f"Contact request logged for {worker_name}. You may reach out via {body.contact_method}.",
     )
 
 

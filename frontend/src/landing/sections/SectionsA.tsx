@@ -4,6 +4,9 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { PHOTOS, SHOWCASE } from "../data";
 import { EASE, Kicker, MaskedHeadline, StrikeText, TextTabs } from "../components/editorial";
 import { cn } from "../utils/cn";
+import claimsRegister from "../claims_register.json";
+
+const claims = claimsRegister.claims;
 
 /* ================================================================== */
 /*  Frameworks — outlined display type, not pills                      */
@@ -45,9 +48,9 @@ const STOPS = [
     photo: PHOTOS.early,
     alt: "An Indian mother sharing a joyful moment with her young daughter",
     old: "30–36 fixed questions for every child, 10+ minutes, scored by hand.",
-    fix: "12–18 personalized questions in under 5 minutes, scored the moment an answer changes.",
+    fix: `${claims.module_a_questions_range.display} in under 5 minutes, scored the moment an answer changes.`,
     oldStat: "30–36",
-    newStat: "12–18",
+    newStat: `${claims.module_a_questions_range.min}–${claims.module_a_questions_range.max}`,
     unit: "questions",
   },
   {
@@ -84,7 +87,7 @@ const STOPS = [
     photo: PHOTOS.scholar,
     alt: "Indian schoolgirls in uniform listening in a classroom",
     old: "Vision and hearing strain can look like inattention in a busy classroom.",
-    fix: "Vision & hearing is one of the 8 areas we check for ages 6–12, so it is looked at alongside attention.",
+    fix: "Vision & hearing is one of the 8 areas we check for ages 5–12, so it is looked at alongside attention.",
     oldStat: "—",
     newStat: "8",
     unit: "areas, incl. vision & hearing",
@@ -376,7 +379,7 @@ function Orbit({ m, photo }: { m: ModuleData; photo: string }) {
             {focus ? (
               <>
                 <strong className="text-bone">{focus[0]}</strong>
-                <span className="text-fog"> — {focus[1] || "one of the 8 areas checked for ages 6–12."}</span>
+                <span className="text-fog"> — {focus[1] || "one of the 8 areas checked for ages 5–12."}</span>
               </>
             ) : (
               <span className="text-faint">Hover an area to see what we look at.</span>
@@ -429,8 +432,8 @@ export function Modules() {
             value={id}
             onChange={setId}
             items={[
-              { id: "early", label: "0–60 months", meta: "6 areas of development" },
-              { id: "scholar", label: "6–12 years", meta: "8 areas of functioning" },
+              { id: "early", label: "0–60 months (0–5 yrs)", meta: "6 areas of development" },
+              { id: "scholar", label: "5–12 years (60–144 mo)", meta: "8 areas of functioning" },
             ]}
           />
         </div>

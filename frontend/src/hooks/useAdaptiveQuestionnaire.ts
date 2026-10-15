@@ -56,6 +56,14 @@ export interface AdaptiveQuestionnaireState {
     question_cap?: 10 | 15 | 20;
     consent_given?: boolean;
     module?: "A" | "B";
+    child_name?: string;
+    parent_name?: string;
+    parent_phone?: string;
+    relationship_to_child?: string;
+    location_pincode?: string;
+    location_city?: string;
+    location_state?: string;
+    location_address?: string;
   }) => Promise<{ type: string } | undefined>;
   advanceAfterIntake: (detectedDomains: string[], intakeAction?: ScreenActionResponse | null) => Promise<void>;
   submitAnswer: (answer: number) => Promise<void>;
@@ -295,6 +303,14 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
       question_cap?: 10 | 15 | 20;
       consent_given?: boolean;
       module?: "A" | "B";
+      child_name?: string;
+      parent_name?: string;
+      parent_phone?: string;
+      relationship_to_child?: string;
+      location_pincode?: string;
+      location_city?: string;
+      location_state?: string;
+      location_address?: string;
     }) => {
       clearSessionId();
       setSessionId(null);
@@ -320,6 +336,14 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
           question_cap: opts.question_cap ?? 10,
           consent_given: opts.consent_given ?? true,
           module: opts.module,
+          child_name: opts.child_name,
+          parent_name: opts.parent_name,
+          parent_phone: opts.parent_phone,
+          relationship_to_child: opts.relationship_to_child,
+          location_pincode: opts.location_pincode,
+          location_city: opts.location_city,
+          location_state: opts.location_state,
+          location_address: opts.location_address,
         });
         const next = applyAction(action, new Set(), {});
         applyNext(next);

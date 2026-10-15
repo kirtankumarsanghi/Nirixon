@@ -95,6 +95,18 @@ class ScreeningSession(Base):
     pending_item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     module_b_state: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
 
+    # Caregiver, Child & Location Profile
+    child_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    parent_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    parent_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    relationship_to_child: Mapped[str | None] = mapped_column(
+        String(64), default="Parent", nullable=True
+    )
+    location_pincode: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    location_city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_state: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     parent: Mapped[User] = relationship(back_populates="sessions")
     answers: Mapped[list[Answer]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
@@ -167,6 +179,56 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(128))
     target_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class CommunityWorker(Base):
+    __tablename__ = "community_workers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128))
+    # Role: "ASHA Worker", "Anganwadi Worker / ICDS", "DEIC Pediatrician", "RBSK Medical Officer",
+    # "Speech & Language Therapist", "Developmental Physiotherapist", "Child Psychologist"
+    role: Mapped[str] = mapped_column(String(64))
+    facility_name: Mapped[str] = mapped_column(String(192))
+    phone: Mapped[str] = mapped_column(String(32))
+    whatsapp: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    city: Mapped[str] = mapped_column(String(128), index=True)
+    district: Mapped[str] = mapped_column(String(128), index=True)
+    state: Mapped[str] = mapped_column(String(128), index=True)
+    pincode_prefix: Mapped[str] = mapped_column(String(16), index=True)
+    specialties: Mapped[list] = mapped_column(JsonType, default=list)
+    tier_scope: Mapped[str] = mapped_column(
+        String(32), default="all"
+    )  # all, tier1_routine, tier2_monitor, tier3_referral
+    operating_hours: Mapped[str] = mapped_column(
+        String(64), default="9:00 AM - 4:00 PM"
+    )
+    languages: Mapped[list] = mapped_column(
+        JsonType, default=lambda: ["Hindi", "English"]
+    )
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class WorkerContactLog(Base):
+    __tablename__ = "worker_contact_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("screening_sessions.id"), index=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    worker_name: Mapped[str] = mapped_column(String(128))
+    worker_role: Mapped[str] = mapped_column(String(64))
+    parent_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    contact_channel: Mapped[str] = mapped_column(String(32), default="call")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )

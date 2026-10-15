@@ -12,6 +12,9 @@ import type {
   TeacherAnswerRequest,
   TeacherAnswerResponse,
   TeacherItemsResponse,
+  WorkerContactRequest,
+  WorkerContactResponse,
+  WorkerSuggestion,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -207,4 +210,25 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+
+  /** Get suggested community healthcare workers (ASHA, Anganwadi, DEIC, RBSK). */
+  getWorkers(sessionId: string): Promise<WorkerSuggestion[]> {
+    return request<WorkerSuggestion[]>(`/api/screen/${sessionId}/workers`);
+  },
+
+  /** Log request to connect with a healthcare or community worker. */
+  contactWorker(
+    sessionId: string,
+    body: WorkerContactRequest,
+  ): Promise<WorkerContactResponse> {
+    return request<WorkerContactResponse>(
+      `/api/screen/${sessionId}/contact_worker`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+  },
 };
+
+export const screenApi = api;

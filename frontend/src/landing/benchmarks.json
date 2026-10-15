@@ -1,0 +1,21 @@
+{
+  "source": "backend/ml/artifacts/metrics.json and latency_benchmark.json",
+  "timestamp": "2026-10-12 09:58:31",
+  "macro_auroc": 0.978,
+  "macro_f1": 0.9,
+  "refer_precision_pct": 87.4,
+  "refer_recall_pct": 81.1,
+  "refer_f1_pct": 84.1,
+  "refer_specificity_pct": 99.1,
+  "refer_auprc": 0.891,
+  "typical_specificity_pct": 94.0,
+  "p50_latency_ms": 14.3,
+  "p95_latency_ms": 27.0,
+  "p99_latency_ms": 36.9,
+  "adaptive_questions_min": 12,
+  "adaptive_questions_max": 18,
+  "paper_questions_min": 30,
+  "paper_questions_max": 36,
+  "paper_precision_pct": 38.5,
+  "paper_false_worry_pct": 11.9
+}

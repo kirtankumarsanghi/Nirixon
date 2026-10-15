@@ -11,6 +11,8 @@ import { CheckInSnapshotCard } from "./CheckInSnapshotCard";
 import { Link } from "react-router-dom";
 import { PageNav } from "./PageNav";
 
+import { SuggestedWorkersSection } from "./SuggestedWorkersSection";
+
 interface Props {
   result: ResultPayload;
   sessionId?: string | null;
@@ -49,6 +51,7 @@ export function ResultsView({
     return (
       <OverrideResultsLayout
         result={result}
+        sessionId={sessionId}
         correctedAgeMonths={correctedAgeMonths}
         childRef={childRef}
         coveredDomainCount={coveredDomainCount}
@@ -59,6 +62,7 @@ export function ResultsView({
   return (
     <StandardResultsLayout
       result={result}
+      sessionId={sessionId}
       correctedAgeMonths={correctedAgeMonths}
       childRef={childRef}
       coveredDomainCount={coveredDomainCount}
@@ -69,11 +73,12 @@ export function ResultsView({
 
 function StandardResultsLayout({
   result,
+  sessionId,
   correctedAgeMonths,
   childRef,
   coveredDomainCount,
   onStartOver,
-}: Omit<Props, "sessionId">) {
+}: Props) {
   const isRefer = result.final_classification === "Refer";
 
   return (
@@ -103,6 +108,7 @@ function StandardResultsLayout({
         coveredDomainCount={coveredDomainCount}
       />
       <DomainBreakdownChart result={result} />
+      <SuggestedWorkersSection result={result} sessionId={sessionId} />
       <nav className="results__related" aria-label="Related tools">
         <p className="eyebrow">Explore from this result</p>
         <ul>
@@ -150,11 +156,12 @@ function StandardResultsLayout({
 
 function OverrideResultsLayout({
   result,
+  sessionId,
   correctedAgeMonths,
   childRef,
   coveredDomainCount,
   onStartOver,
-}: Omit<Props, "sessionId">) {
+}: Props) {
   return (
     <section
       className="results results--override"
@@ -195,6 +202,7 @@ function OverrideResultsLayout({
         coveredDomainCount={coveredDomainCount}
       />
       <DomainBreakdownChart result={result} />
+      <SuggestedWorkersSection result={result} sessionId={sessionId} />
       <nav className="results__related" aria-label="Related tools">
         <p className="eyebrow">Explore from this result</p>
         <ul>

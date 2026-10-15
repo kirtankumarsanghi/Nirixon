@@ -32,7 +32,7 @@ function GrowthCurve() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <TextTabs label="Growth scenario" value={key} onChange={setKey} items={(Object.keys(CURVES) as CurveKey[]).map((k) => ({ id: k, label: CURVES[k].label }))} />
-        <SampleBadge />
+        <SampleBadge>Coming next · Sample data</SampleBadge>
       </div>
 
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-6 w-full overflow-visible" role="img" aria-label={`Growth curve: ${CURVES[key].label}`}>
@@ -79,7 +79,7 @@ function GrowthCurve() {
           <span key={i} className="text-fog">
             Visit {i + 1}→{i + 2}:{" "}
             <strong className="font-mono" style={{ color: r < 0.5 ? TIER_COLORS.amber : TIER_COLORS.green }}>
-              {Math.round(r * 100)}% of expected pace
+              {r < 0.5 ? "Below expected pace" : "Expected pace"}
             </strong>
           </span>
         ))}
@@ -167,13 +167,13 @@ function TouchGame() {
       <div>
         <p className="max-w-md text-[15.5px] leading-relaxed text-fog">
           Short tap-and-trace games measure reaction time, path accuracy and hand steadiness. The reaction game runs live in
-          your browser.
+          your browser; trace and steadiness tasks are on the development roadmap.
         </p>
         <dl className="mt-8 border-t border-bone/15">
           {[
-            ["Reaction time", avg ? `${avg} ms` : times.length ? times.map((t) => `${t}`).join(" · ") + " ms" : "Play →", "Measured now", true],
-            ["Path accuracy", "92%", "Sample value", false],
-            ["Hand steadiness", "Steady", "Sample value", false],
+            ["Reaction time", avg ? `${avg} ms` : times.length ? times.map((t) => `${t}`).join(" · ") + " ms" : "Play →", "Measured live", true],
+            ["Path accuracy", "Sample data", "Coming next", false],
+            ["Hand steadiness", "Sample data", "Coming next", false],
           ].map(([k, v, src, live]) => (
             <div key={String(k)} className="flex items-baseline justify-between gap-4 border-b border-bone/15 py-4">
               <dt className="text-[14px] font-bold text-bone">{k}</dt>
@@ -210,7 +210,7 @@ function JointFamily() {
         <p className="max-w-xl text-[15.5px] leading-relaxed text-fog">
           Mother, father and grandparents answer separately and we compare. Tap a person to include or leave them out.
         </p>
-        <SampleBadge />
+        <SampleBadge>Coming next · Sample data</SampleBadge>
       </div>
       <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-faint">Question · How does your child climb stairs?</p>
 
@@ -334,8 +334,8 @@ export function Toolkit() {
               </motion.div>
             </AnimatePresence>
             <EvaluatorNote className="mt-8">
-              Growth-curve, touch and joint-family values on this page are sample data for demonstration. The reaction-time game
-              measures your own taps live.
+              Growth-curve, touch tasks and joint-family modes are prototype features showing sample data. They are marked as
+              Coming next on our clinical roadmap. The reaction game measures your taps live in the browser.
             </EvaluatorNote>
           </div>
           </div>

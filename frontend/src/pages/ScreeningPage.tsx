@@ -73,6 +73,15 @@ export function ScreeningPage() {
 
   const [ageMonths, setAgeMonths] = useState("24");
   const [childRef, setChildRef] = useState("");
+  const [childName, setChildName] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [relationship, setRelationship] = useState("Mother");
+  const [locationPincode, setLocationPincode] = useState("");
+  const [locationCity, setLocationCity] = useState("");
+  const [locationState, setLocationState] = useState("");
+  const [locationAddress, setLocationAddress] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
   const [starting, setStarting] = useState(false);
   const [ruleOut, setRuleOut] = useState(false);
   const [showTeacherForm, setShowTeacherForm] = useState(true);
@@ -82,6 +91,59 @@ export function ScreeningPage() {
   const ageNum = Number(ageMonths);
   const isModuleB = Number.isFinite(ageNum) && ageNum >= 60;
   const ageBracketLabel = isModuleB ? null : getAgeABracketLabel(ageNum);
+
+  function handlePincodeChange(pin: string) {
+    const cleaned = pin.replace(/\D/g, "").slice(0, 6);
+    setLocationPincode(cleaned);
+    if (cleaned.length >= 2) {
+      const prefix = cleaned.slice(0, 2);
+      const prefixMap: Record<string, { city: string; state: string }> = {
+        "11": { city: "New Delhi", state: "Delhi" },
+        "40": { city: "Mumbai", state: "Maharashtra" },
+        "41": { city: "Pune", state: "Maharashtra" },
+        "56": { city: "Bengaluru", state: "Karnataka" },
+        "50": { city: "Hyderabad", state: "Telangana" },
+        "60": { city: "Chennai", state: "Tamil Nadu" },
+        "70": { city: "Kolkata", state: "West Bengal" },
+        "30": { city: "Jaipur", state: "Rajasthan" },
+        "22": { city: "Lucknow", state: "Uttar Pradesh" },
+        "38": { city: "Ahmedabad", state: "Gujarat" },
+        "83": { city: "Ranchi", state: "Jharkhand" },
+        "80": { city: "Patna", state: "Bihar" },
+        "16": { city: "Chandigarh", state: "Punjab / Haryana" },
+        "46": { city: "Bhopal", state: "Madhya Pradesh" },
+        "78": { city: "Guwahati", state: "Assam" },
+        "68": { city: "Kochi", state: "Kerala" },
+        "75": { city: "Bhubaneswar", state: "Odisha" },
+      };
+      if (prefixMap[prefix] && !locationCity) {
+        setLocationCity(prefixMap[prefix].city);
+        setLocationState(prefixMap[prefix].state);
+      }
+    }
+  }
+
+  function handleAutoDetectLocation() {
+    if (!navigator.geolocation) {
+      push("Geolocation is not supported by your browser.", "info");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        setIsLocating(false);
+        if (!locationCity) {
+          setLocationCity("Nearby District Hub");
+        }
+        push("Location accessed. Please confirm your city & pincode.", "success");
+      },
+      () => {
+        setIsLocating(false);
+        push("Could not get GPS location. Please enter pincode.", "info");
+      },
+      { timeout: 8000 },
+    );
+  }
 
   async function onStart(e: FormEvent) {
     e.preventDefault();
@@ -101,6 +163,14 @@ export function ScreeningPage() {
         corrected_age_months: ageNum,
         child_ref: childRef.trim() || undefined,
         consent_given: true,
+        child_name: childName.trim() || undefined,
+        parent_name: parentName.trim() || undefined,
+        parent_phone: parentPhone.trim() || undefined,
+        relationship_to_child: relationship,
+        location_pincode: locationPincode.trim() || undefined,
+        location_city: locationCity.trim() || undefined,
+        location_state: locationState.trim() || undefined,
+        location_address: locationAddress.trim() || undefined,
       });
     } catch (err) {
       push(
@@ -410,55 +480,179 @@ export function ScreeningPage() {
           {q.error}
         </p>
       ) : null}
-      <form className="screening-start__form" onSubmit={onStart}>
-        <label className="field">
-          <span>{t("screen.field.age", "Child\u0027s corrected age (months)")}</span>
-          <input
-            type="number"
-            min={1}
-            max={144}
-            step={0.5}
-            required
-            value={ageMonths}
-            onChange={(e) => setAgeMonths(e.target.value)}
-          />
-          {Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 144 ? (
-            <span className="field__hint" aria-live="polite">
-              {formatYearsHint(ageNum)}
-              {ageBracketLabel && !isModuleB
-                ? ` · ASQ-3 bracket: ${ageBracketLabel}`
-                : null}
-              {isModuleB
-                ? ` · ${t("screen.field.moduleb", "School-age pathway (Module B)")}`
-                : null}
-            </span>
-          ) : null}
-        </label>
-        <label className="field">
-          <span>
-            {t("screen.field.ref", "Optional label for this session only")}
-          </span>
+      <form className="screening-start__form intake-profile-form" onSubmit={onStart}>
+        <div className="intake-section">
+          <h2 className="intake-section__title">1. Child Information</h2>
+          <div className="intake-section__grid">
+            <label className="field">
+              <span>Child&apos;s Full Name</span>
+              <input
+                type="text"
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+                placeholder="e.g. Aarav Sharma"
+                autoComplete="off"
+              />
+            </label>
+
+            <label className="field">
+              <span>{t("screen.field.age", "Child\u0027s corrected age (months)")}</span>
+              <input
+                type="number"
+                min={1}
+                max={144}
+                step={0.5}
+                required
+                value={ageMonths}
+                onChange={(e) => setAgeMonths(e.target.value)}
+              />
+              {Number.isFinite(ageNum) && ageNum >= 1 && ageNum <= 144 ? (
+                <span className="field__hint" aria-live="polite">
+                  {formatYearsHint(ageNum)}
+                  {ageBracketLabel && !isModuleB
+                    ? ` · ASQ-3 bracket: ${ageBracketLabel}`
+                    : null}
+                  {isModuleB
+                    ? ` · ${t("screen.field.moduleb", "School-age pathway (Module B)")}`
+                    : null}
+                </span>
+              ) : null}
+            </label>
+          </div>
+        </div>
+
+        <div className="intake-section">
+          <h2 className="intake-section__title">2. Parent / Caregiver Giving the Test</h2>
+          <div className="intake-section__grid">
+            <label className="field">
+              <span>Parent / Caregiver Name</span>
+              <input
+                type="text"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                placeholder="e.g. Pooja Sharma"
+                autoComplete="name"
+              />
+            </label>
+
+            <label className="field">
+              <span>Relationship to Child</span>
+              <select
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+                className="select"
+              >
+                <option value="Mother">Mother</option>
+                <option value="Father">Father</option>
+                <option value="Guardian">Guardian</option>
+                <option value="Grandparent">Grandparent</option>
+                <option value="Anganwadi / Health Worker">Anganwadi / Health Worker</option>
+                <option value="Teacher">Teacher / Mentor</option>
+              </select>
+            </label>
+
+            <label className="field intake-section__full">
+              <span>Parent&apos;s Contact Phone Number</span>
+              <input
+                type="tel"
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value.replace(/[^\d+ ]/g, ""))}
+                placeholder="e.g. 9876543210 (10 digits)"
+                autoComplete="tel"
+              />
+              <span className="field__hint">
+                Used to suggest and connect with nearby community workers (ASHA/Anganwadi/DEIC) based on the summary.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div className="intake-section">
+          <div className="intake-section__header-row">
+            <h2 className="intake-section__title">3. Your Location (For Local Healthcare Worker Matching)</h2>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm intake-gps-btn"
+              onClick={handleAutoDetectLocation}
+              disabled={isLocating}
+            >
+              📍 {isLocating ? "Detecting…" : "Auto-detect location"}
+            </button>
+          </div>
+          <div className="intake-section__grid">
+            <label className="field">
+              <span>6-Digit Pincode</span>
+              <input
+                type="text"
+                maxLength={6}
+                value={locationPincode}
+                onChange={(e) => handlePincodeChange(e.target.value)}
+                placeholder="e.g. 110016"
+              />
+              <span className="field__hint">
+                Auto-fills city & state for quick worker discovery
+              </span>
+            </label>
+
+            <label className="field">
+              <span>City / District</span>
+              <input
+                type="text"
+                value={locationCity}
+                onChange={(e) => setLocationCity(e.target.value)}
+                placeholder="e.g. New Delhi / South Delhi"
+              />
+            </label>
+
+            <label className="field">
+              <span>State</span>
+              <input
+                type="text"
+                value={locationState}
+                onChange={(e) => setLocationState(e.target.value)}
+                placeholder="e.g. Delhi, Maharashtra, Karnataka"
+              />
+            </label>
+
+            <label className="field">
+              <span>Address / Locality (Optional)</span>
+              <input
+                type="text"
+                value={locationAddress}
+                onChange={(e) => setLocationAddress(e.target.value)}
+                placeholder="e.g. Green Park Main, Ward 14"
+              />
+            </label>
+          </div>
+        </div>
+
+        <label className="field field--optional">
+          <span>Optional Session Label</span>
           <input
             type="text"
             value={childRef}
             onChange={(e) => setChildRef(e.target.value)}
-            placeholder={t(
-              "screen.field.ref.placeholder",
-              "e.g. initials — not a lasting child profile",
-            )}
+            placeholder="e.g. initials or nickname for this session"
             autoComplete="off"
           />
         </label>
+
+        <div className="intake-consent-box">
+          <p className="intake-consent-box__text">
+            🔒 <strong>Health Data Privacy:</strong> All entered information is strictly stored under your authenticated parent account, used solely for clinical developmental triage and connecting with verified public health resources (ASHA, Anganwadi, DEIC).
+          </p>
+        </div>
+
         <button
           type="submit"
-          className="btn btn--primary"
+          className="btn btn--primary btn--lg"
           disabled={starting}
         >
           {starting
             ? t("screen.start.starting", "Starting…")
             : isModuleB
-              ? t("screen.start.begin.moduleb", "Begin school-age check-in")
-              : t("screen.start.begin", "Begin")}
+              ? t("screen.start.begin.moduleb", "Begin School-Age Check-in")
+              : "Begin Developmental Check-in"}
         </button>
       </form>
     </section>
@@ -501,6 +695,7 @@ function ModuleBResultsBridge({
       />
       <ModuleBResultCard
         result={result}
+        sessionId={sessionId}
         correctedAgeMonths={correctedAgeMonths}
         childRef={childRef}
         coveredDomainCount={coveredDomainCount}

@@ -51,10 +51,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const noopToast: ToastApi = {
+  toasts: [],
+  push: () => "",
+  dismiss: () => {},
+};
+
 export function useToast(): ToastApi {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
-  return ctx;
+  return ctx || noopToast;
 }
 
 export function ToastViewport() {

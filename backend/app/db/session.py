@@ -98,18 +98,32 @@ async def init_db() -> None:
         if conn.dialect.name == "sqlite":
             result = await conn.execute(text("PRAGMA table_info(screening_sessions)"))
             columns = {row[1] for row in result.fetchall()}
-            if columns and "pending_item_id" not in columns:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE screening_sessions ADD COLUMN pending_item_id VARCHAR(64)"
+            new_cols = [
+                ("pending_item_id", "VARCHAR(64)"),
+                ("module_b_state", "JSON"),
+                ("child_name", "VARCHAR(128)"),
+                ("parent_name", "VARCHAR(128)"),
+                ("parent_phone", "VARCHAR(32)"),
+                ("relationship_to_child", "VARCHAR(64)"),
+                ("location_pincode", "VARCHAR(16)"),
+                ("location_city", "VARCHAR(128)"),
+                ("location_state", "VARCHAR(128)"),
+                ("location_address", "VARCHAR(255)"),
+            ]
+            for col_name, col_type in new_cols:
+                if columns and col_name not in columns:
+                    await conn.execute(
+                        text(
+                            f"ALTER TABLE screening_sessions ADD COLUMN {col_name} {col_type}"
+                        )
                     )
-                )
-            if columns and "module_b_state" not in columns:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE screening_sessions ADD COLUMN module_b_state JSON"
-                    )
-                )
+
+    # Seed community healthcare workers
+    factory = get_session_factory()
+    async with factory() as db:
+        from app.core.worker_service import seed_community_workers
+
+        await seed_community_workers(db)
 
 
 # Expose `engine` for code that imports it directly

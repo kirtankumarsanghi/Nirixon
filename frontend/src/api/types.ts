@@ -25,6 +25,14 @@ export interface StartScreenRequest {
   module?: "A" | "B";
   /** Must be true; recorded server-side in the session audit trail. */
   consent_given: boolean;
+  child_name?: string | null;
+  parent_name?: string | null;
+  parent_phone?: string | null;
+  relationship_to_child?: string | null;
+  location_pincode?: string | null;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_address?: string | null;
 }
 
 export interface AnswerRequest {
@@ -121,6 +129,50 @@ export interface ResultPayload {
   safety?: boolean;
   /** Module B: disclaimer text from the API. */
   disclaimer?: string | null;
+  /** Clinical triage tier (Tier 1: Routine, Tier 2: Reflex Monitor, Tier 3: Direct Referral) */
+  triage_tier?: string | null;
+  child_name?: string | null;
+  parent_name?: string | null;
+  parent_phone?: string | null;
+  relationship_to_child?: string | null;
+  location_pincode?: string | null;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_address?: string | null;
+  suggested_workers?: WorkerSuggestion[];
+}
+
+export interface WorkerSuggestion {
+  id: string;
+  name: string;
+  role: string;
+  facility_name?: string | null;
+  phone: string;
+  whatsapp?: string | null;
+  email?: string | null;
+  city?: string | null;
+  district?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  distance_hint?: string | null;
+  recommendation_reason?: string | null;
+  operating_hours?: string | null;
+  tier_relevance?: string | null;
+  free_service?: boolean;
+  actions?: string[];
+}
+
+export interface WorkerContactRequest {
+  worker_id: string;
+  contact_method: "call" | "sms" | "whatsapp" | "in_person";
+  notes?: string | null;
+}
+
+export interface WorkerContactResponse {
+  status: string;
+  worker_name: string;
+  contact_phone: string;
+  message: string;
 }
 
 /** Module B action types include recall_help, safety_notice, and done. */
@@ -220,4 +272,12 @@ export interface SessionStateResponse {
   /** Present on newer backends; omit/unknown → infer from age. */
   module?: "A" | "B";
   detected_domains?: string[];
+  child_name?: string | null;
+  parent_name?: string | null;
+  parent_phone?: string | null;
+  relationship_to_child?: string | null;
+  location_pincode?: string | null;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_address?: string | null;
 }

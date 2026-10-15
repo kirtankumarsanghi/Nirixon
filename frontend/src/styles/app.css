@@ -1340,3 +1340,293 @@ section.intake {
   margin: 0;
   font-size: 0.95rem;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Intake Profile & Location Styles                                           */
+/* -------------------------------------------------------------------------- */
+
+.intake-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.intake-section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: 0 1px 3px rgba(38, 36, 31, 0.04);
+}
+
+.intake-section__title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.intake-section__header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-2);
+}
+
+.intake-section__header-row .intake-section__title {
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.intake-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+}
+
+.intake-section__full {
+  grid-column: 1 / -1;
+}
+
+.select {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid rgba(38, 36, 31, 0.2);
+  border-radius: var(--radius);
+  background: #fffdf8;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.intake-gps-btn {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.intake-consent-box {
+  background: rgba(46, 107, 105, 0.07);
+  border-left: 3px solid var(--teal);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+
+.intake-consent-box__text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Suggested Healthcare & Early Intervention Workers Section                  */
+/* -------------------------------------------------------------------------- */
+
+.suggested-workers {
+  margin: var(--space-6) 0;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(38, 36, 31, 0.04);
+}
+
+.suggested-workers__header {
+  margin-bottom: var(--space-5);
+}
+
+.suggested-workers__header h2 {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--ink);
+}
+
+.suggested-workers__subtitle {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.suggested-workers__profile-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(38, 36, 31, 0.03);
+  border-radius: var(--radius);
+  border: 1px dashed var(--line);
+}
+
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.85rem;
+  background: #ffffff;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+
+.profile-badge__label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.profile-badge__val {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.profile-badge--tier {
+  background: rgba(46, 107, 105, 0.1);
+  border-color: rgba(46, 107, 105, 0.3);
+}
+
+.profile-badge--tier .profile-badge__val {
+  color: var(--teal);
+}
+
+.suggested-workers__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--space-4);
+}
+
+.worker-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--teal);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  box-shadow: 0 2px 6px rgba(38, 36, 31, 0.03);
+  transition: transform var(--ease), box-shadow var(--ease);
+}
+
+.worker-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(38, 36, 31, 0.07);
+}
+
+.worker-card__top {
+  margin-bottom: var(--space-3);
+}
+
+.worker-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.worker-card__role-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(46, 107, 105, 0.12);
+  color: var(--teal);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+}
+
+.worker-card__free-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(108, 122, 82, 0.14);
+  color: var(--moss);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+}
+
+.worker-card__name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-1);
+}
+
+.worker-card__facility {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.worker-card__details {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: var(--space-4);
+}
+
+.worker-card__details p {
+  margin: 0 0 var(--space-2);
+}
+
+.worker-card__location {
+  color: var(--ink);
+}
+
+.worker-card__reason {
+  color: #3f3d37;
+  background: rgba(38, 36, 31, 0.03);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+}
+
+.worker-card__hours {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.worker-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.worker-card__actions .btn {
+  flex: 1 1 auto;
+  text-align: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.btn--contacted {
+  background: rgba(108, 122, 82, 0.15) !important;
+  color: var(--moss) !important;
+  border-color: var(--moss) !important;
+  cursor: default !important;
+}
+
+.suggested-workers__loading,
+.suggested-workers__empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--muted);
+  background: rgba(38, 36, 31, 0.02);
+  border-radius: var(--radius);
+}

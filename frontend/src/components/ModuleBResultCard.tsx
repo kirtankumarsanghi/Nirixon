@@ -7,6 +7,7 @@ import { CheckInSnapshotCard } from "./CheckInSnapshotCard";
 import { DomainBreakdownChart } from "./DomainBreakdownChart";
 import { ExportableSummary } from "./ExportableSummary";
 import { CalendarReminderButton } from "./CalendarReminderButton";
+import { SuggestedWorkersSection } from "./SuggestedWorkersSection";
 
 /**
  * Module B result view — school-age (5–12 years) pathway.
@@ -48,6 +49,7 @@ function ConsistencyBar({ score }: ConsistencyBarProps) {
 
 interface Props {
   result: ResultPayload;
+  sessionId?: string | null;
   correctedAgeMonths?: number | null;
   childRef?: string;
   coveredDomainCount?: number;
@@ -56,6 +58,7 @@ interface Props {
 
 export function ModuleBResultCard({
   result,
+  sessionId,
   correctedAgeMonths,
   childRef,
   coveredDomainCount,
@@ -138,6 +141,8 @@ export function ModuleBResultCard({
           </p>
         </div>
       ) : null}
+
+      <SuggestedWorkersSection result={result} sessionId={sessionId} />
 
       <ExportableSummary
         result={result}

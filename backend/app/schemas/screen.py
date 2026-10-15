@@ -30,6 +30,15 @@ class StartScreenRequest(BaseModel):
     consent_given: bool = Field(
         ..., description="Parent informed-consent acknowledgment"
     )
+    # Caregiver, Child & Location Profile
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = "Parent"
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
 
 
 class AnswerRequest(BaseModel):
@@ -73,6 +82,39 @@ class QuestionPayload(BaseModel):
 class ShapFeature(BaseModel):
     feature: str
     shap_value: float
+
+
+class WorkerSuggestion(BaseModel):
+    id: str
+    name: str
+    role: str
+    facility_name: str | None = None
+    phone: str
+    whatsapp: str | None = None
+    email: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    distance_hint: str | None = None
+    recommendation_reason: str | None = None
+    operating_hours: str | None = None
+    tier_relevance: str | None = None
+    free_service: bool = True
+    actions: list[str] = Field(default_factory=list)
+
+
+class WorkerContactRequest(BaseModel):
+    worker_id: str
+    contact_method: Literal["call", "sms", "whatsapp", "in_person"] = "call"
+    notes: str | None = None
+
+
+class WorkerContactResponse(BaseModel):
+    status: str
+    worker_name: str
+    contact_phone: str
+    message: str
 
 
 class ResultPayload(BaseModel):
@@ -120,6 +162,17 @@ class ResultPayload(BaseModel):
     # Reporting Quality & Behavioral Guards
     guard_flags: dict[str, bool] = Field(default_factory=dict)
     guard_advisories: list[str] = Field(default_factory=list)
+    # Caregiver, Child & Location Profile
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = None
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
+    # Suggested Early Intervention & Community Health Workers
+    suggested_workers: list[WorkerSuggestion] = Field(default_factory=list)
 
 
 class ScreenActionResponse(BaseModel):
@@ -233,3 +286,11 @@ class SessionStateResponse(BaseModel):
     extra: dict[str, Any] | None = None
     module: Literal["A", "B"] = "A"
     detected_domains: list[str] = []
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = None
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
