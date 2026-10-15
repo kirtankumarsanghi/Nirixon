@@ -1,0 +1,785 @@
+"""Seed clauses for rule-out, safety and context labels, plus negatives,
+vague/neutral texts and wrapper phrases. Same token conventions as
+seeds_core.py. (english, hinglish, hindi)
+"""
+
+# group -> (labels attached to every entry in the group, [entries])
+OTHER = {}
+
+OTHER["vision_hearing"] = (
+    ["vision_hearing"],
+    [
+        (
+            "squints at the board and says the letters look blurry",
+            "board par aankhein sikodta hai aur kehta hai akshar dhundhle dikhte hain",
+            "बोर्ड पर आँखें सिकोड़ता है और कहता है अक्षर धुंधले दिखते हैं",
+        ),
+        (
+            "sits very close to the TV and holds the phone right in front of {his} face",
+            "TV ke bahut paas baithta hai aur phone aankhon ke bilkul saamne pakadta hai",
+            "टीवी के बहुत पास बैठता है और फ़ोन आँखों के बिल्कुल सामने पकड़ता है",
+        ),
+        (
+            "gets headaches and watery eyes after reading for a short time",
+            "thodi der padhne ke baad sar dard aur aankhon se paani aata hai",
+            "थोड़ी देर पढ़ने के बाद सिर दर्द और आँखों से पानी आता है",
+        ),
+        (
+            "tilts {his} head to look at things",
+            "cheezein dekhne ke liye sar tedha karta hai",
+            "चीज़ें देखने के लिए सिर टेढ़ा करता है",
+        ),
+        (
+            "keeps the TV volume very high and still asks what was said",
+            "TV ki awaaz bahut tez rakhta hai phir bhi poochta hai kya bola",
+            "टीवी की आवाज़ बहुत तेज़ रखता है फिर भी पूछता है क्या बोला",
+        ),
+        (
+            "does not answer when I call from behind or from another room",
+            "peeche se ya doosre kamre se awaaz do to jawab nahi deta",
+            "पीछे से या दूसरे कमरे से आवाज़ दो तो जवाब नहीं देता",
+        ),
+        (
+            "has had repeated ear pain and infections",
+            "baar baar kaan mein dard aur infection hota hai",
+            "बार-बार कान में दर्द और इन्फेक्शन होता है",
+        ),
+        (
+            "cannot see the blackboard from the back bench but can read the same thing close up",
+            "peeche ki bench se board nahi padh pata par paas se padh leta hai",
+            "पीछे की बेंच से बोर्ड नहीं पढ़ पाता पर पास से पढ़ लेता है",
+        ),
+        (
+            "watches my lips when I talk and asks me to say it again",
+            "baat karte waqt mere hothon ko dekhta hai aur dobara bolne ko kehta hai",
+            "बात करते समय मेरे होंठों को देखता है और दोबारा बोलने को कहता है",
+        ),
+        (
+            "has never had an eye test and the teacher says {he} cannot see the board",
+            "aankhein kabhi check nahi karwayi aur teacher kehti hain board nahi dikhta",
+            "आँखें कभी चेक नहीं करवाईं और टीचर कहती हैं बोर्ड नहीं दिखता",
+        ),
+    ],
+)
+
+OTHER["global_asd"] = (
+    ["global_asd"],
+    [
+        (
+            "does not make eye contact and looks away whenever people talk to {him}",
+            "baat karte waqt aankhon mein aankhein nahi daalta",
+            "बात करते समय आँखों में आँखें नहीं डालता",
+        ),
+        (
+            "lines up toys in a row for hours and gets very upset if we move one",
+            "ghanton khilone ek line mein lagata hai aur ek bhi hilao to bahut ro padta hai",
+            "घंटों खिलौने एक लाइन में लगाता है और एक भी हिलाओ तो बहुत रो पड़ता है",
+        ),
+        (
+            "repeats the same lines from cartoons again and again without meaning",
+            "cartoon ke dialogue baar baar dohrata rehta hai bina matlab ke",
+            "कार्टून के डायलॉग बार-बार दोहराता रहता है बिना मतलब के",
+        ),
+        (
+            "flaps {his} hands and rocks back and forth when excited",
+            "khush hone par haath hilata hai aur aage-peeche jhoolta hai",
+            "खुश होने पर हाथ हिलाता है और आगे-पीछे झूलता है",
+        ),
+        (
+            "talks only about trains and has no interest in any other topic",
+            "sirf trains ki baat karta hai, aur kisi topic mein dilchaspi nahi",
+            "सिर्फ़ ट्रेनों की बात करता है, और किसी टॉपिक में दिलचस्पी नहीं",
+        ),
+        (
+            "cannot bear loud sounds, covers {his} ears and refuses to wear certain clothes",
+            "tez awaaz se kaan band kar leta hai aur kuch kapde pehanne se mana karta hai",
+            "तेज़ आवाज़ से कान बंद कर लेता है और कुछ कपड़े पहनने से मना करता है",
+        ),
+        (
+            "behaves like a much younger child in everything and still needs help to eat and dress",
+            "har cheez mein bahut chhote bachche jaisa hai, khane-pehanne mein bhi madad chahiye",
+            "हर चीज़ में बहुत छोटे बच्चे जैसा है, खाने-पहनने में भी मदद चाहिए",
+        ),
+        (
+            "was late to talk and walk and is now slow to learn everything",
+            "bolna aur chalna der se seekha aur ab sab kuch dheere seekhta hai",
+            "बोलना और चलना देर से सीखा और अब सब कुछ धीरे सीखता है",
+        ),
+        (
+            "plays beside other children but never with them",
+            "dusre bachchon ke saath nahi, bas unke paas akela khelta hai",
+            "दूसरे बच्चों के साथ नहीं, बस उनके पास अकेला खेलता है",
+        ),
+        (
+            "has lost words and skills that {he} had earlier",
+            "pehle jo shabd aur kaam kar leta tha ab nahi karta",
+            "पहले जो शब्द और काम कर लेता था अब नहीं करता",
+        ),
+        (
+            "has had episodes where {he} stares and then suddenly falls",
+            "kabhi kabhi ghoorta hai aur achanak gir jaata hai, daura jaisa lagta hai",
+            "कभी-कभी घूरता है और अचानक गिर जाता है, दौरा जैसा लगता है",
+        ),
+        (
+            "speaks in a robot-like very formal tone that sounds different from other children",
+            "robot jaisi awaaz mein bahut formal tareeke se bolta hai, dusre bachchon se alag",
+            "रोबोट जैसी आवाज़ में बहुत फ़ॉर्मल तरीके से बोलता है, दूसरे बच्चों से अलग",
+        ),
+    ],
+)
+
+OTHER["safety"] = (
+    ["safety"],
+    [
+        (
+            "says that {he} wants to die and that everyone would be better off without {him}",
+            "kehta hai ki main mar jaun to accha hoga, sab ko meri zaroorat nahi",
+            "कहता है कि मैं मर जाऊँ तो अच्छा होगा, सबको मेरी ज़रूरत नहीं",
+        ),
+        (
+            "talks about hurting {himself} when upset",
+            "gusse mein khud ko chot pahunchane ki baat karta hai",
+            "गुस्से में खुद को चोट पहुँचाने की बात करता है",
+        ),
+        (
+            "I found marks on {his} arms that {he} made on purpose",
+            "uski baanh par khud se kiye hue nishaan mile",
+            "उसकी बाँह पर खुद से किए हुए निशान मिले",
+        ),
+        (
+            "says an older person hurt {him} and is scared to go there again",
+            "kehta hai ek bade ne use chot pahunchayi aur wahan dobara jaane se darta hai",
+            "कहता है एक बड़े ने उसे चोट पहुँचाई और वहाँ दोबारा जाने से डरता है",
+        ),
+        (
+            "is terrified of being alone with one particular tutor and cries when he comes",
+            "ek khaas tutor ke saath akele rehne se bahut darta hai, uske aane par rone lagta hai",
+            "एक ख़ास ट्यूटर के साथ अकेले रहने से बहुत डरता है, उसके आने पर रोने लगता है",
+        ),
+        (
+            "has bruises on the body and will not say how they happened",
+            "badan par nishaan hain par batata nahi ki kaise hue",
+            "बदन पर निशान हैं पर बताता नहीं कि कैसे हुए",
+        ),
+        (
+            "ran away from home after being scolded",
+            "daant ke baad ghar se bhaag gaya",
+            "डांट के बाद घर से भाग गया",
+        ),
+        (
+            "told {his} sister that {he} does not want to live anymore",
+            "apni behen se kaha ki ab jeena nahi chahta",
+            "अपनी बहन से कहा कि अब जीना नहीं चाहता",
+        ),
+    ],
+)
+
+OTHER["ctx_bullying"] = (
+    ["social", "ctx_bullying"],
+    [
+        (
+            "is teased by other children who call {him} names every day",
+            "dusre bachche roz use ulte naam se chidhate hain",
+            "दूसरे बच्चे रोज़ उसे उल्टे नाम से चिढ़ाते हैं",
+        ),
+        (
+            "is being bullied at school and comes home with torn clothes",
+            "school mein bachche pareshan karte hain, kapde phate hue ghar aata hai",
+            "स्कूल में बच्चे परेशान करते हैं, कपड़े फटे हुए घर आता है",
+        ),
+        (
+            "says some boys in the class beat {him} and take {his} lunch",
+            "kehta hai class ke kuch ladke use maarte hain aur lunch chheen lete hain",
+            "कहता है क्लास के कुछ लड़के उसे मारते हैं और लंच छीन लेते हैं",
+        ),
+        (
+            "is mocked by classmates for the way {he} speaks",
+            "classmates uske bolne ke tareeke ka mazaak udaate hain",
+            "क्लासमेट्स उसके बोलने के तरीके का मज़ाक उड़ाते हैं",
+        ),
+        (
+            "is being threatened by a group of older children on the school bus",
+            "school bus mein bade bachchon ka ek group use dhamkata hai",
+            "स्कूल बस में बड़े बच्चों का एक ग्रुप उसे धमकाता है",
+        ),
+        (
+            "is made fun of in the class group chat",
+            "class ke group chat mein sab uska mazaak banate hain",
+            "क्लास के ग्रुप चैट में सब उसका मज़ाक बनाते हैं",
+        ),
+    ],
+)
+
+OTHER["ctx_school_refusal"] = (
+    ["emotion_school", "ctx_school_refusal"],
+    [
+        (
+            "refuses to go to school and cries every morning",
+            "roz subah school jaane se mana karta hai aur rota hai",
+            "रोज़ सुबह स्कूल जाने से मना करता है और रोता है",
+        ),
+        (
+            "complains of stomach ache and headache on school days but is fine on Sundays",
+            "school wale din pet dard aur sar dard ki shikayat karta hai par Sunday ko bilkul theek",
+            "स्कूल वाले दिन पेट दर्द और सिर दर्द की शिकायत करता है पर रविवार को बिल्कुल ठीक",
+        ),
+        (
+            "has missed almost two weeks of school this month with different excuses",
+            "is mahine do hafte se zyada school nahi gaya, roz naya bahana",
+            "इस महीने दो हफ्ते से ज़्यादा स्कूल नहीं गया, रोज़ नया बहाना",
+        ),
+        (
+            "hides under the bed when it is time to leave for school",
+            "school jaane ka time hote hi bed ke neeche chhup jaata hai",
+            "स्कूल जाने का समय होते ही बिस्तर के नीचे छिप जाता है",
+        ),
+        (
+            "throws up on the school bus and begs not to go",
+            "school bus mein ulti kar deta hai aur jaane se mana karta hai",
+            "स्कूल बस में उल्टी कर देता है और जाने से मना करता है",
+        ),
+        (
+            "says {he} hates school and does not want to enter the gate",
+            "kehta hai school se nafrat hai aur gate ke andar nahi jaana",
+            "कहता है स्कूल से नफ़रत है और गेट के अंदर नहीं जाना",
+        ),
+    ],
+)
+
+OTHER["ctx_screen"] = (
+    ["ctx_screen"],
+    [
+        (
+            "spends five to six hours a day on the phone and gets angry if we take it away",
+            "din mein paanch-chhe ghante phone par rehta hai aur lene par gussa hota hai",
+            "दिन में पाँच-छह घंटे फ़ोन पर रहता है और लेने पर गुस्सा होता है",
+        ),
+        (
+            "only wants to watch YouTube and refuses to go out and play",
+            "sirf YouTube dekhna chahta hai aur bahar khelne nahi jaata",
+            "सिर्फ़ यूट्यूब देखना चाहता है और बाहर खेलने नहीं जाता",
+        ),
+        (
+            "plays games on the phone late at night and cannot be stopped",
+            "raat ko der tak phone par game khelta hai aur rokne par nahi rukta",
+            "रात को देर तक फ़ोन पर गेम खेलता है और रोकने पर नहीं रुकता",
+        ),
+        (
+            "has screen time that went up a lot since online classes",
+            "online class ke baad se screen time bahut badh gaya hai",
+            "ऑनलाइन क्लास के बाद से स्क्रीन टाइम बहुत बढ़ गया है",
+        ),
+        (
+            "eats only in front of the TV or the mobile",
+            "TV ya mobile dekhe bina khana nahi khata",
+            "टीवी या मोबाइल देखे बिना खाना नहीं खाता",
+        ),
+        (
+            "watches short videos on reels for hours",
+            "ghanton reels aur short videos dekhta rehta hai",
+            "घंटों रील्स और शॉर्ट वीडियो देखता रहता है",
+        ),
+    ],
+)
+
+OTHER["ctx_language"] = (
+    ["ctx_language"],
+    [
+        (
+            "studies in English medium but we speak only Telugu at home and {he} struggles to follow the lessons",
+            "school English medium hai par ghar mein sirf Telugu bolte hain, lessons samajhne mein dikkat hai",
+            "स्कूल इंग्लिश मीडियम है पर घर में सिर्फ़ तेलुगु बोलते हैं, लेसन समझने में दिक्कत है",
+        ),
+        (
+            "shifted from a Hindi medium school to an English medium school and cannot cope",
+            "Hindi medium se English medium school mein gaya hai aur sambhal nahi pa raha",
+            "हिंदी मीडियम से इंग्लिश मीडियम स्कूल में गया है और संभल नहीं पा रहा",
+        ),
+        (
+            "understands the home language well but not the language the teachers use",
+            "ghar ki bhasha achhi samajhta hai par teacher jis bhasha mein padhate hain wo nahi",
+            "घर की भाषा अच्छी समझता है पर टीचर जिस भाषा में पढ़ाते हैं वो नहीं",
+        ),
+        (
+            "mixes two languages and is not fully comfortable in either",
+            "do bhashaen mix kar deta hai, kisi mein bhi poora comfortable nahi",
+            "दो भाषाएँ मिला देता है, किसी में भी पूरा सहज नहीं",
+        ),
+        (
+            "is taught in English by the teacher but the whole family speaks Marathi",
+            "teacher English mein padhati hain jabki poora parivar Marathi bolta hai",
+            "टीचर अंग्रेज़ी में पढ़ाती हैं जबकि पूरा परिवार मराठी बोलता है",
+        ),
+        (
+            "does well when I explain in our mother tongue but cannot answer in school language",
+            "maatrbhasha mein samjhao to samajh jaata hai par school ki bhasha mein jawab nahi de pata",
+            "मातृभाषा में समझाओ तो समझ जाता है पर स्कूल की भाषा में जवाब नहीं दे पाता",
+        ),
+    ],
+)
+
+OTHER["ctx_pressure"] = (
+    ["ctx_pressure", "emotion_school"],
+    [
+        (
+            "has three tuitions every evening and no time to play",
+            "roz shaam teen tuition jaata hai aur khelne ka bilkul time nahi",
+            "रोज़ शाम तीन ट्यूशन जाता है और खेलने का बिल्कुल समय नहीं",
+        ),
+        (
+            "is scared of getting low marks because of what we and the relatives expect",
+            "kam marks aane se darta hai kyunki ghar aur rishtedaron ki bahut ummeed hai",
+            "कम मार्क्स आने से डरता है क्योंकि घर और रिश्तेदारों की बहुत उम्मीद है",
+        ),
+        (
+            "is tired and tense all the time because of coaching and exam preparation",
+            "coaching aur exam ki taiyari se hamesha thaka aur tanav mein rehta hai",
+            "कोचिंग और एग्ज़ाम की तैयारी से हमेशा थका और तनाव में रहता है",
+        ),
+        (
+            "is compared with cousins who score higher and feels bad about it",
+            "chachere bhai-behen se tulna hoti hai jinke marks zyada hain, isse bura lagta hai",
+            "चचेरे भाई-बहनों से तुलना होती है जिनके मार्क्स ज़्यादा हैं, इससे बुरा लगता है",
+        ),
+        (
+            "says there is too much homework and cries that {he} cannot finish it all",
+            "kehta hai bahut zyada homework hai aur rota hai ki sab poora nahi hoga",
+            "कहता है बहुत ज़्यादा होमवर्क है और रोता है कि सब पूरा नहीं होगा",
+        ),
+        (
+            "has no weekends free because of classes and competitions",
+            "classes aur competition ki wajah se weekend par bhi khali nahi",
+            "क्लासेस और कॉम्पिटिशन की वजह से वीकेंड पर भी खाली नहीं",
+        ),
+    ],
+)
+
+OTHER["ctx_sleep"] = (
+    ["ctx_sleep"],
+    [
+        (
+            "goes to sleep very late and is tired in the morning",
+            "raat ko bahut der se sota hai aur subah thaka hua uthta hai",
+            "रात को बहुत देर से सोता है और सुबह थका हुआ उठता है",
+        ),
+        (
+            "wakes up in the night and cannot go back to sleep",
+            "raat mein neend khul jaati hai aur dobara so nahi pata",
+            "रात में नींद खुल जाती है और दोबारा सो नहीं पाता",
+        ),
+        (
+            "has frequent nightmares and comes to our bed",
+            "raat ko dar jaata hai aur hamare bistar mein aa jaata hai",
+            "रात को डर जाता है और हमारे बिस्तर में आ जाता है",
+        ),
+        (
+            "cannot fall asleep without the phone",
+            "phone ke bina neend nahi aati",
+            "फ़ोन के बिना नींद नहीं आती",
+        ),
+        (
+            "sleeps only five or six hours on school nights",
+            "school ki raat ko sirf paanch-chhe ghante sota hai",
+            "स्कूल की रात को सिर्फ़ पाँच-छह घंटे सोता है",
+        ),
+        (
+            "snores loudly and seems sleepy in class",
+            "zor se kharrate leta hai aur class mein unghta rehta hai",
+            "ज़ोर से खर्राटे लेता है और क्लास में ऊँघता रहता है",
+        ),
+    ],
+)
+
+# Healthy / reassuring clauses. They name a domain as FINE, so the domain
+# label must be ABSENT. domain -> [(en, hr, hi)]
+NEGATIVES = {
+    "attention_work": [
+        (
+            "pays attention well in class and finishes homework on time",
+            "class mein dhyan lagata hai aur homework time par poora karta hai",
+            "क्लास में ध्यान लगाता है और होमवर्क समय पर पूरा करता है",
+        ),
+        (
+            "can sit and focus for a long time without any trouble",
+            "bahut der tak baith kar dhyan laga leta hai, koi dikkat nahi",
+            "बहुत देर तक बैठकर ध्यान लगा लेता है, कोई दिक्कत नहीं",
+        ),
+        (
+            "is organised and never forgets books",
+            "apni cheezein sambhal kar rakhta hai, kitaaben kabhi nahi bhoolta",
+            "अपनी चीज़ें संभालकर रखता है, किताबें कभी नहीं भूलता",
+        ),
+    ],
+    "listening_speaking": [
+        (
+            "speaks clearly and understands everything we say",
+            "saaf bolta hai aur hamari har baat samajhta hai",
+            "साफ़ बोलता है और हमारी हर बात समझता है",
+        ),
+        (
+            "talks a lot and has a good vocabulary",
+            "bahut baatein karta hai aur uski shabdavali achhi hai",
+            "बहुत बातें करता है और उसकी शब्दावली अच्छी है",
+        ),
+        (
+            "follows instructions without any problem",
+            "nirdesh bina kisi dikkat ke maan leta hai",
+            "निर्देश बिना किसी दिक्कत के मान लेता है",
+        ),
+    ],
+    "reading": [
+        (
+            "reads very well and loves story books",
+            "bahut achha padhta hai aur kahani ki kitaaben pasand hain",
+            "बहुत अच्छा पढ़ता है और कहानी की किताबें पसंद हैं",
+        ),
+        (
+            "reads fluently in both Hindi and English",
+            "Hindi aur English dono mein fluently padhta hai",
+            "हिंदी और अंग्रेज़ी दोनों में फ़्लुएंटली पढ़ता है",
+        ),
+        (
+            "has no problem with reading",
+            "padhne mein koi dikkat nahi hai",
+            "पढ़ने में कोई दिक्कत नहीं है",
+        ),
+    ],
+    "writing": [
+        (
+            "has neat handwriting and writes quickly",
+            "handwriting saaf hai aur tezi se likhta hai",
+            "हैंडराइटिंग साफ़ है और तेज़ी से लिखता है",
+        ),
+        (
+            "writes good essays and spells well",
+            "achhe nibandh likhta hai aur spelling sahi hai",
+            "अच्छे निबंध लिखता है और स्पेलिंग सही है",
+        ),
+        (
+            "has no difficulty in written work",
+            "likhne ke kaam mein koi dikkat nahi",
+            "लिखने के काम में कोई दिक्कत नहीं",
+        ),
+    ],
+    "numbers": [
+        (
+            "is very good at maths and enjoys sums",
+            "maths mein bahut achha hai aur sawaal karna pasand hai",
+            "गणित में बहुत अच्छा है और सवाल करना पसंद है",
+        ),
+        (
+            "scores well in maths without extra help",
+            "bina extra madad ke maths mein achhe marks laata hai",
+            "बिना एक्स्ट्रा मदद के मैथ्स में अच्छे मार्क्स लाता है",
+        ),
+        (
+            "has no trouble with numbers or tables",
+            "ginti aur pahado mein koi dikkat nahi",
+            "गिनती और पहाड़ों में कोई दिक्कत नहीं",
+        ),
+    ],
+    "motor": [
+        (
+            "is very active and good at sports",
+            "bahut active hai aur khel-kood mein achha hai",
+            "बहुत एक्टिव है और खेलकूद में अच्छा है",
+        ),
+        (
+            "rides a cycle and catches a ball well",
+            "cycle chalata hai aur gend achhe se pakadta hai",
+            "साइकिल चलाता है और गेंद अच्छे से पकड़ता है",
+        ),
+        (
+            "has no problem with movement or coordination",
+            "chalne-phirne aur coordination mein koi dikkat nahi",
+            "चलने-फिरने और कोऑर्डिनेशन में कोई दिक्कत नहीं",
+        ),
+    ],
+    "social": [
+        (
+            "has many friends and is liked by everyone",
+            "bahut dost hain aur sab use pasand karte hain",
+            "बहुत दोस्त हैं और सब उसे पसंद करते हैं",
+        ),
+        (
+            "plays well with other children and shares nicely",
+            "dusre bachchon ke saath achhe se khelta hai aur baant leta hai",
+            "दूसरे बच्चों के साथ अच्छे से खेलता है और बाँट लेता है",
+        ),
+        (
+            "has a best friend in the class",
+            "class mein ek achha dost hai",
+            "क्लास में एक अच्छा दोस्त है",
+        ),
+    ],
+    "emotion_school": [
+        (
+            "is happy and cheerful and goes to school willingly",
+            "khush rehta hai aur school khushi se jaata hai",
+            "खुश रहता है और स्कूल खुशी से जाता है",
+        ),
+        (
+            "calms down quickly when upset",
+            "pareshan hone par jaldi shaant ho jaata hai",
+            "परेशान होने पर जल्दी शांत हो जाता है",
+        ),
+        (
+            "is confident and not worried about exams",
+            "confident hai aur exam ki fikr nahi karta",
+            "कॉन्फिडेंट है और एग्ज़ाम की फ़िक्र नहीं करता",
+        ),
+    ],
+    "vision_hearing": [
+        (
+            "had eyes and ears checked recently and they are normal",
+            "aankhein aur kaan haal hi mein check karwaye the, sab normal hai",
+            "आँखें और कान हाल ही में चेक करवाए थे, सब नॉर्मल है",
+        ),
+        (
+            "sees and hears well",
+            "dekhna aur sunna dono theek hai",
+            "देखना और सुनना दोनों ठीक है",
+        ),
+    ],
+}
+
+# Vague / non-specific texts: NO label. (en, hr, hi) full sentences.
+VAGUE = [
+    (
+        "I am worried about my child, something is not right but I don't know what",
+        "main apne bachche ko lekar pareshan hoon, kuch theek nahi lag raha par samajh nahi aa raha kya",
+        "मैं अपने बच्चे को लेकर परेशान हूँ, कुछ ठीक नहीं लग रहा पर समझ नहीं आ रहा क्या",
+    ),
+    ("he is weak in studies", "padhai mein kamzor hai", "पढ़ाई में कमज़ोर है"),
+    (
+        "my child is not doing well in school",
+        "mera bachcha school mein achha nahi kar raha",
+        "मेरा बच्चा स्कूल में अच्छा नहीं कर रहा",
+    ),
+    (
+        "the teacher called me to school yesterday",
+        "kal teacher ne mujhe school bulaya tha",
+        "कल टीचर ने मुझे स्कूल बुलाया था",
+    ),
+    (
+        "marks are very low this year",
+        "is saal marks bahut kam aaye hain",
+        "इस साल मार्क्स बहुत कम आए हैं",
+    ),
+    (
+        "please check my child once",
+        "please ek baar mere bachche ko check kar lijiye",
+        "कृपया एक बार मेरे बच्चे को चेक कर लीजिए",
+    ),
+    (
+        "he is different from other children",
+        "wo dusre bachchon se alag hai",
+        "वो दूसरे बच्चों से अलग है",
+    ),
+    (
+        "I do not know what to do with my son",
+        "mujhe samajh nahi aa raha ki bete ke saath kya karun",
+        "मुझे समझ नहीं आ रहा कि बेटे के साथ क्या करूँ",
+    ),
+    (
+        "my daughter has some problem",
+        "meri beti ko kuch problem hai",
+        "मेरी बेटी को कुछ प्रॉब्लम है",
+    ),
+    ("the result is not good", "result achha nahi aata", "रिज़ल्ट अच्छा नहीं आता"),
+    (
+        "he is a normal child but I want a check-up",
+        "bachcha normal hai par main ek check-up karwana chahta hoon",
+        "बच्चा नॉर्मल है पर मैं एक चेक-अप करवाना चाहता हूँ",
+    ),
+    ("my child is stubborn", "mera bachcha ziddi hai", "मेरा बच्चा ज़िद्दी है"),
+    (
+        "everyone says my son will improve with time",
+        "sab kehte hain ki waqt ke saath theek ho jayega",
+        "सब कहते हैं कि समय के साथ ठीक हो जाएगा",
+    ),
+    (
+        "I want to know if my child needs any help",
+        "main jaanna chahta hoon ki bachche ko kisi madad ki zaroorat hai ya nahi",
+        "मैं जानना चाहता हूँ कि बच्चे को किसी मदद की ज़रूरत है या नहीं",
+    ),
+    (
+        "he is eight years old and studies in class 3",
+        "wo aath saal ka hai aur teesri class mein padhta hai",
+        "वो आठ साल का है और तीसरी क्लास में पढ़ता है",
+    ),
+    (
+        "my child is not like before",
+        "mera bachcha pehle jaisa nahi raha",
+        "मेरा बच्चा पहले जैसा नहीं रहा",
+    ),
+    (
+        "his class teacher wants to meet us",
+        "uski class teacher hum se milna chahti hain",
+        "उसकी क्लास टीचर हम से मिलना चाहती हैं",
+    ),
+    (
+        "something about school is bothering my daughter",
+        "school ki koi baat meri beti ko pareshan kar rahi hai",
+        "स्कूल की कोई बात मेरी बेटी को परेशान कर रही है",
+    ),
+]
+
+# Neutral background sentences that carry no label (parent context)
+NOISE = [
+    (
+        "We live in a small town and both of us work.",
+        "Hum ek chhote shehar mein rehte hain aur hum dono kaam par jaate hain.",
+        "हम एक छोटे शहर में रहते हैं और हम दोनों काम पर जाते हैं।",
+    ),
+    (
+        "He is the younger of two children.",
+        "Wo do bachchon mein chhota hai.",
+        "वो दो बच्चों में छोटा है।",
+    ),
+    (
+        "We have tried to be patient.",
+        "Hum ne bahut sabr rakha hai.",
+        "हमने बहुत सब्र रखा है।",
+    ),
+    (
+        "His grandparents live with us.",
+        "Dada-dadi hamare saath rehte hain.",
+        "दादा-दादी हमारे साथ रहते हैं।",
+    ),
+    (
+        "This has been going on for some time.",
+        "Ye kaafi samay se chal raha hai.",
+        "ये काफ़ी समय से चल रहा है।",
+    ),
+    ("Please advise us.", "Kripya humein salaah dijiye.", "कृपया हमें सलाह दीजिए।"),
+    (
+        "He is a sweet child otherwise.",
+        "Waise wo bahut pyara bachcha hai.",
+        "वैसे वो बहुत प्यारा बच्चा है।",
+    ),
+    (
+        "We are not sure whom to ask.",
+        "Humein samajh nahi aa raha kisse poochein.",
+        "हमें समझ नहीं आ रहा किससे पूछें।",
+    ),
+]
+
+INTROS = {
+    "en": [
+        "",
+        "",
+        "",
+        "Hello, ",
+        "Hi, ",
+        "Dear sir, ",
+        "Madam, ",
+        "Please help. ",
+        "I need some advice. ",
+        "I am very worried. ",
+        "We are a middle class family and I am confused. ",
+        "Doctor, ",
+        "Namaste. ",
+    ],
+    "hr": [
+        "",
+        "",
+        "",
+        "Namaste, ",
+        "Hello sir, ",
+        "Madam, ",
+        "Please help kijiye. ",
+        "Mujhe salaah chahiye. ",
+        "Main bahut pareshan hoon. ",
+        "Doctor sahab, ",
+        "Sir, ",
+        "Bahut chinta ho rahi hai. ",
+    ],
+    "hi": [
+        "",
+        "",
+        "",
+        "नमस्ते, ",
+        "सर, ",
+        "मैडम, ",
+        "कृपया मदद कीजिए। ",
+        "मुझे सलाह चाहिए। ",
+        "मैं बहुत परेशान हूँ। ",
+        "डॉक्टर साहब, ",
+    ],
+}
+
+TIME_MODS = {
+    "en": [
+        "",
+        "",
+        "",
+        " This has been happening for the last two years.",
+        " It started this year.",
+        " It is worse in the evenings.",
+        " It happens almost every day.",
+        " It is there at home and at school.",
+        " His teacher has also noticed it.",
+        " We have tried scolding but nothing changes.",
+        " It has been like this since class 1.",
+        " It is more at home than in school.",
+    ],
+    "hr": [
+        "",
+        "",
+        "",
+        " Ye pichle do saal se ho raha hai.",
+        " Ye is saal shuru hua.",
+        " Shaam ko zyada hota hai.",
+        " Lagbhag roz hota hai.",
+        " Ghar aur school dono jagah hai.",
+        " Teacher ne bhi notice kiya hai.",
+        " Daantne se bhi koi farak nahi padta.",
+        " Pehli class se aisa hi hai.",
+        " School se zyada ghar par hota hai.",
+    ],
+    "hi": [
+        "",
+        "",
+        "",
+        " ये पिछले दो साल से हो रहा है।",
+        " ये इस साल शुरू हुआ।",
+        " शाम को ज़्यादा होता है।",
+        " लगभग रोज़ होता है।",
+        " घर और स्कूल दोनों जगह है।",
+        " टीचर ने भी नोटिस किया है।",
+        " डांटने से भी कोई फ़र्क नहीं पड़ता।",
+    ],
+}
+
+CONNECT = {
+    "en": [
+        " Also, ",
+        " And ",
+        ". Another thing, ",
+        ", and ",
+        ". Besides that, ",
+        ". Plus ",
+    ],
+    "hr": [
+        " Saath hi, ",
+        " Aur ",
+        ". Ek aur baat, ",
+        ", aur ",
+        ". Iske alawa, ",
+        ". Aur ",
+    ],
+    "hi": [" साथ ही, ", " और ", "। एक और बात, ", ", और ", "। इसके अलावा, ", "। और "],
+}
+
+CLASSES_EN = [
+    "class 1",
+    "class 2",
+    "class 3",
+    "class 4",
+    "class 5",
+    "class 6",
+    "class 7",
+    "grade 5",
+    "grade 6",
+]

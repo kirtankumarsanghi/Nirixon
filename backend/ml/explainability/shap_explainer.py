@@ -31,7 +31,9 @@ import shap
 from columns import LABEL_ORDER
 
 
-def build_explainer(tree_model, feature_columns: list[str], model_name: str | None = None):
+def build_explainer(
+    tree_model, feature_columns: list[str], model_name: str | None = None
+):
     """
     tree_model: the raw, uncalibrated tree-based estimator (e.g. the
                 fitted XGBClassifier or RandomForestClassifier itself -

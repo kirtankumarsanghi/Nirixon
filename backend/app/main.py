@@ -64,14 +64,14 @@ async def lifespan(app: FastAPI):
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         _health["db_ok"] = True
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("DB init failed")
         _health["db_ok"] = False
         _health["db_error"] = str(exc)
 
     try:
         await _seed_user()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("Seed user failed")
 
     # ML artifacts — load once; no mock fallback
@@ -97,6 +97,23 @@ async def lifespan(app: FastAPI):
         )
         _health["artifacts_b_loaded"] = False
         _health["artifacts_b_error"] = str(exc)
+
+    # Module B NLP + adaptive engine service (DomainRouter + Bank)
+    try:
+        from app.core.module_b.service import module_b_service
+
+        module_b_service.load(
+            router_path=settings.module_b_router_path,
+            bank_path=settings.module_b_bank_path,
+            acts_path=settings.module_b_acts_path,
+        )
+        _health["module_b_engine_loaded"] = True
+        _health["module_b_engine_error"] = None
+        logger.info("Module B engine loaded successfully")
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Module B engine load failed: %s", exc)
+        _health["module_b_engine_loaded"] = False
+        _health["module_b_engine_error"] = str(exc)
 
     if settings.redis_url:
         _health["redis_ok"] = False  # RedisSessionRepo not implemented
@@ -173,9 +190,14 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
                     "ok": inference_service_b.is_loaded,
                     "error": _health.get("artifacts_b_error"),
                     "note": (
-                        None if inference_service_b.is_loaded
+                        None
+                        if inference_service_b.is_loaded
                         else "Run 'python train.py --module B' to enable Module B screening"
                     ),
+                },
+                "module_b_engine": {
+                    "ok": _health.get("module_b_engine_loaded", False),
+                    "error": _health.get("module_b_engine_error"),
                 },
             },
             "redis": {

@@ -2,7 +2,7 @@
 
 ## Decision
 
-**Production model: `random_forest`**
+**Production model: `xgboost`**
 
 Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Forest within 0.005 AUPRC, prefer Random Forest (lower latency, lower memory). Logistic Regression wins only if it strictly outperforms both tree models.
 
@@ -10,8 +10,8 @@ Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Fo
 
 | Model | Val Macro AUPRC |
 |---|---|
-| random_forest | 0.9361 **(SELECTED)** |
-| xgboost | 0.9282 |
+| xgboost | 0.9282 **(SELECTED)** |
+| random_forest | 0.9225 |
 | logistic_regression | 0.7387 |
 
 ## Test Set Metrics (final holdout, touched once)
@@ -23,14 +23,14 @@ Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Fo
 - Macro F1:    0.7208
 - Macro AUROC: 0.9044
 
-### random_forest (production)
+### random_forest
 
-- Macro AUPRC: **0.9393**
-- Refer AUPRC: **0.8981** ← primary metric
-- Macro F1:    0.8955
-- Macro AUROC: 0.9881
+- Macro AUPRC: **0.9384**
+- Refer AUPRC: **0.8978** ← primary metric
+- Macro F1:    0.8931
+- Macro AUROC: 0.9867
 
-### xgboost
+### xgboost (production)
 
 - Macro AUPRC: **0.9180**
 - Refer AUPRC: **0.8907** ← primary metric
@@ -41,8 +41,8 @@ Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Fo
 
 | Model | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---|---|---|
-| logistic_regression | 6.34 | 8.69 | 10.00 |
-| random_forest | 57.06 | 72.52 | 83.12 |
-| xgboost | 13.18 | 18.03 | 24.32 |
+| logistic_regression | 10.51 | 13.70 | 19.45 |
+| random_forest | 88.32 | 103.92 | 109.17 |
+| xgboost | 14.30 | 27.01 | 36.93 |
 
-> Latency is measured as sequential single-row `predict_proba()` calls, reflecting the Clinician Sandbox / What-If re-score use case, not batch throughput. n=1000 calls per model.
+> Latency is measured as sequential single-row `predict_proba()` calls, reflecting the Clinician Sandbox / What-If re-score use case, not batch throughput. n=200 calls per model.

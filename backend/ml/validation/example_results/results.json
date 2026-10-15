@@ -1,0 +1,37 @@
+{
+  "placeholder_items": true,
+  "n_train": 8000,
+  "n_test": 5000,
+  "class_mix": [
+    0.739,
+    0.1948,
+    0.0662
+  ],
+  "refer_prevalence": 0.0662,
+  "ml_macro_auprc": 0.5101346486181503,
+  "ml_refer_auprc": [
+    0.25469135014375877,
+    0.20779173111455965,
+    0.3003326947501503
+  ],
+  "rule_refer_auprc": [
+    0.1682461212252653,
+    0.14313302700248146,
+    0.20488340729287446
+  ],
+  "ml_at_recall_target": {
+    "recall": 0.8036253776435045,
+    "precision": 0.1345472938796156,
+    "flagged_share": 0.3954
+  },
+  "rule_at_recall_target": {
+    "recall": 0.8006042296072508,
+    "precision": 0.11452031114952463,
+    "flagged_share": 0.4628
+  },
+  "ml_refer_recall_wilson": [
+    0.7574489492657956,
+    0.8428348864344279
+  ],
+  "n_refer_test": 331
+}

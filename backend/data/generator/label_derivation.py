@@ -67,7 +67,6 @@ from age_brackets import BRACKETS, adjacent_brackets, map_to_bracket_label
 MIN_BRACKET_N = 20
 
 
-
 def domain_percentiles(
     domain_scores: pd.DataFrame,
     corrected_age_months: np.ndarray,
@@ -87,9 +86,7 @@ def domain_percentiles(
     children in the pooled group are ranked together.
     """
     # Assign every child to a bracket label
-    bracket_labels = np.array(
-        [map_to_bracket_label(a) for a in corrected_age_months]
-    )
+    bracket_labels = np.array([map_to_bracket_label(a) for a in corrected_age_months])
 
     out = pd.DataFrame(
         index=domain_scores.index, columns=domain_scores.columns, dtype=float
@@ -130,30 +127,18 @@ def domain_percentiles(
 def composite_risk_score(
     pct_df: pd.DataFrame,
     regression_flag: np.ndarray,
-    rng: np.random.Generator,
+    sampler: np.random.Generator,
 ) -> np.ndarray:
     """
-    Higher composite score = more concerning. Driven by the child's
-    single worst-ranked domain (see module docstring), with a large,
-    near-guaranteed bump for a regression event.
-
-    Takes an explicit `rng` (the same seeded generator used everywhere
-    else in the pipeline) instead of calling the global numpy random
-    state directly - without this, the overall dataset was NOT fully
-    reproducible run-to-run even with RNG_SEED fixed, since this was
-    the one function drawing from an unseeded source.
+    Computes a continuous composite risk score driven by the child's single worst-ranked
+    domain percentile, with a calibrated probabilistic escalation for skill regression.
     """
     worst_domain_pct = pct_df.min(axis=1).to_numpy()  # 0 (worst) .. 1 (best)
     composite = 1.0 - worst_domain_pct  # invert: higher = more concerning
 
-    # Regression is a near-automatic escalation, but must NOT become a
-    # perfectly-separable feature (a model - or a reader of this dataset -
-    # should not find "regression_flag == 1" alone sufficient to know the
-    # label with certainty). The bump is capped and probabilistic: most
-    # regression-flagged children land in Refer, but not all, and a few
-    # non-regression children can still land above them by worst-domain
-    # percentile alone.
-    regression_bump = regression_flag * rng.uniform(0.30, 0.55, size=len(composite))
+    # Probabilistic clinical escalation: bounded bump (0.30 - 0.55 SD) to avoid
+    # artificial perfect separability artifacts in the ML feature matrix.
+    regression_bump = regression_flag * sampler.uniform(0.30, 0.55, size=len(composite))
     composite = composite + regression_bump
 
     return composite

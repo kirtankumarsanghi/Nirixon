@@ -1,0 +1,13 @@
+field,description,notes
+child_code,coded ID with no name or phone number,key kept separately by the clinician
+age_months,chronological age in months,record corrected age too if preterm
+corrected_age_months,corrected age for preterm children,blank if term
+respondent,mother / father / grandparent / other,
+language,language the app was used in,
+app_item_ids_asked,items asked in order,store the full adaptive path
+app_answers,answers given,
+app_result,hidden app result per domain and overall,never shown to families in shadow mode
+reference_assessment,clinician or scale outcome per domain,collected blind to the app result
+assessor_id,who made the reference assessment,
+consent_date,date parental consent given,assent where required by ICMR age rules
+site,recruitment site,

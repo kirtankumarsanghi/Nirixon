@@ -9,12 +9,10 @@ as the dependency for /answer (not the broken plain-function default).
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 
 os.environ.setdefault("JWT_SECRET", "test-secret-at-least-32-bytes-long!!")
 os.environ.setdefault("SESSION_REPO_BACKEND", "memory")
@@ -22,24 +20,22 @@ os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("SEED_USER_EMAIL", "parent@example.com")
 os.environ.setdefault("SEED_USER_PASSWORD", "changeme")
 
-from app.auth import hash_password  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.db.models import ScreeningSession as DbSession, User  # noqa: E402
-from app.db.session import (  # noqa: E402
+from app.auth import hash_password
+from app.config import get_settings
+from app.db.models import ScreeningSession as DbSession
+from app.db.models import User
+from app.db.session import (
     Base,
     configure_engine,
-    get_db,
     get_session_factory,
     reset_engine,
 )
-from app.db.session_repo import InMemorySessionRepo, set_session_repo  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.ml.inference_service import (  # noqa: E402
-    InferenceService,
+from app.db.session_repo import InMemorySessionRepo, set_session_repo
+from app.ml.inference_service import (
     inference_service,
     inference_service_b,
 )
-from app.routers.screen import _get_inference_for_session  # noqa: E402
+from app.routers.screen import _get_inference_for_session
 
 
 @pytest.fixture(autouse=True)
@@ -124,7 +120,7 @@ async def db_env(tmp_path):
 @pytest.mark.asyncio
 async def test_get_inference_for_session_returns_module_a_service(db_env):
     """Module A session → dependency must return inference_service (not _b)."""
-    override_get_db, session_factory = db_env
+    _override_get_db, session_factory = db_env
 
     # Build a mock request context: db session + user object
     mock_user = MagicMock()
@@ -141,15 +137,15 @@ async def test_get_inference_for_session_returns_module_a_service(db_env):
         f"Expected inference_service (Module A), got {result!r}. "
         "The dependency is returning the wrong service for Module A sessions."
     )
-    assert result is not inference_service_b, (
-        "Dependency returned inference_service_b for a Module A session — cross-module contamination."
-    )
+    assert (
+        result is not inference_service_b
+    ), "Dependency returned inference_service_b for a Module A session — cross-module contamination."
 
 
 @pytest.mark.asyncio
 async def test_get_inference_for_session_returns_module_b_service(db_env):
     """Module B session → dependency must return inference_service_b (not the A service)."""
-    override_get_db, session_factory = db_env
+    _override_get_db, session_factory = db_env
 
     mock_user = MagicMock()
     mock_user.id = "user-1"
@@ -166,9 +162,9 @@ async def test_get_inference_for_session_returns_module_b_service(db_env):
         "The dependency is returning the wrong service for Module B sessions — "
         "this is the cross-module model contamination bug."
     )
-    assert result is not inference_service, (
-        "Dependency returned inference_service (Module A) for a Module B session."
-    )
+    assert (
+        result is not inference_service
+    ), "Dependency returned inference_service (Module A) for a Module B session."
 
 
 @pytest.mark.asyncio
@@ -179,7 +175,7 @@ async def test_answer_endpoint_uses_correct_inference_dependency():
     _get_inference plain function.
     """
     import inspect
-    from fastapi import Depends
+
     from app.routers.screen import submit_answer
 
     # Walk FastAPI's dependency tree to find what `inference` resolves to

@@ -6,7 +6,7 @@ No registration / password-reset flow yet — seed user only for local login.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import jwt
@@ -40,7 +40,7 @@ def create_access_token(
     settings: Settings | None = None,
 ) -> str:
     settings = settings or get_settings()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {"sub": subject, "role": role, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -78,6 +78,7 @@ async def require_parent(user: Annotated[User, Depends(get_current_user)]) -> Us
     if user.role not in ("parent", "internal"):
         raise HTTPException(status_code=403, detail="Parent role required")
     return user
+
 
 async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> User:
     if user.role != "internal":

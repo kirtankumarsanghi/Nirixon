@@ -2,6 +2,7 @@ import type {
   AnswerRequest,
   LoginRequest,
   LoginResponse,
+  RecallRequest,
   ResultPayload,
   ScreenActionResponse,
   SessionStateResponse,
@@ -169,6 +170,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     });
+  },
+
+  /** Module B: submit recall-help domain selection. */
+  submitRecall(
+    sessionId: string,
+    body: RecallRequest,
+  ): Promise<ScreenActionResponse> {
+    const payload = {
+      ...body,
+      domains: body.domains ?? body.selected_domains ?? [],
+    };
+    return request<ScreenActionResponse>(
+      `/api/screen/${sessionId}/recall`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
   },
 
   /** Module B: items for the teacher form (matched to parent answers). */

@@ -86,11 +86,30 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     """Create tables for local/dev. Alembic owns schema in real deploys."""
+    from sqlalchemy import text
+
     from app.db import models  # noqa: F401
 
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # For SQLite in dev: ensure newly added columns exist if the table was created by an older revision
+        if conn.dialect.name == "sqlite":
+            result = await conn.execute(text("PRAGMA table_info(screening_sessions)"))
+            columns = {row[1] for row in result.fetchall()}
+            if columns and "pending_item_id" not in columns:
+                await conn.execute(
+                    text(
+                        "ALTER TABLE screening_sessions ADD COLUMN pending_item_id VARCHAR(64)"
+                    )
+                )
+            if columns and "module_b_state" not in columns:
+                await conn.execute(
+                    text(
+                        "ALTER TABLE screening_sessions ADD COLUMN module_b_state JSON"
+                    )
+                )
 
 
 # Expose `engine` for code that imports it directly

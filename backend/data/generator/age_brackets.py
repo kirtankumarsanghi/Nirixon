@@ -37,7 +37,6 @@ CLINICAL REVIEW DEPENDENCY:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 
 @dataclass(frozen=True)
@@ -67,10 +66,10 @@ class AgeBracket:
 # ---------------------------------------------------------------------------
 BRACKETS: list[AgeBracket] = [
     # --- 0–12 months: 5 brackets (densest — fastest developmental change) ---
-    AgeBracket("2mo",  min_months=0,    max_months=3),
-    AgeBracket("4mo",  min_months=3,    max_months=5),
-    AgeBracket("6mo",  min_months=5,    max_months=7.5),
-    AgeBracket("9mo",  min_months=7.5,  max_months=10.5),
+    AgeBracket("2mo", min_months=0, max_months=3),
+    AgeBracket("4mo", min_months=3, max_months=5),
+    AgeBracket("6mo", min_months=5, max_months=7.5),
+    AgeBracket("9mo", min_months=7.5, max_months=10.5),
     AgeBracket("12mo", min_months=10.5, max_months=13.5),
     # --- 12–24 months: 4 brackets (language explosion + walking refinement) ---
     AgeBracket("15mo", min_months=13.5, max_months=16.5),
@@ -83,10 +82,10 @@ BRACKETS: list[AgeBracket] = [
     AgeBracket("33mo", min_months=31.5, max_months=34.5),
     AgeBracket("36mo", min_months=34.5, max_months=39),
     # --- 36–60 months: 4 brackets (preschool, development paces out) ---
-    AgeBracket("42mo", min_months=39,   max_months=45),
-    AgeBracket("48mo", min_months=45,   max_months=51),
-    AgeBracket("54mo", min_months=51,   max_months=57),
-    AgeBracket("60mo", min_months=57,   max_months=60, is_final=True),
+    AgeBracket("42mo", min_months=39, max_months=45),
+    AgeBracket("48mo", min_months=45, max_months=51),
+    AgeBracket("54mo", min_months=51, max_months=57),
+    AgeBracket("60mo", min_months=57, max_months=60, is_final=True),
 ]
 
 assert len(BRACKETS) == 17, f"Expected 17 brackets, got {len(BRACKETS)}"
@@ -179,6 +178,7 @@ def adjacent_brackets(bracket: AgeBracket) -> list[AgeBracket]:
 # Validation: self-check the bracket definitions are consistent
 # ---------------------------------------------------------------------------
 
+
 def _validate_brackets() -> None:
     """Runs at import time. Raises AssertionError if bracket definitions are broken."""
     prev_max = 0.0
@@ -187,34 +187,42 @@ def _validate_brackets() -> None:
             f"Bracket {b.label}: min_months ({b.min_months}) does not align "
             f"with previous bracket's max_months ({prev_max}). Brackets must be contiguous."
         )
-        assert b.max_months > b.min_months, (
-            f"Bracket {b.label}: max_months ({b.max_months}) <= min_months ({b.min_months})"
-        )
+        assert (
+            b.max_months > b.min_months
+        ), f"Bracket {b.label}: max_months ({b.max_months}) <= min_months ({b.min_months})"
         prev_max = b.max_months
 
     # Spot-check canonical boundary ages
-    assert map_to_bracket_label(0.0)   == "2mo",  "age=0 should map to 2mo bracket"
-    assert map_to_bracket_label(2.0)   == "2mo",  "age=2 should map to 2mo bracket"
-    assert map_to_bracket_label(3.0)   == "4mo",  "age=3 should map to 4mo bracket"
-    assert map_to_bracket_label(10.5)  == "12mo", "age=10.5 should map to 12mo bracket"
-    assert map_to_bracket_label(12.0)  == "12mo", "age=12 should map to 12mo bracket (NOT 9mo)"
-    assert map_to_bracket_label(13.5)  == "15mo", "age=13.5 should map to 15mo bracket"
-    assert map_to_bracket_label(22.5)  == "24mo", "age=22.5 should map to 24mo bracket"
-    assert map_to_bracket_label(24.0)  == "24mo", "age=24 should map to 24mo bracket (NOT 27mo)"
-    assert map_to_bracket_label(25.5)  == "27mo", "age=25.5 should map to 27mo bracket"
-    assert map_to_bracket_label(34.5)  == "36mo", "age=34.5 should map to 36mo bracket"
-    assert map_to_bracket_label(36.0)  == "36mo", "age=36 should map to 36mo bracket (NOT 42mo)"
-    assert map_to_bracket_label(39.0)  == "42mo", "age=39 should map to 42mo bracket"
-    assert map_to_bracket_label(57.0)  == "60mo", "age=57 should map to 60mo bracket"
-    assert map_to_bracket_label(60.0)  == "60mo", "age=60 should map to 60mo bracket"
-    assert map_to_bracket_label(65.0)  == "60mo", "age=65 (out of range) should clamp to 60mo"
-    assert map_to_bracket_label(-1.0)  == "2mo",  "age=-1 (invalid) should clamp to 2mo"
+    assert map_to_bracket_label(0.0) == "2mo", "age=0 should map to 2mo bracket"
+    assert map_to_bracket_label(2.0) == "2mo", "age=2 should map to 2mo bracket"
+    assert map_to_bracket_label(3.0) == "4mo", "age=3 should map to 4mo bracket"
+    assert map_to_bracket_label(10.5) == "12mo", "age=10.5 should map to 12mo bracket"
+    assert (
+        map_to_bracket_label(12.0) == "12mo"
+    ), "age=12 should map to 12mo bracket (NOT 9mo)"
+    assert map_to_bracket_label(13.5) == "15mo", "age=13.5 should map to 15mo bracket"
+    assert map_to_bracket_label(22.5) == "24mo", "age=22.5 should map to 24mo bracket"
+    assert (
+        map_to_bracket_label(24.0) == "24mo"
+    ), "age=24 should map to 24mo bracket (NOT 27mo)"
+    assert map_to_bracket_label(25.5) == "27mo", "age=25.5 should map to 27mo bracket"
+    assert map_to_bracket_label(34.5) == "36mo", "age=34.5 should map to 36mo bracket"
+    assert (
+        map_to_bracket_label(36.0) == "36mo"
+    ), "age=36 should map to 36mo bracket (NOT 42mo)"
+    assert map_to_bracket_label(39.0) == "42mo", "age=39 should map to 42mo bracket"
+    assert map_to_bracket_label(57.0) == "60mo", "age=57 should map to 60mo bracket"
+    assert map_to_bracket_label(60.0) == "60mo", "age=60 should map to 60mo bracket"
+    assert (
+        map_to_bracket_label(65.0) == "60mo"
+    ), "age=65 (out of range) should clamp to 60mo"
+    assert map_to_bracket_label(-1.0) == "2mo", "age=-1 (invalid) should clamp to 2mo"
 
     # Ordinal encoding must be 0-indexed and contiguous
     for i, b in enumerate(BRACKETS):
-        assert BRACKET_ORDINAL[b.label] == i, (
-            f"BRACKET_ORDINAL[{b.label}] == {BRACKET_ORDINAL[b.label]}, expected {i}"
-        )
+        assert (
+            BRACKET_ORDINAL[b.label] == i
+        ), f"BRACKET_ORDINAL[{b.label}] == {BRACKET_ORDINAL[b.label]}, expected {i}"
 
 
 _validate_brackets()  # runs at import — hard fail if bracket definitions are broken

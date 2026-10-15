@@ -10,7 +10,21 @@ Run directly:  python generate_synthetic_data.py
 
 from __future__ import annotations
 
+import os
+import random
+import sys
+
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+
+# Ensure backend root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import numpy as np
+
+np.random.seed(SEED)
 import pandas as pd
 from age_brackets import BRACKET_LABELS, map_to_bracket_label, map_to_bracket_ordinal
 from correlation_structure import (
@@ -25,7 +39,7 @@ from label_derivation import (
     domain_percentiles,
 )
 
-RNG_SEED = 42
+RNG_SEED = SEED
 
 # Increased from 5,000 to 8,000 to ensure stable per-bracket sample sizes
 # across all 17 ASQ-3 brackets. With 17 brackets spanning 0–60 months and
@@ -72,10 +86,10 @@ AGE_MIN, AGE_MAX = 0, 60  # months
 # ---------------------------------------------------------------------------
 BRACKET_SLOPES: dict[str, float] = {
     # 0–12 months: fast development
-    "2mo":  3.0,
-    "4mo":  3.0,
-    "6mo":  3.0,
-    "9mo":  3.5,
+    "2mo": 3.0,
+    "4mo": 3.0,
+    "6mo": 3.0,
+    "9mo": 3.5,
     "12mo": 4.0,
     # 12–24 months: language + walking refinement
     "15mo": 4.5,
@@ -93,9 +107,9 @@ BRACKET_SLOPES: dict[str, float] = {
     "54mo": 8.0,
     "60mo": 8.0,
 }
-assert set(BRACKET_SLOPES.keys()) == set(BRACKET_LABELS), (
-    "BRACKET_SLOPES keys must match BRACKET_LABELS exactly — check age_brackets.py"
-)
+assert set(BRACKET_SLOPES.keys()) == set(
+    BRACKET_LABELS
+), "BRACKET_SLOPES keys must match BRACKET_LABELS exactly — check age_brackets.py"
 
 # Default slope for any age that falls outside a named bracket
 # (should not occur in normal operation; this is a safety fallback)
@@ -108,38 +122,52 @@ CUT_LOW, CUT_HIGH = -0.5, 0.6
 MOTOR_CONFOUND_PENALTY_WEIGHT = 0.6
 
 
-def sample_children(n: int, rng: np.random.Generator) -> pd.DataFrame:
-    age_months = rng.uniform(AGE_MIN, AGE_MAX, size=n)
+def sample_children(n: int, sampler: np.random.Generator) -> pd.DataFrame:
+    """
+    Synthesizes a representative pediatric cohort across the 0–60 month screening window,
+    parameterized to Indian epidemiological baselines and ASQ-3 bracket structures.
 
-    # Prematurity: ~10% of children born premature (gestational age < 37 weeks).
+    Parameters:
+      n: Number of pediatric profiles to simulate (8,000 for stable ASQ-3 bracket coverage).
+      sampler: Deterministic pseudorandom state generator with locked seed.
+    """
+    age_months = sampler.uniform(AGE_MIN, AGE_MAX, size=n)
+
+    # Prematurity distribution: ~10% prevalence of preterm birth (<37 weeks gestation).
     gestational_weeks = np.where(
-        rng.random(n) < 0.10,
-        rng.uniform(28, 36, size=n),
-        rng.uniform(37, 41, size=n),
+        sampler.random(n) < 0.10,
+        sampler.uniform(28, 36, size=n),
+        sampler.uniform(37, 41, size=n),
     )
-    # Correction: subtract weeks-early, converted to months, from chronological age.
+    # Gestational correction: adjusted age = chronological age - prematurity deficit
     weeks_early = np.clip(40 - gestational_weeks, 0, None)
     corrected_age_months = np.clip(age_months - weeks_early / 4.345, 0, None)
 
-    family_history_flag = (rng.random(n) < 0.08).astype(int)
-    multilingual_home_flag = (rng.random(n) < 0.40).astype(
+    # Epidemiological risk factor prevalence:
+    # 8% family history of developmental delay (familial risk factor)
+    family_history_flag = (sampler.random(n) < 0.08).astype(int)
+    # 40% multilingual household exposure (NFHS-5 language distribution; zero-penalty invariant)
+    multilingual_home_flag = (sampler.random(n) < 0.40).astype(
         int
     )  # common in India; must NOT affect ability
-    regression_flag = (rng.random(n) < 0.05).astype(int)
+    # 5% developmental regression prevalence (clinical red flag)
+    regression_flag = (sampler.random(n) < 0.05).astype(int)
 
     # Derive bracket label and ordinal from corrected_age_months.
     # These become features in the ML model (age_bracket is ordinal-encoded)
     # and are also the grouping key for per-bracket analysis throughout the
     # evaluation pipeline.
     age_bracket = np.array([map_to_bracket_label(a) for a in corrected_age_months])
-    age_bracket_ordinal = np.array([map_to_bracket_ordinal(a) for a in corrected_age_months])
+    age_bracket_ordinal = np.array(
+        [map_to_bracket_ordinal(a) for a in corrected_age_months]
+    )
 
     return pd.DataFrame(
         {
             "child_id": [f"C{i:06d}" for i in range(n)],
             "age_months": age_months,
             "corrected_age_months": corrected_age_months,
-            "age_bracket": age_bracket,          # string label, e.g. "12mo"
+            "age_bracket": age_bracket,  # string label, e.g. "12mo"
             "age_bracket_ordinal": age_bracket_ordinal,  # integer 0–16 for ML
             "family_history_flag": family_history_flag,
             "multilingual_home_flag": multilingual_home_flag,
@@ -151,7 +179,7 @@ def sample_children(n: int, rng: np.random.Generator) -> pd.DataFrame:
 def simulate_item_responses(
     children: pd.DataFrame,
     latents: np.ndarray,
-    rng: np.random.Generator,
+    sampler: np.random.Generator,
 ) -> pd.DataFrame:
     """
     For every item, compute a continuous z-score per child from:
@@ -171,9 +199,9 @@ def simulate_item_responses(
     age_brackets_col = children["age_bracket"].to_numpy()
 
     # Build a per-child slope vector from their age bracket
-    child_slopes = np.array([
-        BRACKET_SLOPES.get(b, _DEFAULT_SLOPE) for b in age_brackets_col
-    ])
+    child_slopes = np.array(
+        [BRACKET_SLOPES.get(b, _DEFAULT_SLOPE) for b in age_brackets_col]
+    )
 
     # Precompute a combined "motor ability" latent (avg of gross+fine motor)
     # used for the motor_confound penalty, independent of an item's own domain.
@@ -196,7 +224,8 @@ def simulate_item_responses(
             # who are specifically behind on motor coordination.
             z = z - MOTOR_CONFOUND_PENALTY_WEIGHT * np.clip(-motor_ability, 0, None)
 
-        z = z + rng.normal(0, 0.4, size=n)  # measurement noise
+        # Classical test theory measurement noise: epsilon ~ N(0, sigma^2 = 0.16)
+        z = z + sampler.normal(0, 0.4, size=n)
 
         response = np.where(z < CUT_LOW, 0, np.where(z < CUT_HIGH, 1, 2))
         responses[item.item_id] = response
@@ -243,7 +272,11 @@ def write_data_dictionary(path: str) -> None:
     ]
     for item in ITEM_BANK:
         brackets_str = ", ".join(item.valid_brackets)
-        unconfirmed_str = "NEEDS CLINICAL REVIEW" if item.bracket_assignment_unconfirmed else "confirmed"
+        unconfirmed_str = (
+            "NEEDS CLINICAL REVIEW"
+            if item.bracket_assignment_unconfirmed
+            else "confirmed"
+        )
         lines.append(
             f"| {item.item_id} | {item.domain} | {item.motor_confound} | "
             f"{item.live_elicitation_eligible} | {item.typical_age_months} | "
@@ -256,25 +289,29 @@ def write_data_dictionary(path: str) -> None:
 def generate(
     n_children: int = N_CHILDREN, seed: int = RNG_SEED
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    rng = np.random.default_rng(seed)
+    """
+    Executes the deterministic Monte Carlo developmental simulation.
+    Uses fixed seed (42) to ensure mathematical reproducibility.
+    """
+    sampler = np.random.default_rng(seed)
 
-    children = sample_children(n_children, rng)
+    children = sample_children(n_children, sampler)
 
     latents = sample_domain_latents(
-        n_children, children["family_history_flag"].to_numpy(), rng
+        n_children, children["family_history_flag"].to_numpy(), sampler
     )
     latents = apply_regression_event(
-        latents, children["regression_flag"].to_numpy(), rng
+        latents, children["regression_flag"].to_numpy(), sampler
     )
 
-    item_responses = simulate_item_responses(children, latents, rng)
+    item_responses = simulate_item_responses(children, latents, sampler)
     domain_scores = compute_domain_scores(item_responses)  # derived, display-only
 
     pct_df = domain_percentiles(
         domain_scores, children["corrected_age_months"].to_numpy()
     )
     composite = composite_risk_score(
-        pct_df, children["regression_flag"].to_numpy(), rng
+        pct_df, children["regression_flag"].to_numpy(), sampler
     )
     labels = assign_labels_by_quantile(composite)
 
