@@ -1,0 +1,581 @@
+"""Curated practice-activity table for Module B (blueprint 5.12: activities are PRACTICE, not treatment).
+
+Run: python src/make_activities.py  ->  data/activities_b.csv
+
+Content is general, low-risk, home/classroom practice written for this project. It has NOT been
+reviewed by a special educator / OT / paediatrician; `review_status` says so. Activities are chosen
+from this table at run time (never generated freely by an LLM).
+cols: activity_id, domain, age_min, age_max, level (any|monitor|refer), title, minutes, setting, steps, avoid
+"""
+
+import csv
+import os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+A = []
+
+
+def add(domain, a0, a1, level, title, minutes, setting, steps, avoid=""):
+    A.append((domain, a0, a1, level, title, minutes, setting, steps, avoid))
+
+
+# ---------------- attention_work
+add(
+    "attention_work",
+    5,
+    8,
+    "any",
+    "Five-minute work bursts",
+    15,
+    "home",
+    "Pick one small task (one worksheet row). Set a visible 5-minute timer. Work until it rings, then give a 2-minute movement break. Repeat up to 3 times.",
+    "Do not add extra tasks if finished early.",
+)
+add(
+    "attention_work",
+    5,
+    8,
+    "any",
+    "One instruction at a time",
+    10,
+    "home|school",
+    "Get the child's eyes, say ONE short instruction, ask them to say it back, then let them do it. Add a second step only after three clean successes.",
+    "Avoid giving instructions from another room.",
+)
+add(
+    "attention_work",
+    9,
+    12,
+    "any",
+    "Chunked homework plan",
+    20,
+    "home",
+    "Split homework into 3 chunks with a tick-list. Start with the shortest. After each chunk: 3-minute break away from screens. Child ticks the list themselves.",
+    "Do not keep the phone or TV in the room.",
+)
+add(
+    "attention_work",
+    9,
+    12,
+    "any",
+    "Bag-and-routine checklist",
+    10,
+    "home",
+    "Make a 5-picture or 5-word checklist (bottle, tiffin, books, copy, pencil box) for the door. Child checks it each evening. Praise the check, not the result.",
+    "Do not pack the bag for the child every day.",
+)
+add(
+    "attention_work",
+    5,
+    12,
+    "monitor",
+    "Quiet work corner",
+    0,
+    "home",
+    "Set one fixed, tidy spot for homework: facing a wall, away from TV and traffic, with only what is needed on the table.",
+    "",
+)
+add(
+    "attention_work",
+    5,
+    12,
+    "refer",
+    "Home and class notes for the professional",
+    10,
+    "home|school",
+    "For one week jot down when the difficulty happens (time, subject, place) and what helped. Take it to the school counsellor, special educator or doctor.",
+    "",
+)
+# ---------------- listening_speaking
+add(
+    "listening_speaking",
+    5,
+    8,
+    "any",
+    "Say it back",
+    10,
+    "home",
+    "Give a 2-step instruction ('pick up the book and put it on the table'). Ask the child to say it back, then do it. Grow to 3 steps slowly.",
+    "Do not test; keep it playful.",
+)
+add(
+    "listening_speaking",
+    5,
+    8,
+    "any",
+    "Picture story retell",
+    15,
+    "home",
+    "Look at 3 simple pictures in order. Ask 'what happened first, next, last?' Model a full sentence, ask the child to try. Praise attempts.",
+    "Do not correct every mistake.",
+)
+add(
+    "listening_speaking",
+    9,
+    12,
+    "any",
+    "Explain the day",
+    10,
+    "home",
+    "At dinner each person tells one thing from the day with 'who, what, where, why'. Help with a prompt only after a pause.",
+    "",
+)
+add(
+    "listening_speaking",
+    9,
+    12,
+    "any",
+    "Word-finding games",
+    10,
+    "home",
+    "Play 'name 5 things that are round / sold in a market / found in a kitchen'. Give a first-sound hint if stuck.",
+    "",
+)
+add(
+    "listening_speaking",
+    5,
+    12,
+    "monitor",
+    "Face-to-face talking",
+    0,
+    "home|school",
+    "Get down to the child's eye level, speak slowly in short sentences, pause, and wait a full 5 seconds before repeating.",
+    "",
+)
+add(
+    "listening_speaking",
+    5,
+    12,
+    "refer",
+    "Hearing and speech check route",
+    0,
+    "health",
+    "Ask the school health team (RBSK), a paediatrician or DEIC for a hearing check and a speech-language assessment.",
+    "",
+)
+# ---------------- reading
+add(
+    "reading",
+    5,
+    8,
+    "any",
+    "Sound of the day",
+    10,
+    "home",
+    "Pick one letter sound. Find 5 objects that start with it, say them slowly, then blend 'c-a-t'. Use the home language and the school language.",
+    "Do not force reading aloud in front of others.",
+)
+add(
+    "reading",
+    5,
+    8,
+    "any",
+    "Rhyme and clap",
+    10,
+    "home",
+    "Clap syllables of names and words. Make rhymes (cat, mat, hat). Rhyme games build the sound awareness reading depends on.",
+    "",
+)
+add(
+    "reading",
+    9,
+    12,
+    "any",
+    "Paired reading",
+    15,
+    "home",
+    "Read a page together aloud at the same pace, then let the child continue alone; when they stumble, read along again. Pick short, interesting text.",
+    "Do not interrupt for every error.",
+)
+add(
+    "reading",
+    9,
+    12,
+    "any",
+    "Ruler under the line",
+    10,
+    "home|school",
+    "Use a ruler or finger under the line while reading to help keep the place. Re-read the same short passage 3 times to build fluency.",
+    "",
+)
+add(
+    "reading",
+    5,
+    12,
+    "monitor",
+    "Ten minutes daily",
+    10,
+    "home",
+    "Read for 10 minutes every day, a mix of the child's choice and a little challenge. Keep it calm and positive.",
+    "",
+)
+add(
+    "reading",
+    5,
+    12,
+    "refer",
+    "Learning assessment route",
+    0,
+    "school|health",
+    "Ask the school special educator or counsellor, or the DEIC / a paediatrician, about a learning (reading) assessment.",
+    "",
+)
+# ---------------- writing
+add(
+    "writing",
+    5,
+    8,
+    "any",
+    "Big-to-small letter shapes",
+    10,
+    "home",
+    "Practise letters first in the air, then in sand or on a tray, then on paper with guide lines. Start every letter from the top.",
+    "Do not require neatness for long stretches.",
+)
+add(
+    "writing",
+    5,
+    8,
+    "any",
+    "Dough and clip play",
+    10,
+    "home",
+    "Roll dough, use tongs or clothes-pegs to move small items. Builds the hand strength needed for writing.",
+    "",
+)
+add(
+    "writing",
+    9,
+    12,
+    "any",
+    "Short daily sentence",
+    10,
+    "home",
+    "Write 2-3 sentences about the day. Check one thing only (e.g., full stop). Praise the ideas first.",
+    "Do not red-pen every error.",
+)
+add(
+    "writing",
+    9,
+    12,
+    "any",
+    "Spelling in chunks",
+    10,
+    "home",
+    "Practise 3 words a day: look, say in syllables, cover, write, check. Revise the same words on day 3 and day 7.",
+    "",
+)
+add(
+    "writing",
+    5,
+    12,
+    "monitor",
+    "Comfortable setup",
+    0,
+    "home|school",
+    "Check seat height, paper tilt and pencil grip (a soft grip helps). Allow short breaks every few lines.",
+    "",
+)
+add(
+    "writing",
+    5,
+    12,
+    "refer",
+    "Handwriting / learning assessment route",
+    0,
+    "school|health",
+    "Ask the school special educator, an occupational therapist or a paediatrician whether a writing or learning assessment is needed.",
+    "",
+)
+# ---------------- numbers
+add(
+    "numbers",
+    5,
+    8,
+    "any",
+    "Count and compare with objects",
+    10,
+    "home",
+    "Count real objects (beans, coins, buttons). Ask 'which group has more?' Make and break groups of up to 10.",
+    "Do not rely on rote tables first.",
+)
+add(
+    "numbers",
+    5,
+    8,
+    "any",
+    "Number line walk",
+    10,
+    "home",
+    "Draw a 0-20 number line on the floor. Hop to add, hop back to subtract.",
+    "",
+)
+add(
+    "numbers",
+    9,
+    12,
+    "any",
+    "Money and time in real life",
+    10,
+    "home",
+    "Let the child pay for a small item and check change; read the clock for meals and bus times.",
+    "",
+)
+add(
+    "numbers",
+    9,
+    12,
+    "any",
+    "Tables with patterns",
+    10,
+    "home",
+    "Learn tables through patterns (2s, 5s, 10s first; 9s finger trick) and short daily practice, not long drills.",
+    "",
+)
+add(
+    "numbers",
+    5,
+    12,
+    "monitor",
+    "Fear-free maths",
+    0,
+    "home",
+    "Praise effort and method, not speed. Let the child explain how they got an answer, right or wrong.",
+    "",
+)
+add(
+    "numbers",
+    5,
+    12,
+    "refer",
+    "Learning assessment route",
+    0,
+    "school|health",
+    "Ask the school special educator or a paediatrician about an assessment of maths learning.",
+    "",
+)
+# ---------------- motor
+add(
+    "motor",
+    5,
+    8,
+    "any",
+    "Ball and balance play",
+    15,
+    "home|outdoors",
+    "Roll, throw and catch a large soft ball; walk along a line; stand on one foot for a count of 5. Make it a game.",
+    "Do not compare with siblings.",
+)
+add(
+    "motor",
+    5,
+    8,
+    "any",
+    "Scissors and threading",
+    10,
+    "home",
+    "Cut along thick lines, then curves; thread large beads. Slowly make lines thinner.",
+    "",
+)
+add(
+    "motor",
+    9,
+    12,
+    "any",
+    "Cycle, skip, swim",
+    20,
+    "outdoors",
+    "Pick one whole-body skill the child likes (cycling, skipping rope, swimming) and practise a little most days.",
+    "",
+)
+add(
+    "motor",
+    9,
+    12,
+    "any",
+    "Everyday tasks",
+    10,
+    "home",
+    "Practise buttons, zips, laces and tying a knot with a slow demo, then hand-over-hand, then alone.",
+    "",
+)
+add(
+    "motor",
+    5,
+    12,
+    "monitor",
+    "Success-first practice",
+    0,
+    "home|school",
+    "Start with tasks the child can do and make them slightly harder. Let the child choose the activity.",
+    "",
+)
+add(
+    "motor",
+    5,
+    12,
+    "refer",
+    "Therapy assessment route",
+    0,
+    "health",
+    "Ask a paediatrician, the RBSK school team or DEIC about an occupational therapy / physiotherapy assessment.",
+    "",
+)
+# ---------------- social
+add(
+    "social",
+    5,
+    8,
+    "any",
+    "Turn-taking games",
+    15,
+    "home",
+    "Play simple board or card games with one sibling or friend. Use words: 'my turn', 'your turn', 'good try'.",
+    "",
+)
+add(
+    "social",
+    5,
+    8,
+    "any",
+    "Feelings faces",
+    10,
+    "home",
+    "Look at pictures or faces and name the feeling. Ask 'what might they want?'",
+    "",
+)
+add(
+    "social",
+    9,
+    12,
+    "any",
+    "One friend, one plan",
+    30,
+    "home|community",
+    "Arrange a small, structured play date (one child, one activity). Rehearse greetings and how to join a game.",
+    "Avoid big crowded parties at first.",
+)
+add(
+    "social",
+    9,
+    12,
+    "any",
+    "Role-play a tricky moment",
+    10,
+    "home",
+    "Act out being left out or disagreeing. Practise 2 calm things to say and 1 adult to tell.",
+    "",
+)
+add(
+    "social",
+    5,
+    12,
+    "monitor",
+    "Shared-interest group",
+    0,
+    "community",
+    "Join a small club (art, football, chess) where friendships grow around something the child likes.",
+    "",
+)
+add(
+    "social",
+    5,
+    12,
+    "refer",
+    "Talk to the school counsellor",
+    0,
+    "school",
+    "Share what you see with the class teacher and counsellor, including any teasing or bullying, so they can watch and support.",
+    "",
+)
+# ---------------- emotion_school
+add(
+    "emotion_school",
+    5,
+    8,
+    "any",
+    "Name it, then calm it",
+    10,
+    "home",
+    "When upset, name the feeling ('you look angry'). Then use a short calm routine: 5 slow 'smell the flower, blow the candle' breaths.",
+    "Do not argue during the meltdown; talk after.",
+)
+add(
+    "emotion_school",
+    5,
+    8,
+    "any",
+    "Morning goodbye routine",
+    5,
+    "home",
+    "Use the same short goodbye every day (hug, phrase, wave). Stay calm, leave on time, and keep the promise about pick-up.",
+    "Do not sneak away.",
+)
+add(
+    "emotion_school",
+    9,
+    12,
+    "any",
+    "Worry time",
+    10,
+    "home",
+    "Set 10 minutes a day to write or draw worries, pick one, and plan one small step. Outside that time, park worries on paper.",
+    "",
+)
+add(
+    "emotion_school",
+    9,
+    12,
+    "any",
+    "Predictable routine",
+    0,
+    "home",
+    "Keep sleep, meal and homework times steady; limit screens at night; build in one daily play or exercise slot.",
+    "",
+)
+add(
+    "emotion_school",
+    5,
+    12,
+    "monitor",
+    "Notice and praise coping",
+    0,
+    "home",
+    "Notice and praise the moments the child handles a hard feeling well. Keep a short note of triggers and times.",
+    "",
+)
+add(
+    "emotion_school",
+    5,
+    12,
+    "refer",
+    "Talk to a counsellor",
+    0,
+    "school|health",
+    "Speak with the school counsellor, a paediatrician or a child mental-health service. Kiran (1800-599-0019, free) can help you find support.",
+    "",
+)
+
+if __name__ == "__main__":
+    out = os.path.join(ROOT, "data", "activities_b.csv")
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(
+            [
+                "activity_id",
+                "domain",
+                "age_min",
+                "age_max",
+                "level",
+                "title",
+                "minutes",
+                "setting",
+                "steps",
+                "avoid",
+                "review_status",
+            ]
+        )
+        for i, a in enumerate(A):
+            w.writerow([f"act_{i:03d}"] + list(a) + ["pending_expert_review"])
+    print("wrote", out, len(A), "activities")

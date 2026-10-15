@@ -1,0 +1,8 @@
+# Exclude Module B dev-only training datasets and generator scripts from Docker image
+ml/module_b/
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+local.db
+nirixon_dev.db

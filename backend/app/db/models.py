@@ -10,7 +10,7 @@ these columns beyond resume metadata).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -30,7 +30,7 @@ from app.db.session import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _uuid() -> str:
@@ -90,6 +90,10 @@ class ScreeningSession(Base):
     # Serialized orchestrator state (to_dict) for resume — SessionRepository
     # is the live source during a request; this column is the durable backup.
     state_json: Mapped[dict] = mapped_column(JsonType, default=dict)
+
+    # Module B adaptive session state and pending item
+    pending_item_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    module_b_state: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
 
     parent: Mapped[User] = relationship(back_populates="sessions")
     answers: Mapped[list[Answer]] = relationship(

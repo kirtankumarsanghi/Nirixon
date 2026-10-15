@@ -38,7 +38,7 @@ from __future__ import annotations
 # dependency chain clean (no circular import through adaptive_tree).
 # ------------------------------------------------------------------
 from data.generator.item_bank import DOMAINS, ITEM_BANK
-from data.generator.item_bank_b import RULE_OUT_ITEMS, MODULE_B_ITEM_BANK
+from data.generator.item_bank_b import MODULE_B_ITEM_BANK, RULE_OUT_ITEMS
 
 from .session import MANDATORY_IDS, ScreeningSession
 

@@ -27,12 +27,36 @@ class StartScreenRequest(BaseModel):
     # When None the module is auto-detected: <60 months → A, ≥60 months → B.
     module: Literal["A", "B"] | None = None
     # Recorded in the session audit trail; must be true to start.
-    consent_given: bool = Field(..., description="Parent informed-consent acknowledgment")
+    consent_given: bool = Field(
+        ..., description="Parent informed-consent acknowledgment"
+    )
 
 
 class AnswerRequest(BaseModel):
     item_id: str
-    answer: int
+    answer: Any
+    track: str | None = None
+    engine_session: str | None = None
+
+
+class ActivityPayload(BaseModel):
+    title: str
+    minutes: int | None = None
+    setting: str | None = None
+    steps: list[str] | str | None = None
+
+
+class DomainTrackPayload(BaseModel):
+    state: str = "Not asked"
+    score: float | None = None
+    n: int = 0
+    endorsed: int | None = None
+    borderline: int | bool | None = None
+    brief: bool | None = None
+    because: list[str] = Field(default_factory=list)
+    irt_theta: float | None = None
+    irt_se: float | None = None
+    fisher_information: float | None = None
 
 
 class QuestionPayload(BaseModel):
@@ -41,7 +65,9 @@ class QuestionPayload(BaseModel):
     domain: str
     question_number: int
     question_cap: int
-    response_type: Literal["yes_no", "frequency"] = "frequency"
+    response_type: Literal["yes_no", "frequency", "yesno", "likert5"] = "frequency"
+    scale_labels: str | None = None
+    track: str | None = None
 
 
 class ShapFeature(BaseModel):
@@ -69,16 +95,52 @@ class ResultPayload(BaseModel):
     consistency_score: float | None = None
     # Module B: which domains have a meaningful divergence between raters
     consistency_flags: dict[str, bool] = {}
+    # DSM-5 Criterion C: per-domain multi-informant concordance classification
+    concordance_classification: dict[str, str] = Field(default_factory=dict)
+    # Sensory vs Cognitive Differential Masking (e.g. CAPD vs ADHD)
+    differential_masking: dict[str, Any] = Field(default_factory=dict)
+    teacher_invite_code: str | None = None
     # Module identifier propagated to the frontend for render branching
     module: Literal["A", "B"] = "A"
+    # Module B additive fields
+    summary: str | None = None
+    activities: dict[str, list[ActivityPayload]] = Field(default_factory=dict)
+    domain_details: dict[str, DomainTrackPayload] = Field(default_factory=dict)
+    ruleouts: dict[str, DomainTrackPayload] = Field(default_factory=dict)
+    flagged_domains: list[str] = Field(default_factory=list)
+    ruleout_flags: list[str] = Field(default_factory=list)
+    context_flags: list[str] = Field(default_factory=list)
+    red_flags: list[dict[str, Any]] = Field(default_factory=list)
+    help_routes: dict[str, Any] = Field(default_factory=dict)
+    safety: bool = False
+    # Tiered Clinical Triage (Tier 1: Pass, Tier 2: Reflex-Branch, Tier 3: Direct Referral)
+    triage_tier: str | None = None
+    reflex_branch_recommended: bool = False
+    target_reflex_domains: list[str] = Field(default_factory=list)
+    # Reporting Quality & Behavioral Guards
+    guard_flags: dict[str, bool] = Field(default_factory=dict)
+    guard_advisories: list[str] = Field(default_factory=list)
 
 
 class ScreenActionResponse(BaseModel):
-    type: Literal["question", "complete", "intake_required"]
+    type: Literal[
+        "question",
+        "complete",
+        "intake_required",
+        "recall_help",
+        "safety_notice",
+        "done",
+    ]
     session_id: str
     status: str
     question: QuestionPayload | None = None
     result: ResultPayload | None = None
+    # Additive fields
+    safety_message: str | None = None
+    helplines: dict[str, str] | None = None
+    recall_message: str | None = None
+    recall_options: dict[str, str] | None = None
+    engine_session: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -91,29 +153,57 @@ class IntakeRequest(BaseModel):
     setting: Literal["home", "school", "both"] = "both"
     # Optional recall-help chip labels selected by the caregiver
     chips: list[str] = Field(default_factory=list)
+    seed: int = 0
 
 
 class IntakeResponse(BaseModel):
-    recall_help_needed: bool
-    recall_help_options: list[str]
-    detected_domains: list[str]
-    rule_out_flagged: bool
+    recall_help_needed: bool = False
+    recall_help_options: list[str] = Field(default_factory=list)
+    detected_domains: list[str] = Field(default_factory=list)
+    rule_out_flagged: bool = False
     # "question" = proceed to adaptive questions
     # "rule_out_referral" = stop immediately; show specialist-referral message
-    next_action: Literal["question", "rule_out_referral"]
+    # "recall_help" = show recall chips
+    # "safety_notice" = show safety helpline
+    next_action: Literal[
+        "question", "rule_out_referral", "recall_help", "safety_notice"
+    ] = "question"
+    action: ScreenActionResponse | None = None
+    safety_message: str | None = None
+    helplines: dict[str, str] | None = None
+    recall_message: str | None = None
+    recall_options: dict[str, str] | None = None
+    engine_session: str | None = None
+    question: QuestionPayload | None = None
+
+
+class RecallChoiceRequest(BaseModel):
+    domains: list[str] = Field(default_factory=list)
+    engine_session: str | None = None
+
+
+class TeacherInviteResponse(BaseModel):
+    session_id: str
+    teacher_invite_code: str
+    invite_url: str
+    child_ref: str = ""
+    expires_in_days: int = 7
 
 
 class TeacherAnswerRequest(BaseModel):
     """A batch of teacher-supplied item answers for a Module B session."""
 
-    # item_id -> 0/1/2 (same scale as parent answers)
+    # item_id -> 0/1/2 or 1..5 scale
     answers: dict[str, int]
 
 
 class TeacherAnswerResponse(BaseModel):
+    session_id: str
     consistency_score: float
     consistency_flags: dict[str, bool]  # domain -> True if divergent
-    caveats: list[str]
+    concordance_classification: dict[str, str] = Field(default_factory=dict)
+    caveats: list[str] = Field(default_factory=list)
+    summary: str | None = None
 
 
 class TeacherItemPayload(BaseModel):

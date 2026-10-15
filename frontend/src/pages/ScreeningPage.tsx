@@ -9,9 +9,17 @@ import { ProgressIndicator } from "../components/ProgressIndicator";
 import { ResultsView } from "../components/ResultsView";
 import { FreeTextIntake } from "../components/FreeTextIntake";
 import { ModuleBResultCard } from "../components/ModuleBResultCard";
+import { ModuleBQuestionForm } from "../components/ModuleBQuestionForm";
+import { ModuleBResultView } from "../components/ModuleBResultView";
+import { RecallHelpScreen } from "../components/RecallHelpScreen";
+import {
+  SafetyNoticeScreen,
+  SafetyPersistentLink,
+} from "../components/SafetyNoticeScreen";
 import { TeacherForm } from "../components/TeacherForm";
 import { PageNav } from "../components/PageNav";
 import { saveCheckIn } from "../lib/checkInHistory";
+import { t } from "../i18n";
 
 /** ASQ-3 bracket labels — Module A only (ages 1–59 months). */
 function getAgeABracketLabel(months: number): string | null {
@@ -78,7 +86,10 @@ export function ScreeningPage() {
   async function onStart(e: FormEvent) {
     e.preventDefault();
     if (!Number.isFinite(ageNum) || ageNum < 1 || ageNum > 144) {
-      push("Please enter a corrected age between 1 and 144 months.", "error");
+      push(
+        t("screen.age.error", "Please enter a corrected age between 1 and 144 months."),
+        "error",
+      );
       return;
     }
     setStarting(true);
@@ -108,15 +119,67 @@ export function ScreeningPage() {
       const msg =
         err instanceof ApiError
           ? err.status === 429
-            ? "You're sending answers a bit quickly — please wait a moment and try again."
-            : err.detail
-          : "Could not save that answer after retries. Check your connection and try again — your earlier answers are still saved.";
+            ? t(
+                "screen.ratelimit",
+                "You're sending answers a bit quickly — please wait a moment and try again.",
+              )
+            : err.status === 422
+              ? t(
+                  "screen.badanswer",
+                  "That answer could not be saved. Please try a different option.",
+                )
+              : err.status === 404
+                ? t(
+                    "screen.expired",
+                    "Your session has expired. Please start a new check-in.",
+                  )
+                : err.detail
+          : t(
+              "screen.answerfail",
+              "Could not save that answer after retries. Check your connection and try again — your earlier answers are still saved.",
+            );
       push(msg, "error");
     }
   }
 
+  // --- COMPLETE phase ---
   if (q.phase === "complete" && q.result) {
-    if (q.result.module === "B" || q.module === "B") {
+    // Module B enriched result view (new flow)
+    if (q.module === "B" || q.result.module === "B") {
+      // Check if the result has the enriched fields (domains, activities, etc.)
+      const hasEnrichedResult =
+        q.result.domains || q.result.activities || q.result.summary;
+
+      if (hasEnrichedResult) {
+        return (
+          <div>
+            <PageNav
+              backLabel={t("screen.nav.startover", "Start another check-in")}
+              onBack={() => {
+                q.reset();
+                setRuleOut(false);
+                setShowTeacherForm(true);
+                setTeacherResult(null);
+              }}
+              preferHistoryBack={false}
+            />
+            {q.showSafetyLink ? <SafetyPersistentLink /> : null}
+            <ModuleBResultView
+              result={q.result}
+              correctedAgeMonths={q.correctedAgeMonths}
+              childRef={q.childRef}
+              onStartOver={() => {
+                q.reset();
+                setRuleOut(false);
+                setShowTeacherForm(true);
+                setTeacherResult(null);
+              }}
+            />
+          </div>
+        );
+      }
+
+      // Fallback to existing teacher form + ModuleBResultCard flow
       if (showTeacherForm) {
         return (
           <TeacherForm
@@ -159,17 +222,52 @@ export function ScreeningPage() {
     );
   }
 
+  // --- SAFETY NOTICE phase ---
+  if (q.phase === "safety_notice") {
+    return (
+      <SafetyNoticeScreen
+        message={q.safetyMessage}
+        onContinue={() => q.dismissSafety()}
+      />
+    );
+  }
+
+  // --- RECALL HELP phase ---
+  if (q.phase === "recall_help" && q.recallOptions.length > 0) {
+    return (
+      <div>
+        {q.showSafetyLink ? <SafetyPersistentLink /> : null}
+        <RecallHelpScreen
+          options={q.recallOptions}
+          submitting={q.submitting}
+          onSubmit={(domains) => {
+            void q.submitRecall(domains);
+          }}
+        />
+        {q.error ? (
+          <p className="form-error" role="alert" aria-live="assertive">
+            {q.error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  // --- RULE OUT ---
   if (ruleOut) {
     return (
       <section className="rule-out" aria-labelledby="rule-out-title">
         <h1 id="rule-out-title" className="display display--clay">
-          A specialist evaluation is recommended
+          {t(
+            "screen.ruleout.title",
+            "A specialist evaluation is recommended",
+          )}
         </h1>
         <p className="lede">
-          Based on your description, this child may benefit from assessment by
-          a hearing, vision, or developmental specialist before completing this
-          screener. Please speak with your paediatrician, a developmental
-          specialist, or your local Anganwadi / PHC.
+          {t(
+            "screen.ruleout.body",
+            "Based on your description, this child may benefit from assessment by a hearing, vision, or developmental specialist before completing this screener. Please speak with your paediatrician, a developmental specialist, or your local Anganwadi / PHC.",
+          )}
         </p>
         <button
           type="button"
@@ -179,12 +277,13 @@ export function ScreeningPage() {
             q.reset();
           }}
         >
-          Back to the start
+          {t("screen.ruleout.back", "Back to the start")}
         </button>
       </section>
     );
   }
 
+  // --- INTAKE phase ---
   if (q.phase === "intake" && q.sessionId) {
     return (
       <FreeTextIntake
@@ -197,15 +296,21 @@ export function ScreeningPage() {
     );
   }
 
+  // --- QUESTION phase ---
   if (q.phase === "question" && q.question) {
+    const isModuleBQuestion = q.module === "B";
+
     return (
       <div className="screening">
         <PageNav
-          backLabel="Leave check-in"
+          backLabel={t("screen.nav.leave", "Leave check-in")}
           onBack={() => {
             if (
               window.confirm(
-                "Leave this check-in? Your progress is saved for this session if you return soon.",
+                t(
+                  "screen.nav.confirm",
+                  "Leave this check-in? Your progress is saved for this session if you return soon.",
+                ),
               )
             ) {
               q.reset();
@@ -213,13 +318,14 @@ export function ScreeningPage() {
           }}
           preferHistoryBack={false}
         />
+        {q.showSafetyLink ? <SafetyPersistentLink /> : null}
         <ProgressIndicator
           coveredCount={q.coveredDomains.size}
           totalDomains={q.totalDomains}
           label={
-            q.module === "B"
-              ? "functioning areas covered"
-              : "domains covered"
+            isModuleBQuestion
+              ? t("screen.progress.moduleb", "functioning areas covered")
+              : t("screen.progress.modulea", "domains covered")
           }
         />
         {q.error ? (
@@ -229,35 +335,75 @@ export function ScreeningPage() {
         ) : null}
         {q.submitting ? (
           <p className="lede screening__saving" role="status" aria-live="polite">
-            Saving your answer…
+            {t("screen.saving", "Saving your answer…")}
           </p>
         ) : null}
-        <QuestionnaireForm
-          question={q.question}
-          disabled={q.submitting}
-          onAnswer={onAnswer}
-        />
+        {isModuleBQuestion ? (
+          <ModuleBQuestionForm
+            question={q.question}
+            disabled={q.submitting}
+            onAnswer={onAnswer}
+            progress={q.progress}
+          />
+        ) : (
+          <QuestionnaireForm
+            question={q.question}
+            disabled={q.submitting}
+            onAnswer={onAnswer}
+          />
+        )}
       </div>
     );
   }
 
+  // --- LOADING phase ---
   if (q.phase === "loading") {
     return (
       <p className="lede" role="status" aria-live="polite">
-        Loading your check-in…
+        {t("screen.loading", "Loading your check-in…")}
       </p>
     );
   }
 
+  // --- ERROR phase ---
+  if (q.phase === "error") {
+    return (
+      <section className="screening-start" aria-labelledby="error-title">
+        <h1 id="error-title" className="display display--clay">
+          {t("screen.error.title", "Something went wrong")}
+        </h1>
+        {q.error ? (
+          <p className="form-error" role="alert">
+            {q.error}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => q.reset()}
+        >
+          {t("screen.error.retry", "Start again")}
+        </button>
+      </section>
+    );
+  }
+
+  // --- IDLE phase (start form) ---
   return (
     <section className="screening-start" aria-labelledby="start-title">
       <h1 id="start-title" className="display">
-        Start a check-in
+        {t("screen.start.title", "Start a check-in")}
       </h1>
       <p className="lede">
         {isModuleB
-          ? "For school-age children (5–12 years / 60–144 months) we start with a brief open-ended description, then ask follow-up questions about functioning at home and school."
-          : "We'll ask a short adaptive set of questions. Progress is by domain coverage, not a fixed question count — the list can shorten as you go."}
+          ? t(
+              "screen.start.moduleb",
+              "For school-age children (5–12 years / 60–144 months) we start with a brief open-ended description, then ask follow-up questions about functioning at home and school.",
+            )
+          : t(
+              "screen.start.modulea",
+              "We'll ask a short adaptive set of questions. Progress is by domain coverage, not a fixed question count — the list can shorten as you go.",
+            )}
       </p>
       {q.error ? (
         <p className="form-error" role="alert" aria-live="assertive">
@@ -266,7 +412,7 @@ export function ScreeningPage() {
       ) : null}
       <form className="screening-start__form" onSubmit={onStart}>
         <label className="field">
-          <span>Child&apos;s corrected age (months)</span>
+          <span>{t("screen.field.age", "Child\u0027s corrected age (months)")}</span>
           <input
             type="number"
             min={1}
@@ -282,17 +428,24 @@ export function ScreeningPage() {
               {ageBracketLabel && !isModuleB
                 ? ` · ASQ-3 bracket: ${ageBracketLabel}`
                 : null}
-              {isModuleB ? " · School-age pathway (Module B)" : null}
+              {isModuleB
+                ? ` · ${t("screen.field.moduleb", "School-age pathway (Module B)")}`
+                : null}
             </span>
           ) : null}
         </label>
         <label className="field">
-          <span>Optional label for this session only</span>
+          <span>
+            {t("screen.field.ref", "Optional label for this session only")}
+          </span>
           <input
             type="text"
             value={childRef}
             onChange={(e) => setChildRef(e.target.value)}
-            placeholder="e.g. initials — not a lasting child profile"
+            placeholder={t(
+              "screen.field.ref.placeholder",
+              "e.g. initials — not a lasting child profile",
+            )}
             autoComplete="off"
           />
         </label>
@@ -301,7 +454,11 @@ export function ScreeningPage() {
           className="btn btn--primary"
           disabled={starting}
         >
-          {starting ? "Starting…" : isModuleB ? "Begin school-age check-in" : "Begin"}
+          {starting
+            ? t("screen.start.starting", "Starting…")
+            : isModuleB
+              ? t("screen.start.begin.moduleb", "Begin school-age check-in")
+              : t("screen.start.begin", "Begin")}
         </button>
       </form>
     </section>

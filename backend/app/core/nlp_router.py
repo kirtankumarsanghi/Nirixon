@@ -34,14 +34,18 @@ from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CONFIG_PATH = os.path.join(
-    os.path.dirname(__file__), "nlp_domain_rules.json"
-)
+_DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "nlp_domain_rules.json")
 
 # Module B scored domains (excludes rule_out)
 _SCORED_DOMAINS = {
-    "attention", "reading", "writing", "numbers",
-    "listening_speaking", "motor", "social", "emotion_conduct",
+    "attention",
+    "reading",
+    "writing",
+    "numbers",
+    "listening_speaking",
+    "motor",
+    "social",
+    "emotion_conduct",
 }
 
 
@@ -49,13 +53,14 @@ _SCORED_DOMAINS = {
 # Public result type
 # ---------------------------------------------------------------------------
 
+
 class DomainRouterResult(TypedDict):
-    detected_domains: list[str]       # subset of _SCORED_DOMAINS
-    rule_out_flagged: bool             # vision/hearing/global-delay signal
-    setting: str                       # "home" | "school" | "both" | "unknown"
-    recall_help_needed: bool           # True → show tappable chips to user
-    recall_help_options: list[str]     # from config
-    token_count: int                   # for diagnostics
+    detected_domains: list[str]  # subset of _SCORED_DOMAINS
+    rule_out_flagged: bool  # vision/hearing/global-delay signal
+    setting: str  # "home" | "school" | "both" | "unknown"
+    recall_help_needed: bool  # True → show tappable chips to user
+    recall_help_options: list[str]  # from config
+    token_count: int  # for diagnostics
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +92,7 @@ _reset_config_cache()
 # Text utilities
 # ---------------------------------------------------------------------------
 
+
 def _normalise(text: str) -> str:
     """Lowercase, collapse whitespace, strip punctuation for matching."""
     text = text.lower().strip()
@@ -100,8 +106,12 @@ def _token_count(text: str) -> int:
 
 def _detect_setting(text: str) -> str:
     lower = text.lower()
-    has_school = any(w in lower for w in ("school", "class", "teacher", "classroom", "homework"))
-    has_home = any(w in lower for w in ("home", "house", "family", "dinner", "bedtime", "morning"))
+    has_school = any(
+        w in lower for w in ("school", "class", "teacher", "classroom", "homework")
+    )
+    has_home = any(
+        w in lower for w in ("home", "house", "family", "dinner", "bedtime", "morning")
+    )
     if has_school and has_home:
         return "both"
     if has_school:
@@ -114,6 +124,7 @@ def _detect_setting(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Rule-based domain matching
 # ---------------------------------------------------------------------------
+
 
 def _keyword_hits(normalised_text: str, keyword: str) -> bool:
     """
@@ -162,6 +173,7 @@ def _apply_rules(normalised_text: str, domain_rules: dict) -> tuple[set[str], bo
 # Public interface
 # ---------------------------------------------------------------------------
 
+
 def route_text(
     text: str,
     config: dict | None = None,
@@ -187,7 +199,7 @@ def route_text(
         config = _load_config(config_path)
 
     min_tokens: int = config.get("min_tokens", 5)
-    specificity_min_kw: int = config.get("specificity_min_keywords", 1)
+    config.get("specificity_min_keywords", 1)
     recall_options: list[str] = config.get("recall_help_options", [])
     domain_rules: dict = config.get("domain_rules", {})
 
@@ -212,7 +224,8 @@ def route_text(
     if token_count < min_tokens and not chip_hit:
         logger.info(
             "nlp_router: text too short (tokens=%d < min=%d) → recall_help",
-            token_count, min_tokens,
+            token_count,
+            min_tokens,
         )
         return DomainRouterResult(
             detected_domains=[],
@@ -224,13 +237,18 @@ def route_text(
         )
 
     # No keywords hit at all → vague, needs recall help
-    recall_help_needed = len(matched_domains) == 0 and not rule_out_flagged and not chip_hit
+    recall_help_needed = (
+        len(matched_domains) == 0 and not rule_out_flagged and not chip_hit
+    )
 
     detected_domains = sorted(matched_domains)  # stable order for determinism
 
     logger.info(
         "nlp_router: tokens=%d domains=%s rule_out=%s recall_help=%s",
-        token_count, detected_domains, rule_out_flagged, recall_help_needed,
+        token_count,
+        detected_domains,
+        rule_out_flagged,
+        recall_help_needed,
     )
 
     return DomainRouterResult(

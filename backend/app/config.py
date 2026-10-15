@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Nirixon API"
     environment: str = Field(default="development", alias="ENVIRONMENT")
-    debug: bool = False
+    debug: bool = Field(default=False, alias="NIRIXON_DEBUG")
 
     # Database
     database_url: str = Field(
@@ -62,6 +62,14 @@ class Settings(BaseSettings):
         default=str(_BACKEND_ROOT / "ml" / "artifacts" / "module_b"),
         alias="ML_ARTIFACTS_DIR_B",
     )
+    module_b_data_dir: str = Field(
+        default=str(_BACKEND_ROOT / "data" / "module_b"),
+        alias="MODULE_B_DATA_DIR",
+    )
+    module_b_artifact_dir: str = Field(
+        default=str(_BACKEND_ROOT / "ml" / "artifacts" / "module_b_router"),
+        alias="MODULE_B_ARTIFACT_DIR",
+    )
 
     # Rate limiting
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
@@ -77,6 +85,18 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def module_b_bank_path(self) -> Path:
+        return Path(self.module_b_data_dir) / "question_bank_b.csv"
+
+    @property
+    def module_b_acts_path(self) -> Path:
+        return Path(self.module_b_data_dir) / "activities_b.csv"
+
+    @property
+    def module_b_router_path(self) -> Path:
+        return Path(self.module_b_artifact_dir) / "router_b.joblib"
 
 
 @lru_cache

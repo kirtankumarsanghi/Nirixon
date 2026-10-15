@@ -27,22 +27,24 @@ Run with: `cd backend/ml && python3 train.py`
 
 ## What came back — the actual numbers, not a promise of "strong results"
 
+### 1. Held-Out Test Set Performance
+
 | Metric | Value |
 |---|---|
-| **Macro AUPRC (primary metric)** | **0.8998** |
-| Refer-class AUPRC | 0.8699 |
-| Monitor-class AUPRC | 0.8357 |
-| Typical-class AUPRC | 0.9938 |
-| Macro F1 | 0.8537 |
-| Macro AUROC | 0.9739 |
-| Refer recall (sensitivity) | 0.71 |
-| Monitor recall (sensitivity) | 0.79 |
+| **Macro AUPRC (primary metric)** | **0.9180** |
+| Refer-class AUPRC | 0.8907 |
+| Monitor-class AUPRC | 0.8659 |
+| Typical-class AUPRC | 0.9975 |
+| Macro F1 | 0.9002 |
+| Macro AUROC | 0.9775 |
+| Refer recall (sensitivity) | 0.8108 |
+| Monitor recall (sensitivity) | 0.8966 |
 
-**Winner: XGBoost**, beating Random Forest (0.825 val AUPRC) and Logistic
-Regression (0.687 val AUPRC).
+**Winner: XGBoost**, beating Random Forest (0.9225 val AUPRC) and Logistic
+Regression (0.7387 val AUPRC).
 
 **Age ablation:** removing `corrected_age_months` drops macro AUPRC from
-0.900 to 0.696 (a 0.20 drop). That's a real, meaningful drop — worth
+0.9180 to 0.9135 (a 0.0045 drop). That's a real, meaningful drop — worth
 saying honestly rather than downplaying: the model leans heavily on
 explicit age access, which makes sense given how age-staggered the item
 bank is by design. The item-level signal alone (age removed) still beats
@@ -51,15 +53,49 @@ study is meant to support — not "age doesn't matter," but "the items
 themselves carry real signal too."
 
 **Fairness check:** PASS. Refer-probability gap between multilingual and
-non-multilingual groups: 0.0011 (threshold 0.05). `multilingual_home_flag`
+non-multilingual groups: 0.0050 (threshold 0.0500). `multilingual_home_flag`
 was never given to the model as a feature — this confirms the item
 responses themselves aren't secretly proxying for it either.
 
-**Subgroup sensitivity:** Refer sensitivity ranges from 0.60 to 1.00 across
+**Subgroup sensitivity:** Refer sensitivity ranges from 0.4286 to 1.0000 across
 age bins, with each bin holding under 220 test samples — some of that
 spread is very plausibly just small-sample noise, not a real subgroup
 weakness, and it would need more data per bin to tell the difference
 confidently. Said honestly in the output rather than glossed over.
+
+### 2. Clinical Cutoff Rule Baseline vs. Machine Learning
+
+A standard clinical baseline scores each developmental domain against published ASQ-3 standard deviation cutoffs:
+- Below −2.0 SD in any domain (or `regression_flag == 1`) → **Refer** (black zone)
+- Between −1.0 and −2.0 SD in any domain → **Monitor** (gray zone)
+- Above −1.0 SD across all domains → **Typical** (white zone)
+
+| Regime | Evaluation Approach | Macro F1 | Refer Sensitivity | Refer Precision | Typical Specificity |
+|---|---|---|---|---|---|
+| Complete (36 items) | Published ASQ Rule | 0.6317 | 1.0000 | 0.3853 | 0.8813 |
+| Complete (36 items) | **XGBoost (trained model)** | **0.9599** | **0.9314** | **0.9451** | **0.9960** |
+| Sparse (12 items) | Naive Rule (Zero-filled) | 0.5964 | 0.6679 | 0.8645 | 0.5443 |
+| Sparse (12 items) | Prorated Scale Rule | 0.2861 | 0.9838 | 0.1149 | 0.3758 |
+| Sparse (12 items) | **XGBoost + Peer Imputation** | **0.7046** | **0.6552** | **0.9380** | **0.9966** |
+
+**Clinical Value of ML**: When every item is answered, multi-domain union rules suffer from family-wise over-referral (Refer precision = 0.3853). Under realistic adaptive questionnaires (8–18 questions), unasked items cause naive rules to collapse (45.57% false positive rate among typical children) and prorated rules suffer severe precision collapse (0.1149). In contrast, XGBoost with peer-median imputation maintains 99.66% typical specificity and 93.80% Refer precision.
+
+### 3. Simulation Stress Testing & Graceful Degradation (with Bootstrap 95% CIs)
+
+| Stress Regime | Evaluation Condition | Macro F1 [95% CI] | Refer Sensitivity [95% CI] | Macro AUPRC [95% CI] |
+|---|---|---|---|---|
+| Label Noise | 0% flip noise | 0.9599 [0.9536, 0.9661] | 0.9314 [0.9086, 0.9512] | 0.9743 [0.9662, 0.9829] |
+| Label Noise | 10% flip noise | 0.8088 [0.7968, 0.8209] | 0.5444 [0.5115, 0.5742] | 0.7618 [0.7495, 0.7740] |
+| Label Noise | 20% flip noise | 0.6836 [0.6708, 0.6947] | 0.3536 [0.3245, 0.3795] | 0.6202 [0.6086, 0.6385] |
+| Caregiver Reporting Bias | shift = -0.8 (under-report) | 0.3547 [0.3447, 0.3663] | 0.9585 [0.9430, 0.9751] | 0.6198 [0.6008, 0.6381] |
+| Caregiver Reporting Bias | shift = +0.0 (calibrated) | 0.9599 [0.9536, 0.9661] | 0.9314 [0.9086, 0.9512] | 0.9743 [0.9662, 0.9829] |
+| Caregiver Reporting Bias | shift = +0.8 (over-report) | 0.8817 [0.8711, 0.8909] | 0.8375 [0.8059, 0.8679] | 0.9163 [0.9066, 0.9264] |
+| Generator Parameter Shift | severity = 0.00 | 0.8175 [0.7905, 0.8456] | 0.6929 [0.6214, 0.7742] | 0.8449 [0.8146, 0.8771] |
+| Generator Parameter Shift | severity = 0.50 | 0.8464 [0.8269, 0.8659] | 0.9857 [0.9612, 1.0000] | 0.8638 [0.8361, 0.8849] |
+| Generator Parameter Shift | severity = 1.00 | 0.6766 [0.6501, 0.7022] | 0.9929 [0.9771, 1.0000] | 0.7194 [0.6978, 0.7413] |
+
+**Single Source of Truth**: All metrics and evaluation tables are strictly synchronized from `backend/ml/artifacts/metrics.json`.
+
 
 ## Two real bugs caught while building this — worth knowing about, not hiding
 

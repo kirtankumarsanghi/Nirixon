@@ -1,0 +1,1549 @@
+=== PAGE 1 ===
+Evidence-Informed Milestones for Developmental Surveillance 
+Tools
+Jennifer M. Zubler, MDa,b, Lisa D. Wiggins, PhDa, Michelle M. Macias, MDc,*, Toni M. 
+Whitaker, MDd, Judith S. Shaw, EdD, MPH, RNe, Jane K. Squires, PhDf, Julie A. Pajek, PhDg, 
+Rebecca B. Wolf, MAk, Karnesha S. Slaughter, MPHa, Amber S. Broughton, MPHa, Krysta L. 
+Gerndt, MPHh, Bethany J. Mlodochh, Paul H. Lipkin, MDi,j,*
+aNational Center on Birth Defects and Developmental Disabilities, Centers for Disease Control 
+and Prevention, Atlanta, Georgia;
+bEagle Global Scientific, LLC, San Antonio, Texas;
+cDivision of Developmental-Behavioral Pediatrics, Medical University of South Carolina, 
+Charleston, South Carolina;
+dDivision of Developmental Pediatrics, Department of Pediatrics, The University of Tennessee 
+Health Science Center, Memphis, Tennessee;
+eVermont Child Health Improvement Program, Department of Pediatrics, Larner College of 
+Medicine, The University of Vermont, Burlington, Vermont;
+fCenter on Human Development (Professor Emerita), University of Oregon, Eugene, Oregon;
+gMetroHealth Medical Center, Case Western Reserve University, Cleveland, Ohio;
+hAmerican Academy of Pediatrics, Itasca, Illinois;
+iKennedy Krieger Institute, Baltimore, Maryland;
+jJohns Hopkins School of Medicine, Baltimore, Maryland;
+kNational Center on Birth Defects and Developmental Disabilities (retired), Centers for Disease 
+Control and Prevention, Atlanta, Georgia
+Abstract
+Address correspondence to Jennifer M. Zubler, MD, National Center on Birth Defects and Developmental Disabilities, Centers for 
+Disease Control and Prevention, 4770 Buford Hwy NE, MS S106-4, Atlanta, GA 30341. wyv4@cdc.gov.*Contributed equally as co-senior authors.
+Drs Zubler and Wiggins conceptualized and designed the study, collected data and performed the initial analyses, drafted the initial 
+manuscript, and reviewed and revised the manuscript; Drs Lipkin, Macias, Whitaker, Squires, Pajek and Shaw critically reviewed 
+and revised the manuscript for important intellectual content; Ms Wolf, Ms Slaughter, Ms Broughton, Ms Gerndt, and Ms Mlodoch 
+planned and performed the research and reviewed and revised the manuscript; and all authors approved the final manuscript as 
+submitted and agree to be accountable for all aspects of the work.
+The contents are those of the author(s) and do not necessarily represent the official views of, nor an endorsement by American 
+Academy of Pediatrics, Centers for Disease Control and Prevention/US Department of Health and Human Services, or the US 
+government.
+CONFLICT OF INTEREST DISCLOSURES: Dr Squires is a developer of the Ages & Stages Questionnaires and receives 
+royalties from Brookes Publishing, the company that publishes this tool; the other authors have indicated they have no conflicts of 
+interest relevant to this article to disclose.
+HHS Public Access
+Author manuscript
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Published in final edited form as:
+Pediatrics. 2022 March 01; 149(3): . doi:10.1542/peds.2021-052138.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 2 ===
+The Centers for Disease Control and Prevention’s (CDC) Learn the Signs. Act Early. program, 
+funded the American Academy of Pediatrics (AAP) to convene an expert working group to 
+revise its developmental surveillance checklists. The goals of the group were to identify evidence-
+informed milestones to include in CDC checklists, clarify when most children can be expected 
+to reach a milestone (to discourage a wait-and-see approach), and support clinical judgment 
+regarding screening between recommended ages. Subject matter experts identified by the AAP 
+established 11 criteria for CDC milestone checklists, including using milestones most children 
+(≥75%) would be expected to achieve by specific health supervision visit ages and those that 
+are easily observed in natural settings. A database of normative data for individual milestones, 
+common screening and evaluation tools, and published clinical opinion was created to inform 
+revisions. Application of the criteria established by the AAP working group and adding milestones 
+for the 15- and 30-month health supervision visits resulted in a 26.4% reduction and 40.9% 
+replacement of previous CDC milestones. One third of the retained milestones were transferred to 
+different ages; 67.7% of those transferred were moved to older ages. Approximately 80% of the 
+final milestones had normative data from ≥1 sources. Social-emotional and cognitive milestones 
+had the least normative data. These criteria and revised checklists can be used to support 
+developmental surveillance, clinical judgment regarding additional developmental screening, and 
+research in developmental surveillance processes. Gaps in developmental data were identified 
+particularly for social-emotional and cognitive milestones.
+Video Abstract
+The American Academy of Pediatrics (AAP) recommends developmental surveillance and 
+screening to identify children with developmental delays or disabilities (DDs) early, help 
+to ensure timely interventions, and improve outcomes.1 Developmental surveillance is a 
+longitudinal process that involves eliciting concerns, taking a developmental history based 
+on milestone attainment, observing milestones and other behaviors, examining the child, 
+and applying clinical judgment during health supervision visits (HSVs). Developmental 
+screening involves the use of validated screening tools at specific ages or when surveillance 
+reveals a concern.1 Diagnostic evaluations are conducted, typically by developmental 
+specialists, to further evaluate and diagnose DDs in children deemed at risk through 
+surveillance and screening processes.
+Developmental surveillance is family centered to promote conversations and trusting 
+relationships wherein families can express concerns.2 Surveillance involves clinical 
+judgment about when a child may be at risk for delays and when additional developmental 
+screening might be warranted. Milestone lists help to guide developmental surveillance, 
+but those used for surveillance, unlike screening and evaluation tools, are not validated. 
+Typically, lists of milestones are uncited, are based on clinical opinion, and/or report 
+the average or median age a milestone should be achieved. Moreover, ages specified for 
+individual milestones are inconsistent across sources.3,4
+Lists that cite average or median ages at which children achieve milestones provide insight 
+into typical development but do not provide clarity for parents, pediatricians, and other 
+early childhood professionals (ECPs) about when to be concerned or when additional 
+Zubler et al. Page 2
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 3 ===
+screening might be helpful.4 For example, lists based on median (50th percentile) age 
+milestones might encourage a wait-and-see5 approach because half of children are not 
+expected to achieve the milestone by that age. In CDC focus groups, parents of children 
+with disabilities reported delays in identification because they were told to wait, that 
+children develop differently, and that some take longer than others. Milestone lists need to 
+support developmental surveillance and clinical judgment on when additional developmental 
+screening could better assess risk for developmental delays.
+In 2004, the CDC’s Learn the Signs. Act Early. program developed free developmental 
+surveillance milestone checklists that included developmental warning signs for parents, 
+pediatricians, and ECPs; messaging to “act early” by addressing concerns; and 
+developmental tips/activities. These materials were developed to help parents to recognize 
+typical development, elicit parents’ concerns about their child’s development, improve 
+discussions between parents and professionals about a child’s development, and support 
+universal developmental screening at recommended ages and additional screenings when 
+there are concerns. The milestones were adapted from Caring for Your Baby and Young 
+Child: Birth to Age 5 (5th ed) to align with recommended HSVs.6 Like most milestone lists, 
+the original sources of the milestones were uncited, and adaptations were based mainly on 
+clinical opinion, not on empirically informed evidence.
+Based on 15 years of use, 3 areas for improving the checklists were identified by the CDC. 
+First, criteria for checklists used for surveillance needed to be established to evaluate the 
+existing CDC checklists. Second, milestones within checklists would represent milestones 
+above the 50th percentile3,4,7,8 to ensure that most children would achieve the milestone by a 
+given age. Lastly, new checklists for the 15- and 30- month HSVs were needed to complete 
+the series 2 months to 5 years of age to improve integration of developmental surveillance 
+across early childhood HSVs. This article presents the results of these revisions.
+METHODS
+The AAP Systems of Services for Children and Youth With Special Health Care Needs 
+team identified and convened 8 subject matter experts (SMEs) in different fields of 
+child development. The group included developmental-behavioral, neurodevelopmental, and 
+general pediatricians; child and developmental psychologists; and a professor of special 
+education and early intervention. All SMEs had graduate training and experience in research 
+methodology and medical decision-making and clinical experience in developmental 
+surveillance, screening, and evaluation. One SME was an editor of and 2 contributed 
+to the AAP’s Bright Futures: Guidelines for Health Supervision of Infants, Children, 
+and Adolescents (4th ed).9 Two SMEs were lead authors of the AAP’s 2020 clinical 
+report, “Promoting Optimal Development: Identifying Infants and Young Children With 
+Developmental Disorders Through Developmental Surveillance and Screening”1; another 
+had long-time experience as a developer of screening tools.
+Criteria Identification
+The SMEs developed 11 criteria for CDC surveillance milestones and tools (Table 1). SMEs 
+nominated the criteria on the basis of their clinical experience and use of CDC surveillance 
+Zubler et al. Page 3
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 4 ===
+materials. Nominations were discussed, and those that were unanimously agreed upon were 
+included as criteria. Of note, the SMEs agreed that milestones should be easily observed in 
+natural settings and ≥75% of children would be expected to achieve a milestone at a given 
+age. The strategy (≥75%) was chosen to support clinical judgment regarding performing 
+additional developmental screenings, with validated screening tools as a next step to assess 
+a child’s risk for developmental delays. This strategy may also prevent a wait-and-see 
+approach because most children of the same age would be expected to achieve the milestone. 
+To reduce confusion about when to be concerned, developmental warning signs were 
+eliminated because not achieving milestones that most children (≥75%) are expected to 
+achieve similarly warrants more in-depth surveillance and consideration for developmental 
+screening.
+Milestone Identification
+Milestones for possible inclusion in CDC surveillance materials were identified by the 
+SMEs. Existing CDC milestones were automatically included for evaluation and were the 
+foundation for the revised checklists. Other milestones were identified by a literature review 
+and commonly used developmental resources.
+Literature Review—A broad literature search was conducted in March 2019 using 
+MEDLINE, PsychInfo, and ERIC databases. Search terms were developed in collaboration 
+with the CDC librarian after discussion of the objective of the literature review and 
+comprised the following: (1) milestone, normative (data, table, range, value) or age (range, 
+appropriate) AND (2) child development or infant development AND (3) percentile, 
+psychometrics, predictive values, red flags, warning signs, assessment, monitor, delay, or 
+reference (standard, values).
+An article was included for evaluation if it was written in English, contained evidence that 
+supported at least one normed individual developmental milestone or included published 
+clinical opinion (ie, consensus milestones) that children exhibit the milestone by a specific 
+age, and limited to children aged ≤5 years. Articles were excluded if evidence was limited 
+to special populations (eg, preterm infants) or risk factors. Non–peer-reviewed articles, 
+dissertations, and books were also excluded.
+Articles were evaluated by the first 2 authors to determine if they met inclusion criteria. 
+Articles chosen by both authors, either on initial review or after additional discussion and 
+agreement between these 2 authors, had milestone data extracted for review by the SME 
+group.
+Developmental Resources—SMEs nominated several additional resources for 
+evaluation, including parent resources, professional teaching resources, and commonly used 
+screening and diagnostic evaluation tools (Table 2). Inclusion criteria for these resources 
+were availability in English and contained evidence that supported at least one individual 
+developmental milestone or included published clinical opinion (ie, consensus milestones) 
+that children exhibit the milestone by a specific age. All nominations were accepted for 
+additional review.
+Zubler et al. Page 4
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 5 ===
+CDC Milestones—Existing CDC milestones served as a foundation for identifying 
+milestones and were automatically evaluated.
+Milestone Evaluation
+The following data were extracted from existing CDC milestones, articles selected for 
+review, and developmental resources: individual milestones, supporting references, and any 
+normative data or published clinical opinion for the milestone. Milestones with conflicting 
+data (eg, age at which most children should achieve the milestone) were flagged for 
+additional discussion.
+4A comprehensive database was created with information extracted from CDC milestones 
+and resources for individual milestones from ages 2 months to 5 years, aligned with AAP 
+HSV ages, and shared with the SME group. Original data sources, such as articles that met 
+inclusion criteria and nominated developmental resources, were also shared with the SME 
+group. SMEs collaborated through an in-person meeting, 6 virtual meetings, and e-mail 
+reviews of decision summaries from January to September 2019.
+During meetings, the SMEs discussed categorizing milestones into 4 developmental 
+domains: (1) social emotional, (2) language/communication, (3) cognitive, and (4) motor. 
+These domains were previously used in CDC materials and could help parents to learn about 
+different areas of child development (eg, social-emotional skills in addition to language/
+communication skills). Because milestones often represent skills across several domains, 
+they were placed in the domain in which the SME group believed that parents would 
+most likely identify them. For example, reciprocal play skills involving other people were 
+categorized as social-emotional, and other play skills were categorized as cognitive.
+Milestones were reviewed for 2 to 3 ages at a time (eg, 2, 4, and 6 months) so that skill 
+progression could be considered. Milestones were reviewed by the SME group on the basis 
+of the criteria outlined in Table 1. First, SMEs considered milestones with normative data 
+that supported achievement by ≥75% of children at a particular age. Next, they considered 
+milestones from screening and diagnostic tools. Finally, SMEs considered milestones that 
+were based on published clinical opinion. Each of these data sources was cross referenced 
+with the others to get a sense of the evidence base available to support inclusion of a 
+milestone in revised CDC checklists.
+If there was disagreement across sources or lack of evidence supporting a milestone for a 
+specific age, additional research was conducted, and additional evidence was then evaluated 
+by the SMEs according to the developed criteria. This included reviewing diagnostic 
+evaluation tools (Table 2) and/or conducting a separate PubMed search for a specific 
+milestone or a related skill. For example, additional evidence was sought for age-specific 
+development of gestures like lifting arms to be picked up, waving bye-bye, and blowing a 
+kiss.
+SMEs used the available evidence base and their clinical experience to determine if and 
+at what age a milestone would be included in the revised checklists. Only milestones with 
+unanimous agreement were included.
+Zubler et al. Page 5
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 6 ===
+During the evaluation process, SMEs denoted milestones they included for surveillance 
+but believed that additional research could improve age placement, quality, and/or quantity 
+of supporting evidence or better capture the underlying developmental construct of the 
+milestone. Finally, the SMEs simplified the milestones and added examples to try to 
+improve understanding. The CDC team then reviewed milestones from a cultural and 
+health communication perspective (eg, family friendly, fifth- to sixth-grade reading level), 
+and SMEs reviewed those changes again to ensure that the milestone still represented the 
+developmental construct being assessed.
+With the use of back-translation methods, the milestones were translated into Spanish 
+by CDC Multilingual Services and reviewed by 2 native Spanish-speaking pediatricians. 
+Cognitive testing with a diverse sample of parents located in different regions of the United 
+States provided feedback on relatability and clarity, which led the SMEs to make additional 
+changes to wording. Results of cognitive testing will be published separately.
+RESULTS
+Of the 1027 articles generated from the literature review, 34 met inclusion criteria. Of those, 
+24 contained normative data, and 10 contained published clinical opinion for ≥1 milestones. 
+Six additional articles were found through independent searches to evaluate individual 
+milestones when SMEs determined that the milestone was appropriate but insufficient or 
+conflicting evidence supported its use at a specific HSV age. Of the articles with normative 
+data, 14 (58.3%) described populations within non–English-speaking countries.
+Tables 3 to 6 list the milestones that SMEs included in CDC checklists after critical 
+evaluation and unanimous decision. They are presented by domain with HSV age, references 
+that support the inclusion of the milestone at that age, and whether the milestone was an 
+existing or new CDC milestone. Supporting references are divided into normative data, 
+developmental screening and evaluation tools, and published clinical opinions.
+Previously, CDC had 216 milestones across 10 checklists. With the addition of 15- and 
+30-month checklists and the evidence review process, 159 milestones were included across 
+12 checklists. This represented a reduction of 57 (26.4%) CDC milestones, with the average 
+number of milestones per checklist decreasing from 22 to 13.
+Of the final 159 milestones that met the evaluation criteria, 94 (59.1%) were based on CDC 
+original milestones and 65 (40.9%) were added on the basis of the milestone identification 
+and evaluation process. One third of the 94 retained CDC milestones were moved to a 
+different age on the basis of the criterion that ≥75% of children would be expected to 
+achieve the milestone by that age. When moved, 21 of those 31 milestones were transferred 
+to an older age. More than half (56.5%) of the original 216 milestones were eliminated 
+(Supplemental Table 7) on the basis of SME criteria, including 25 that were duplicated 
+across checklists at different ages. For example, Tries to use things the right way, like a 
+phone, cup, or book” was on both the 12- and 18-month checklists; this milestone was 
+placed only at 15 months on the basis of supporting evidence. Additionally, eliminating 
+vague terms, such as may or begins, resulted in moving and changing milestones; for 
+Zubler et al. Page 6
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 7 ===
+example, “Begins to pass things from one hand to another” was removed from the list of 
+milestones at age 6 months and was included as “Moves things from one hand to her other 
+hand” at age 9 months.
+The 1-, 2-, and 3-year-old checklists had the greatest decrease in the number of milestones, 
+with a ≥50% reduction. Approximately half of the aggregate loss for these ages was due 
+to moving milestones to the new 15- and 30-month checklists. When combining all new 
+and revised checklists for 1 to 3 years, the number of milestones was reduced by 25.7%, 
+consistent with the 26.4% reduction of milestones across the other age ranges.
+All 4 domains had a reduction in number of milestones. Cognitive milestones decreased by 
+34 (50.7%), social emotional decreased by 16 (27.5%), language decreased by 4 (9.1%), and 
+motor decreased by 3 (6.4%). Social-emotional and cognitive domain milestones were the 
+least likely to have normative data available. The social-emotional domain had 25 (59.5%) 
+milestones with 0 to 1 normed references and 8 (19.0%) with ≥3 normed references. The 
+cognitive domain had 19 (57.6%) milestones with 0 to 1 normed references and 8 (24.2%) 
+with ≥3 references. In contrast, language and motor domains had 11 (27.5%) and 10 (22.7%) 
+milestones with 0 to 1 normed references and 21 (52.5%) and 30 (68.1%) milestones, 
+respectively, with ≥3 normed references.
+Of the final 159 milestones, 127 (79.9%) were retained or added on the basis of normative 
+data, whereas 32 (20.1%) milestones were included on the basis of screening and evaluation 
+tools, published clinical opinion, and SME opinion. Of milestones with normative data, 
+32 had normative data from only 1 resource. The SMEs believed that 22 (13.8%) of the 
+final milestones were candidates for additional research, as noted in Tables 3–6; this subset 
+includes the milestone “Sings, dances, or acts for you,” the only milestone included or 
+retained without supporting evidence on the basis of SME opinion.
+Of the 77 developmental warning signs listed on the old CDC checklists, 59 (76.6%) had a 
+corresponding milestone on the new checklists.
+DISCUSSION
+The CDC checklists support developmental surveillance and other important components of 
+the early identification process by pediatricians and other ECPs, including developmental 
+promotion, parent education and engagement, communication of developmental progress 
+and concerns, and developmental screening.7,5,9,72–75 However, variability across 
+surveillance resources, including the CDC’s, can create confusion regarding what constitutes 
+a concern and when developmental screening between recommended ages might be 
+warranted.3,4,38,76
+An expert working group convened by AAP sought to improve CDC surveillance tools 
+by enhancing conversations among pediatricians, ECPs, and families regarding childhood 
+development and guiding clinical judgment on when to conduct developmental screening 
+between recommended ages. These tools are not intended to replace validated screening 
+tools but instead to promote optimal child development and encourage professionals to act 
+early through surveillance and screening as outlined in the AAP’s clinical report.1 Results 
+Zubler et al. Page 7
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 8 ===
+indicate substantial changes were made developing and applying criteria for surveillance 
+milestones and tools, adding 15- and 30-month checklists, and incorporating evidence-
+informed milestones.
+Clinicians have used attainment of developmental milestones for almost a century77 to 
+determine if a child is developing typically. Pediatricians have reported increasing use of 
+milestone checklists from 53.0% in 2002 to 89.6% in 2016, in addition to their report 
+of increased developmental screening.78 However, these surveillance milestone checklists 
+are likely based on published clinical opinion due to the lack of published normative 
+milestone data and the lack of citations of original sources on checklists. The domain 
+tables generated from this work linking developmental milestones to empirically informed 
+evidence and published clinical opinion could improve training of professionals and methods 
+for surveillance,4,7,8 such as incorporation of the CDC’s open access milestones/checklists 
+into electronic health records.
+Milestone checklists used in surveillance are intended to prompt conversations, review 
+developmental history and progress, and elicit concerns. The CDC checklists should not 
+replace universal developmental screening, provide a risk categorization, or diagnose DDs. 
+To determine if concerns about milestones should prompt a more in-depth developmental 
+history, observation, and examination along with consideration for assessing actual risk by 
+screening, the SMEs recommended that most children (≥75%) should be expected to achieve 
+milestones by a given age.
+SMEs believed that using 50th percentile milestones for surveillance would not support 
+clinical decision-making for developmental screening because only half of children would 
+be expected to achieve an individual milestone by a given age. Using milestones that 85% 
+or 90% of children would be expected to achieve may limit opportunities for additional 
+screening for too many children at risk for developmental delays. A ≥75% criterion was 
+thus agreed upon to balance informed clinical decision-making regarding developmental 
+screening and provide opportunities to identify children at risk for delays as soon as 
+possible. Pediatricians are encouraged to follow AAP recommendations to screen a child, 
+using validated screening tools, when surveillance reveals a concern or anytime a concern is 
+raised, to identify and refine the risk for developmental delays.1
+The criterion (Table 1) for milestones representing those that most children (≥75%) would 
+be expected to achieve eliminated the need for the CDC’s previous warning signs because 
+most are now represented as milestones. Using this strategy, SMEs agreed that a child not 
+meeting a milestone should be considered for screening similar to children demonstrating 
+warning signs. Less than a quarter of warning signs could not be replaced with an evidence-
+informed milestone. Examples not represented as new milestones include subjective items 
+such as “shows extreme behavior (unusually fearful, aggressive, shy or sad)” and items that 
+may be better recognized during a physical examination, such as “stiff or tight muscles.” 
+Additional features of the surveillance tools may identify those types of concerns. For 
+example, the act early message was retained, and new open-ended questions were added to 
+encourage parents to ask about other concerns.
+Zubler et al. Page 8
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 9 ===
+Use of this same strategy is intended to discourage the wait-and-see approach and could 
+prevent worry for children older than the average age of attainment of a milestone but not 
+likely to be at risk for delays.1,5 It could also eliminate the confusion families had with 
+milestones and warning signs on the same checklist and repetition of milestones across 
+checklists.
+The application of additional criteria (Table 1) to improve clarity in the revised milestones 
+may help parents, pediatricians, and other ECPs to recognize when missing milestones 
+might indicate the need for developmental screening. Although milestones typically span 
+several developmental domains, SMEs believed that keeping domain labels could improve 
+awareness of the less commonly known social-emotional and cognitive development 
+milestones of young children. Showing progression of a skill, like walking, could 
+demonstrate how earlier milestones lay the foundation for later ones. Adding the open-ended 
+question, “Is there anything your child is doing or is not doing that concerns you?” may 
+encourage parents to discuss the quality with which a child exhibits a milestone, milestones 
+not listed within the sample, and atypical behaviors difficult to capture through a list.42 
+Finally, including information on developmental promotion and acting early may empower 
+families to support their child’s development and to ask about screening if they have 
+concerns.
+Surveillance of social-emotional and cognitive milestones supports early identification 
+of children with intellectual and social-emotional disorders, including autism spectrum 
+disorder. In our review, milestones included in the social-emotional domain had the fewest 
+normed references per milestone, followed by the cognitive domain, language domain, 
+and motor domain. When social-emotional milestones were available, they were often 
+self-help rather than social engagement and emotional regulation skills. These results 
+highlight the need for additional research on social-emotional milestones. For example, can 
+social-emotional function be assessed using milestones during developmental surveillance at 
+HSVs, and what factors influence the timing and development of social-emotional skills? 
+Despite relatively more evidence in the language domain, SMEs believed that more research 
+is needed in the intersection of the social-emotional and language domains to recognize and 
+monitor the development of social language in young children.
+Limitations
+There were limitations with the revision process. SMEs’ opinions determined which HSV 
+was most appropriate for a milestone, given existing evidence and the goal that most 
+children (≥75%) would be expected to achieve it by that age. For example, if there was 
+evidence that 50% of children reach a milestone at 11 months and 90% reach it at 16 
+months, it was placed on the 15-month checklist. Eighty percent of the revised milestones 
+had normative data to support their inclusion on a specific HSV age checklist. However, it 
+was necessary to use data such as published clinical opinion to represent milestones in all 
+domains across all ages.
+Regardless of supporting data type, all revised milestones had unanimous SME support for 
+their inclusion in a surveillance tool. When normative data existed, limitations remained in 
+the availability of milestones that met other criteria. For example, sometimes it was difficult 
+Zubler et al. Page 9
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 10 ===
+to find naturally observable milestones compared with milestones demonstrated during 
+standardized testing. Although the milestones are evidence-informed using international 
+sources and cognitive testing with parents was done, there is no certainty that these new 
+milestones will resonate with all families or that they are the most relevant milestones for 
+developmental surveillance. These checklists and others have not been tested to see whether 
+they indeed lead to appropriate developmental screening between recommended ages and 
+improve early identification.
+There are other gaps in developmental surveillance research. Best practices for conducting 
+the recommended 6 components1 of surveillance are not available. There are limitations in 
+the use of milestones, even evidence-informed ones, as the sole component of developmental 
+surveillance. Milestones/milestone checklists can support some components, such as taking 
+a developmental history and eliciting concerns, but surveillance also involves observation, 
+examination, education, communication, and clinical decision-making. Moreover, trusting 
+relationships may develop through the longitudinal process of surveillance and improve 
+parents’ confidence in sharing concerns and pediatricians’ confidence to assess concerns 
+raised.
+CONCLUSIONS
+Early identification and intervention for the 1 in 6 children with DDs have been shown 
+to improve outcomes.79–83 However, less than a quarter of children with DDs receive 
+early intervention services before age 3 years,84,85 and most children with emotional, 
+behavioral, and developmental conditions, other than autism spectrum disorder, do not 
+receive services before age 5 years.86 Developmental surveillance is an important part of 
+early identification1,87 and facilitates education, communication, and relationship building 
+among parents, pediatricians, and ECPs. Research in early identification has focused 
+primarily on developmental screening, not surveillance. Improvements in surveillance tools 
+and processes could help to identify concerns and support clinical judgment regarding 
+developmental screening to allow more timely referral to early intervention services and 
+additional evaluation. The methods described herein led to substantial revisions of CDC 
+resources to better support developmental surveillance. Best practices for surveillance and 
+improvements in surveillance tools could be supported by additional research on individual 
+normed milestones, particularly social-emotional and cognitive milestones; how parents, 
+pediatricians, and ECPs learn and understand milestones; which milestones are most 
+likely to lead to appropriate screening; whether the use of milestones that most children 
+(≥75%) would be expected to achieve is appropriate for surveillance; whether categorizing 
+milestones into developmental domains is helpful; and whether cultural differences exist 
+in surveillance milestones and processes.1,3–5,7 Nevertheless, based on review of milestone 
+data and clinical experience, the SMEs agreed that most typically developing children would 
+achieve the developmental constructs represented. To our knowledge, this attempt is the 
+first to align empirically informed milestones on parent-completed surveillance tools with 
+objectively defined criteria agreed upon by SMEs. The CDC milestones and checklists can 
+be used in continued efforts to improve developmental surveillance.
+Zubler et al. Page 10
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 11 ===
+Supplementary Material
+Refer to Web version on PubMed Central for supplementary material.
+ACKNOWLEDGMENTS
+We thank Mary Cogswell, RN, DrPH, for her review of earlier versions of the manuscript and pediatricians Natalia 
+Benza, MD, and Jose O. Rodriquez, MD, MBA, for their review of the Spanish milestone translations.
+FUNDING:
+This project is supported by the Centers for Disease Control and Prevention of the US Department of Health and 
+Human Services as part of a financial assistance award totaling $100,000, with 100% funded by the Centers for 
+Disease Control and Prevention/US Department of Health and Human Services.
+ABBREVIATIONS
+AAP American Academy of Pediatrics
+CDC Centers for Disease Control and Prevention
+DD developmental delay or disability
+ECP early childhood professional
+HSV health supervision visit
+SME subject matter expert
+REFERENCES
+1. Lipkin PH, Macias MM; Council on Children With Disabilities, Section on Developmental and 
+Behavioral Pediatrics. Promoting optimal development: identifying infants and young children 
+with developmental disorders through developmental surveillance and screening. Pediatrics. 
+2020;145(1):e20193449 [PubMed: 31843861] 
+2. Foy JM, Green CM, Earls MF; Committee on Psychosocial Aspects of Child and Family 
+Health, Mental Health Leadership Work Group. Mental health competencies for pediatric practice. 
+Pediatrics. 2019;144(5):e20192757 [PubMed: 31636143] 
+3. Wilkinson CL, Wilkinson MJ, Lucarelli J, et al. Quantitative evaluation of content and age 
+concordance across developmental milestone checklists. J Dev Behav Pediatr. 2019;40(7):511–518 
+[PubMed: 31169653] 
+4. Sices L Use of developmental milestones in pediatric residency training and practice: time to rethink 
+the meaning of the mean. J Dev Behav Pediatr. 2007;28(1):47–52 [PubMed: 17353732] 
+5. Raspa M, Levis DM, Kish-Doto J, et al. Examining parents’ experiences and information needs 
+regarding early identification of developmental delays: qualitative research to inform a public health 
+campaign. J Dev Behav Pediatr. 2015;36(8):575–585 [PubMed: 26414090] 
+6. Shelov SP, Altmann T, Caring for Your Baby and Young Child: Birth to Age 5, New and Revised 5th 
+ed, American Academy of Pediatrics, Itasca, IL, 2009
+7. Sheldrick RC, Schlichting LE, Berger B, et al. Establishing new norms for developmental 
+milestones. Pediatrics. 2019;144(6):e20190374 [PubMed: 31727860] 
+8. Dosman CF, Andrews D, Goulden KJ. Evidence-based milestone ages as a framework for 
+developmental surveillance. Paediatr Child Health. 2012;17(10):561–568 [PubMed: 24294064] 
+9. Hagan JFSJ, Duncan PM, eds. Bright Futures: Guidelines for Health Supervision of Infants, 
+Children, and Adolescents, 4th ed. Itasca, IL: American Academy of Pediatrics; 2017
+Zubler et al. Page 11
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 12 ===
+10. Shaw J, Hagan JJ, Shepard M, et al. Bright Futures Tool and Resource Kit. Itasca, IL: American 
+Academy of Pediatrics; 2019
+11. American Speech-Language-Hearing Association. How Does Your Child Hear and Talk? Available 
+at: https://www.asha.org/public/speech/development/chart. Accessed August 26, 2021
+12. American Academy of Pediatrics. Is Your One-Year-Old Communicating With You? [brochure]. 
+Itasca, IL: American Academy of Pediatrics; 2005
+13. National Center on Birth Defects and Developmental Disabilities, Centers for Disease Control 
+and Prevention. Tools for Tracking Milestones. Available at: https://www.cdc.gov/ncbddd/actearly/
+freematerials.html. Accessed August 26, 2021
+14. FIRST WORDS Project. 16 by 16. Available at: https://firstwordsproject.com/about-16by16. 
+Accessed August 26, 2021
+15. Johnson CP, Blasco PA. Infant growth and development. Pediatr Rev. 1997;18(7): 224–242 
+[PubMed: 9203831] 
+16. Colson ER, Dworkin PH. Toddler development. Pediatr Rev. 1997;18(8):255–259 [PubMed: 
+9255990] 
+17. Vaughan VC III. Assessment of growth and development during infancy and early childhood. 
+Pediatr Rev. 1992;13(3):88–97 [PubMed: 1565594] 
+18. Scharf RJ, Scharf GJ, Stroustrup A. Developmental milestones. Pediatr Rev. 2016;37(1):25–37, 
+quiz 38, 47 [PubMed: 26729779] 
+19. Gerber RJ, Wilks T, Erdie-Lalena C. Developmental milestones 3: social-emotional development. 
+Pediatr Rev. 2011;32(12): 533–536 [PubMed: 22135423] 
+20. Gerber RJ, Wilks T, Erdie-Lalena C. Developmental milestones: motor development. Pediatr Rev. 
+2010;31(7):267–276, quiz 277 [PubMed: 20595440] 
+21. Wilks T, Gerber RJ, Erdie-Lalena C. Developmental milestones: cognitive development. Pediatr 
+Rev. 2010;31(9):364–367 [PubMed: 20810700] 
+22. Squires J, Bricker D. Ages & Stages Questionnaires. Baltimore, MD: Brookes Publishing; 2009
+23. Squires J, Bricker D, Twombly E. Ages & Stages Questionnaires: Social-Emotional. Baltimore, 
+MD: Brookes Publishing; 2002
+24. Robins M, Fein D, Barton M. The Modified Checklist for Autism in Toddlers, Revised With 
+Follow-Up (M-CHAT-R/F). 2009
+25. Glascoe F, Robertshaw N. PEDS: Developmental Milestones. Nashville, TN: Ellsworth & 
+Vandermeer Press; 2018
+26. Tufts Medical Center. The Survey of Children Well-being of Young Children. Available at: https://
+www.tuftschildrenshospital.org/the-survey-of-wellbeing-of-young-children/overview. Accessed 
+August 26, 2021
+27. Bayley N The Bayley Scales of Infant and Toddler Development. 3rd ed. Minneapolis, MN: 
+Pearson; 2006
+28. Beery KE, Buktenica NA, Beery NA. The Beery–Buktenica Developmental Test of Visual–Motor 
+Integration: Administration, Scoring, and Teaching Manual. Minneapolis, MN: Pearson; 2010
+29. French B BRIGANCE Early Childhood Screens III. North Billerica, MA: Curriculum Associates; 
+2013
+30. Accardo P, Capute A. The Capute Scales: Cognitive Adaptive Test/Clinical Linguistic and 
+Auditory Milestone Scale. Baltimore, MD: Brookes Publishing; 2005
+31. Fenson LMV , Thal D, Dale P, Reznick JS, Bates E. MacArthur-Bates Communicative 
+Development Inventories Baltimore. Baltimore, MD: Brookes Publishing; 2007
+32. Mullen E Mullen Scales of Early Learning. Bloomington, MN: Pearson; 1995
+33. Folio MR, Fewall RR. Peabody Developmental Motor Scales. Austin, TX: PRO-ED; 2000
+34. Zimmerman IL, Steiner VG, Pond RA. The Preschool Language Scale-5. San Antonio, TX: 
+Pearson; 2011
+35. Ertem IO, Krishnamurthy V , Mulaudzi MC, et al. Similarities and differences in child development 
+from birth to age 3 years by sex and across four countries: a cross-sectional, observational study. 
+Lancet Glob Health. 2018;6(3):e279–e291 [PubMed: 29433666] 
+Zubler et al. Page 12
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 13 ===
+36. Lipkin P, Macias M. Developmental Milestones for Developmental Surveillance at Preventive Care 
+Visits. Bright Futures: Guidelines for Health Supervision of Infants, Children, and Adolescents 4th 
+ed. Itasca, IL: American Academy of Pediatrics; 2017
+37. Sharp HM, Hillenbrand K. Speech and language development and disorders in children. Pediatr 
+Clin North Am. 2008;55(5): 1159–1173, viii [PubMed: 18929058] 
+38. Sheldrick RC, Perrin EC. Evidence-based milestones for surveillance of cognitive, language, and 
+motor development. Acad Pediatr. 2013;13(6):577–586 [PubMed: 24238685] 
+39. Thalagala N Windows of achievement for development milestones of Sri Lankan infants and 
+toddlers: estimation through statistical modelling. Child Care Health Dev. 2015;41(6):1030–1039 
+[PubMed: 25968606] 
+40. Bhave A, Bhargava R, Kumar R. Development and validation of a new Lucknow Development 
+Screen for Indian children aged 6 months to 2 years. J Child Neurol. 2010;25(1):57–60 [PubMed: 
+19448137] 
+41. Lejarraga H, Pascucci MC, Krupitzky S, et al. Psychomotor development in Argentinean children 
+aged 0–5 years. Paediatr Perinat Epidemiol. 2002;16(1):47–60 [PubMed: 11856454] 
+42. Bellman M, Byrne O, Sege R. Developmental assessment of children. BMJ. 2013;346(7891):e8687 
+[PubMed: 23321410] 
+43. Ertem IO, Krishnamurthy V , Mulaudzi MC, et al. Validation of the International Guide for 
+Monitoring Child Development demonstrates good sensitivity and specificity in four diverse 
+countries. Acta Paediatr. 2019;108(6):1074–1086 [PubMed: 30472813] 
+44. Kumar R, Iyengar SD, Bhasin S, Gupta I, Kumar V . A normative study of child development using 
+a culture-appropriate test battery in rural Haryana, India. J Trop Pediatr. 1995;41(1):38–42
+45. Lancaster GA, McCray G, Kariger P, et al. Creation of the WHO Indicators of Infant and 
+Young Child Development (IYCD): metadata synthesis across 10 countries. BMJ Glob Health. 
+2018;3(5):e000747
+46. Gladstone M, Lancaster GA, Umar E, et al. The Malawi Developmental Assessment Tool (MDAT): 
+the creation, validation, and reliability of a tool to assess child development in rural African 
+settings. PLoS Med. 2010;7(5):e1000273 [PubMed: 20520849] 
+47. Fenson L, Dale PS, Reznick JS, Bates E, Thal DJ, Pethick SJ. Variability in early communicative 
+development. Monogr Soc Res Child Dev. 1994;59(5):1–173, discussion 174–185
+48. Crais ER, Watson LR, Baranek GT. Use of gesture development in profiling children’s 
+prelinguistic communication skills. Am J Speech Lang Pathol. 2009;18(1):95–108 [PubMed: 
+19029535] 
+49. Kwon AY , Vallotton CD, Kiegelmann M, Wilhelm KH. Cultural diversification of communicative 
+gestures through early childhood: a comparison of children in English-, German-, and Chinese-
+speaking families. Infant Behav Dev. 2018;50:328–339 [PubMed: 29153739] 
+50. Behrman R, Kiegelman R, Arvin A, et al. Nelson’s Textbook of Pediatrics. Philadelphia, PA: WB 
+Saunders; 1996
+51. Lansdown RG, Goldstein H, Shah PM, et al. Culturally appropriate measures for monitoring 
+child development at family and community level: a WHO collaborative study. Bull World Health 
+Organ. 1996;74(3):283–290 [PubMed: 8789927] 
+52. Haltiwanger J, Coster W. A Normative Study of Development in Context: Growth toward 
+Independence in Social Function Skills of Young Children. Washington, DC: National Institute 
+on Disability and Rehabilitation Research ED/OSERS; 1991:29
+53. Blackwell PB, Baker BM. Estimating communication competence of infants and toddlers. J Pediatr 
+Health Care. 2002;16(1):29–35 [PubMed: 11802119] 
+54. Den Ouden L, Rijken M, Brand R, Verloove-Vanhorick SP, Ruys JH. Is it correct to correct? 
+Developmental milestones in 555 “normal” preterm infants compared with term infants. J Pediatr. 
+1991;118(3):399–404 [PubMed: 1999778] 
+55. Tamis-Lemonda CS, Bornstein MH, Kahana-Kalman R, Baumwell L, Cyphers L. Predicting 
+variation in the timing of language milestones in the second year: an events history approach. J 
+Child Lang. 1998;25(3):675–700 [PubMed: 10095330] 
+56. Muluk NB, Bayoğlu B, Konuşkan B, Anlar B. Milestones of language development in Turkish 
+children. B-ENT. 2013;9(4):299–306 [PubMed: 24597105] 
+Zubler et al. Page 13
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 14 ===
+57. Nair MKC, Russell PS. Development and normative validation of Developmental Assessment 
+Tool for Anganwadis for 3- to 4-year-old children (DATA-II). J Clin Epidemiol. 2013;66(1):23–29 
+[PubMed: 23177891] 
+58. Knobloch H, Stevens F, Malone A. Manual of Developmental Diagnosis: The Administration and 
+Interpretation of the Revised Gesell and Amatruda Developmental Examination. Hagerstown, MD: 
+Harper & Row; 1980
+59. McCabe A, Rollins PR. Assessment of preschool narrative skills. Am J Speech Lang Pathol. 
+1994;3(1):45–56
+60. Atkinson J, Anker S, Rae S, Hughes C, Brad-dick O. A test battery of child development for 
+examining functional vision (ABCDEFV). Strabismus. 2002;10(4):245–269 [PubMed: 12660850] 
+61. Carruth BR, Skinner JD. Feeding behaviors and other motor development in healthy children (2–24 
+months). J Am Coll Nutr. 2002;21(2):88–96 [PubMed: 11999548] 
+62. Kimmerle M, Ferre CL, Kotwica KA, Michel GF. Development of role-differentiated bimanual 
+manipulation during the infant’s first year. Dev Psychobiol. 2010;52(2):168–180 [PubMed: 
+20127887] 
+63. Egan DF, Brown R. Developmental assessment: 18 months to 4 1/2 years. Performance tests. Child 
+Care Health Dev. 1986;12(5):339–349 [PubMed: 3791574] 
+64. Williams PG, Lerner MA; Council on Early Childhood; Council on School Health. School 
+readiness. Pediatrics. 2019;144(2):e20191766 [PubMed: 31331984] 
+65. Kitsao-Wekulo P, Holding P, Abubakar A, et al. Describing normal development in an African 
+setting: The utility of the Kilifi Developmental Inventory among young children at the Kenyan 
+coast. Learn Individ Differ. 2016;46:3–10
+66. Gajewska E, Sobieska M, Moczko J, Kuklińska A, Laudańska-Krzemińska I, Osiński W. 
+Independent reaching of the sitting position depends on the motor performance in the 3rd month of 
+life. Eur Rev Med Pharmacol Sci. 2015;19(2):201–208 [PubMed: 25683931] 
+67. Cox CA, Zinkin PM, Grimsley MF. Aspects of the six-month developmental examination in a 
+longitudinal study. Dev Med Child Neurol. 1977;19(2):149–159 [PubMed: 858446] 
+68. World Health Organization Multicentre Growth Reference Study Group. WHO Motor 
+Development Study: windows of achievement for six gross motor development milestones. Acta 
+Paediatr Suppl. 2006;95(S450):86–95 [PubMed: 17000575] 
+69. Noller K, Ingrisano D. Cross-sectional study of gross and fine motor development. Birth to 6 years 
+of age. Phys Ther. 1984;64(3):308–316 [PubMed: 6608110] 
+70. American Academy of Pediatrics. Bright Futures Pocket Guide, 4th ed. Itasca, IL: American 
+Academy of Pediatrics; 2017
+71. Ohtoshi T, Muraki T, Takada S. Investigation of age-related developmental differences of button 
+ability. Pediatr Int. 2008;50(5):687–689 [PubMed: 19261120] 
+72. Eremita M, Semancik E, Lerer T, Dworkin PH. Can we identify parents who do not verbally share 
+concerns for their children’s development? J Dev Behav Pediatr. 2017;38(3):224–227 [PubMed: 
+28240649] 
+73. Sices L, Egbert L, Mercer MB. Sugar-coaters and straight talkers: communicating about 
+developmental delays in primary care. Pediatrics. 2009;124(4):e705–e713 [PubMed: 19752077] 
+74. Zuckerman KE, Sinche B, Mejia A, Cobian M, Becker T, Nicolaidis C. Latino parents’ 
+perspectives on barriers to autism diagnosis. Acad Pediatr. 2014;14(3):301–308 [PubMed: 
+24767783] 
+75. Graybill E, Self-Brown S, Lai B, et al. Addressing disparities in parent education: examining the 
+effects of learn the signs/act early parent education materials on parent outcomes. Early Child 
+Educ J. 2016;44(1):31–38
+76. Kelly Y , Sacker A, Schoon I, Nazroo J. Ethnic differences in achievement of developmental 
+milestones by 9 months of age: the Millennium Cohort Study. Dev Med Child Neurol. 
+2006;48(10):825–830 [PubMed: 16978462] 
+77. Gesell A. Infancy and Human Growth. New York, NY: Macmillan; 1928
+78. Lipkin PH, Macias MM, Baer Chen B, et al. Trends in pediatricians’ developmental screening: 
+2002–2016. Pediatrics. 2020;145(4):e20190851 [PubMed: 32123018] 
+Zubler et al. Page 14
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 15 ===
+79. Boyle CA, Boulet S, Schieve LA, et al. Trends in the prevalence of developmental disabilities in 
+US children, 1997–2008. Pediatrics. 2011;127(6):1034–1042 [PubMed: 21606152] 
+80. McManus BM, Richardson Z, Schenkman M, Murphy N, Morrato EH. Timing and intensity of 
+early intervention service use and outcomes among a safety-net population of children. JAMA 
+Netw Open. 2019;2(1):e187529 [PubMed: 30681716] 
+81. Richardson ZS, Scully EA, Dooling-Litfin JK, et al. Early intervention service intensity and change 
+in children’s functional capabilities. Arch Phys Med Rehabil. 2020;101(5):815–821 [PubMed: 
+31778660] 
+82. Shonkoff JP, Hauser-Cram P. Early intervention for disabled infants and their families: a 
+quantitative analysis. Pediatrics. 1987;80(5):650–658 [PubMed: 3313255] 
+83. Guralnick MJ. Effectiveness of early intervention for vulnerable children: a developmental 
+perspective. Am J Ment Retard. 1998;102(4):319–345 [PubMed: 9475942] 
+84. Rosenberg SA, Zhang D, Robinson CC. Prevalence of developmental delays and participation 
+in early intervention services for young children. Pediatrics. 2008;121(6):e1503–e1509 [PubMed: 
+18504295] 
+85. Rosenberg SA, Robinson CC, Shaw EF, Ellison MC. Part C early intervention for infants and 
+toddlers: percentage eligible versus served. Pediatrics. 2013;131(1):38–46 [PubMed: 23266922] 
+86. Kogan MD, Vladutiu CJ, Schieve LA, et al. The prevalence of parent-reported autism spectrum 
+disorder among US children. Pediatrics. 2018;142(6):e20174161 [PubMed: 30478241] 
+87. Barger B, Rice C, Wolf R, Roach A. Better together: developmental screening and monitoring best 
+identify children who need early intervention. Disabil Health J. 2018;11(3):420–426 [PubMed: 
+29459217] 
+Zubler et al. Page 15
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+=== PAGE 16 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 16
+TABLE 1
+Criteria for Developmental Milestones and Surveillance Tools.
+1 Milestones are included at the age most (≥75%) children would be expected to demonstrate the milestone
+2 Eliminate “warning signs”
+a
+3 Are easy for families of different social, cultural, and ethnic backgrounds to observe and use
+4 Are able to be answered with yes, not yet, or not sure
+5 Use plain language, avoiding vague terms like may, can, and begins
+6 Are organized in developmental domains
+7 Show progression of skills with age, when possible
+8 Milestones are not repeated across checklists
+9 Include open-ended questions
+10 Include information for developmental promotion
+11 Include information on how to act early if there are concerns
+Criteria developed by SMEs.aMilestones listed separately within CDC materials with parent messaging to act early if child has not attained them.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 17 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 17
+TABLE 2
+Additional Developmental Resources Reviewed
+Parent Resources Educational/Training Resources Developmental Screening Tools Diagnostic Evaluation Toolsa
+AAP Bright Futures Previsit Questionnaires10
+American Speech-Language-Hearing 
+Association development charts11
+AAP brochure “Is Your One-Year-Old 
+Communicating With You?”12
+CDC 
+Learn the Signs. Act Early. checklists13
+FIRST WORDS Project 16 × 1614
+AAP Bright Futures 
+guidelines (4th ed)9
+AAP 
+Pediatrics in Review 
+articles15–21
+Ages & Stages Questionnaires (3rd ed)22
+Ages & Stages Questionnaires: Social-
+Emotional23
+Modified Checklist for Autism in Toddlers, 
+Revised24
+Parents’ Evaluation of Developmental Status 
+With Developmental Milestones25
+Survey of Well-Being in Young Children26
+Bayley Scales of Infant and Toddler Development (3rd ed)27
+Beery-Buktenica Developmental Test of Visual-Motor Integration
+(6th ed)28
+BRIGANCE Early Childhood Screens III29
+The Capute Scales: Cognitive Adaptive Test/Clinical Linguistic and 
+Auditory Milestone Scale30
+MacArthur-Bates Communicative Development Inventories (2nd 
+ed)31
+Mullen Scales of Early Learning32
+Peabody Developmental Motor Scales (2nd ed)33
+Preschool Language Scale-534
+aDiagnostic evaluation tools were cross referenced when there was lack of agreement supporting a milestone or age of a milestone across other data sources. Not all milestones were cross referenced with 
+diagnostic resources.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 18 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 18
+TABLE 3
+Social-Emotional Milestones With Supporting Normative Data, Evaluation Tools, and Published Clinical Opinion References
+Source
+Social-Emotional Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Calms down when spoken to or picked up
+d 2 mo New Ertem et al (35) — ASHA (11), Bright Futures (36), Dosman et al 
+(8), Sharp et al (37)
+Looks at your face 2 mo CDC Ertem et al (35), Sheldrick and Perrin 
+(38)
+— Bright Futures (36), Dosman et al (8), Scharf et 
+al (18)
+Seems happy to see you when you walk up to her 2 mo New Ertem et al (35), Sheldrick and Perrin 
+(38), Thalagala (39)
+— —
+Smiles when you talk to or smile at her 2 mo CDC Bhave et al (40), Ertem et al (35), 
+Lejarraga et al (41), Thalagala (39)
+ASQ-3 (22), PEDS-DM 
+(25)
+ASHA (11)
+Smiles on his own to get your attention 4 mo CDC Ertem et al (35) ASQ-3, PEDS-DM Bright Futures (36)
+Chuckles (not yet a full laugh) when you try to make 
+her laugh
+4 mo New Accardo and Capute (30), Bhave et al 
+(40), Ertem et al (35), Sheldrick and 
+Perrin (38)
+ASQ-3, PEDS-DM ASHA (11), Bellman et al (42), Bright Futures 
+(36)
+Looks at you, moves, or makes sounds to get or keep 
+your attention
+4 mo New Ertem et al (35) PEDS-DM —
+Knows familiar people 6 mo CDC Bhave et al (40), Ertem et al (35) ASQ-3 Bright Futures (36), Dosman et al (8), Gerber et 
+al (20), Scharf et al (18)
+Likes to look at himself in the mirror 6 mo CDC Bhave et al (40), Lejarraga et al (41) ASQ-3 Bright Futures (36)
+Laughs 6 mo New Accardo and Capute (30), Bhave et al 
+(40), Ertem et al (35), Sheldrick and 
+Perrin (38)
+ASQ-3, PEDS-DM Bellman et al (42), Bright Futures (36), Dosman 
+et al (8)
+Is shy, clingy, or fearful around strangers 9 mo CDC Ertem et al (43), Kumar et al (44), 
+Lancaster et al (45)
+— Gerber et al (20), Scharf et al (18)
+Shows several facial expressions, like happy, sad, 
+angry, and surprised
+d
+9 mo New Thalagala (39) — Gerber et al (20), Scharf et al (18)
+Looks when you call his name 9 mo CDC Gladstone et al (46), Sheldrick and 
+Perrin (38)
+ASQ-3, PEDS-DM Bright Futures (36) Dosman et al (8), Gerber et 
+al (20), Scharf et al (18)
+Reacts when you leave (looks, reaches for you, or 
+cries)
+d
+9 mo CDC Ertem et al (43) — Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Smiles or laughs when you play peek-a-boo 9 mo CDC Ertem et al (35), Lejarraga et al (41), 
+Sheldrick and Perrin (38), Thalagala 
+(39)
+PEDS-DM Bellman et al (42), Bright Futures (36), Dosman 
+et al (8), Gerber et al (20), Scharf et al (18)
+Plays games with you, like pat-a-cake 12 mo CDC Ertem et al (35), Fenson et al (47), 
+Sheldrick and Perrin (38)
+Bellman et al (42), Bright Futures (36), Gerber 
+et al (20), Scharf et al (18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 19 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 19
+Source
+Social-Emotional Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Copies other children while playing, like taking toys 
+out of a container when another child does
+d
+15 mo CDC — — Bright Futures (36), Dosman et al (8)
+Shows you an object that he likes 15 mo New Crais et al (48) ASQ-3 Dosman et al (8), First Words (14), Gerber et al 
+(20), Scharf et al (18)
+Claps when excited 15 mo New Crais et al (48), Kwon et al (49) — —
+Hugs stuffed doll or other toy 15 mo New Crais et al (48), Fenson et al (47) — Colson and Dworkin (16), Johnson and Blasco 
+(15)
+Shows you affection (hugs, cuddles, or kisses you) 15 mo CDC Ertem et al (43) ASQ-SE-2 (23), Bayley 
+III (27)
+Johnson and Blasco (15), Vaughan (17)
+Moves away from you, but looks to make sure you are 
+close by
+18 mo CDC — ASQ-SE-2 Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Points to show you something interesting 18 mo CDC — Bayley III, MCHAT-R 
+(24), PEDS-DM
+Bellman et al (42), Bright Futures (36), Dosman 
+et al (8), Gerber et al (20), Scharf et al (18)
+Puts hands out for you to wash them 18 mo New Gladstone et al (46) — —
+Looks at a few pages in a book with you
+d 18 mo New Ertem et al (35) ASQ-SE-2 Behrman et al (50), Colson and Dworkin (16), 
+Vaughan (17)
+Helps you dress him by pushing arm through sleeve or 
+lifting up foot
+18 mo CDC — ASQ-3, PEDS-DM Bright Futures (36), Dosman et al (8), Johnson 
+and Blasco (15)
+Notices when others are hurt or upset, like pausing or 
+looking sad when someone is crying
+24 mo New — PEDS-DM Dosman et al (8), Scharf et al (18)
+Looks at your face to see how to react in a new 
+situation
+24 mo New — ASQ-SE-2, MCHAT-R, 
+PEDS-DM
+Bright Futures (36), Dosman et al (8), Johnson 
+and Blasco (15)
+Plays next to other children and sometimes plays with 
+them
+30 mo CDC Lancaster et al (45), Lansdown et al 
+(51)
+ASQ-SE-2, PEDS-DM Bright Futures (36), Dosman et al (8), Gerber et 
+al (20), Johnson and Blasco (15), Scharf et al 
+(18)
+Shows you what she can do by saying, “Look at me!” 30 mo New Sheldrick and Perrin (38) — —
+Follows simple routines when told, like helping to pick 
+up toys when you say, “It’s clean-up time.”
+30 mo New — ASQ-SE, PEDS-DM Colson and Dworkin (16), Gerber et al (20), 
+Johnson and Blasco (15), Scharf et al (18), 
+Vaughan (17)
+Calms down within 10 min after you leave her, like at 
+child care drop off
+d
+3 y CDC — — Dosman et al (8), Johnson and Blasco (15)
+Notices other children and joins them to play 3 y New Lansdown et al (51) ASQ-SE-2, PEDS-DM Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+4 y CDC Ertem et al (43) ASQ-3, PEDS-DM
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 20 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 20
+Source
+Social-Emotional Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Pretends to be something else during play (teacher, 
+superhero, dog)
+Behrman et al (50), Bright Futures (36), 
+Dosman et al (8)
+Asks to go play with children if none are around, like 
+“Can I play with Alex?”
+d
+4 y CDC Gladstone et al (46) — —
+Comforts others who are hurt or sad, like hugging a 
+crying friend
+d
+4 y CDC — ASQ-3, PEDS-DM Dosman et al (8)
+Avoids danger, like not jumping from tall heights at the 
+playground
+4 y New — ASQ-SE-2 —
+Likes to be a “helper” 4 y New Gladstone et al (46), Haltiwanger and 
+Coster (52)
+PEDS-DM Gerber et al (20), Scharf et al (18)
+Changes behavior on the basis of where she is (place of 
+worship, library, playground)
+4 y New Gladstone et al (46) ASQ-SE-2, PEDS-DM —
+Follows rules or takes turns when playing games with 
+other children
+5 y CDC Gladstone et al (46), Haltiwanger 
+and Coster (52), Kumar et al (44), 
+Sheldrick and Perrin (38)
+ASQ-3, PEDS-DM Bright Futures (36), Colson and Dworkin (16), 
+Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Sings, dances, or acts for you
+d 5 y CDC — — —
+Does simple chores at home, like matching socks or 
+clearing the table after eating
+5 y New Gladstone et al (46), Haltiwanger and 
+Coster (52)
+PEDS-DM —
+ASHA, American Speech-Language-Hearing Association; ASQ-3, Ages & Stages Questionnaires (3rd ed); ASQ-SE-2, Ages & Stages Questionnaires: Social-Emotional (2nd ed); Bayley III, Bayley Scales 
+of Infant and Toddler Development (3rd ed); MCHAT-R, Modified Checklist for Autism in Toddlers, Revised; PEDS-DM, Parents’ Evaluation of Developmental Status With Developmental Milestones. —, 
+Empty cells indicate that type/category of data was not available to support inclusion of that milestone.aProvides baseline distribution data for age of attainment of a milestone for a given population.bSome commonly used developmental screening and diagnostic evaluation tools (not all available tools are represented).cUncited on the basis of clinical opinion and/or report of the average or median age that a milestone should be achieved.dSME agreement that additional research would be beneficial.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 21 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 21
+TABLE 4
+Language and Communication Milestones With Supporting Normative Data, Evaluation Tools, and Published Clinical Opinion References
+Source
+Language/Communication Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Makes sounds other than crying 2 mo CDC Dosman et al (8),d Sheldrick and Perrin (38) ASQ-3 (22), PEDS-DM (25) Blackwell and Baker (53), Bright Futures (36), Gerber et al (20), Scharf et al (18)
+Reacts to loud sounds
+e 2 mo New — — Accardo and Capute (30), ASHA (11), Bellman et 
+al (42), Bright Futures (36)
+Makes sounds like “oooo” and “aahh” (cooing) 4 mo CDC Accardo and Capute (30), Ertem et al (35) ASQ-3 ASHA (11), Bright Futures (36), Dosman et al (8), 
+Gerber et al (20), Scharf et al (18)
+Makes sounds back when you talk to him 4 mo New Ertem et al (35), Den Ouden et al (54), Kumar 
+et al (44)
+ASQ-3 Bellman et al (42)
+Turns head toward the sound of your voice 4 mo CDC Accardo and Capute (30), Bhave et al (40), 
+Den Ouden et al (54), Sheldrick and Perrin 
+(38)
+— Bellman et al (42), Dosman et al (8), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Takes turns making sounds with you 6 mo CDC Kumar et al (44), Lejarraga et al (41) — Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Blows “raspberries” (sticks tongue out and blows) 6 mo New Accardo and Capute (30) — Blackwell and Baker (53), Gerber et al (20), 
+Scharf et al (18)
+Makes squealing noises 6 mo New — ASQ-3 Bellman et al (42), Blackwell and Baker (53), 
+Gerber et al (20), Scharf et al (18)
+Makes different sounds like “mamamama” and 
+“babababa”
+9 mo CDC Accardo and Capute (30), Bhave et al (40), 
+Den Ouden et al (54), Lancaster et al (45), 
+Lejarraga et al (41), Sheldrick and Perrin (38)
+ASQ-3, PEDS-DM ASHA (11), Bright Futures (36)
+Lifts arms up to be picked up 9 mo New Ertem et al (35), Fenson et al (47), Gladstone 
+et al (46), Kwon et al (49), Sheldrick and 
+Perrin (38)
+— ASHA (11), Bright Futures (36), Dosman et al (8), 
+First Words (14), Gerber et al (20), Scharf et al 
+(18)
+Waves “bye-bye” 12 mo CDC Accardo and Capute (30), Crais et al (48), Den 
+Ouden et al (54), Ertem et al (35), Fenson et al 
+(47), Kwon et al (49)
+— ASHA (11), Bright Futures (36), First Words (14), 
+Gerber et al (20), Scharf et al (18)
+Calls a parent “mama” or “dada” or another 
+special name
+12 mo CDC Accardo and Capute (30), Crais et al (48), 
+Sheldrick and Perrin (38)
+— AAP (12), Bright Futures (36), Gerber et al (20), 
+Scharf et al (18)
+Understands “no” (pauses briefly or stops when 
+you say it)
+12 mo CDC Accardo and Capute (30), Ertem et al (35), 
+Gladstone et al (46), Lancaster et al (45), 
+Lejarraga et al (41), Thalagala (39)
+Bayley III (27) Blackwell and Baker (53), Dosman et al (8), 
+Gerber et al (20), Scharf et al (18)
+Tries to say 1 or 2 words besides mama or dada, 
+like “ba” for ball or “da” for dog
+15 mo New Gladstone et al (46), Lancaster et al (45), 
+Tamis-Lemonda et al (55)
+ASQ-3, PEDS DM Bright Futures (36), Johnson and Blasco (15), 
+Sharp and Hillenbrand (37)
+Looks at a familiar object when you name it 15 mo CDC Ertem et al (35), Lancaster et al (45), 
+Sheldrick and Perrin (38)
+ASQ-3 Gerber et al (20), Scharf et al (18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 22 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 22
+Source
+Language/Communication Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Follows directions given with both a gesture and 
+words. For example, he gives you a toy when you 
+hold out your hand and say, “Give me the toy.”
+15 mo New Accardo and Capute (30), Ertem et al (35), 
+Gladstone et al (46)
+ASQ-3 Bright Futures (36), Johnson and Blasco (15)
+Points to ask for something or to get help 15 mo CDC Ertem et al (43), Kwon et al (49), Lancaster et 
+al (45)
+ASQ-3 AAP (12), Gerber et al (20), Johnson and Blasco 
+(15), Scharf et al (18)
+Tries to say ≥3 words besides mama or dada 18 mo CDC Accardo and Capute (30), Ertem et al (35), 
+Gladstone et al (46), Lancaster et al (45), 
+Sheldrick and Perrin (38)
+ASQ-3 Bellman et al (42), Blackwell and Baker (53), 
+Bright Futures (36), Dosman et al (8), Gerber et 
+al (20), Scharf et al (18)
+Follows 1-step directions without any gestures, 
+like giving you the toy when you say, “Give it to 
+me.”
+18 mo CDC Accardo and Capute (30), Ertem et al (35), 
+Gladstone et al (46), Lancaster et al (45), 
+Sheldrick and Perrin (38)
+— ASHA (11), Dosman et al (8), Gerber et al (20), 
+Scharf et al (18)
+Points to things in a book when you ask, for 
+example, “Where is the bear?”
+24 mo CDC Accardo and Capute (30), Lejarraga et al (41) ASQ-3 ASHA (11), Bellman et al (42), Blackwell and 
+Baker (53), Bright Futures (36), Gerber et al (20), 
+Johnson and Blasco (15), Scharf et al (18)
+Says at least 2 words together, like “More milk.” 24 mo CDC Accardo and Capute (30), Den Ouden (54), 
+Ertem et al (43), Gladstone et al (46), 
+Sheldrick and Perrin (38)
+ASQ-3 AAP (12), ASHA (11), Bellman et al (42), Bright 
+Futures (36), Dosman et al (8), Gerber et al (20), 
+Scharf et al (18)
+Points to at least 2 body parts when you ask him to 
+show you
+24 mo CDC Accardo and Capute (30), Muluk et al (56), 
+Sheldrick and Perrin (38)
+ASQ-3, PEDS-DM ASHA (11), Bellman et al (42), Blackwell and 
+Baker (53), Bright Futures (36), Johnson and 
+Blasco (15)
+Uses more gestures than just waving and pointing, 
+like blowing a kiss or nodding yes
+24 mo New Fenson et al (47), Kwon et al (49) — Dosman et al (8), First Words (14)
+Says ~50 words 30 mo New Accardo and Capute (30), Lancaster et al (45), 
+Tamis-Lemonda et al (55)
+ASQ-3 AAP (12), Bright Futures (36), Gerber et al (20), 
+Johnson and Blasco (15), Scharf et al (18)
+Says ≥2 words, with 1 action word, like “Doggie 
+run.”
+30 mo New
+Accardo and Capute (30), Ertem et al (35), 
+Lancaster et al (45), Tamis-Lemonda et al (55)
+ASQ-3, Bayley III Blackwell and Baker (53), Dosman et al (8), 
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Names things in a book when you point and ask, 
+“What is this?”
+30 mo New Lancaster et al (45), Sheldrick and Perrin (38) ASQ-3, Bayley III Gerber et al (20), Scharf et al (18)
+Says words like I, me, or we 30 mo CDC Accardo and Capute (30), Ertem et al (35), 
+Lancaster et al (45), Sheldrick and Perrin (38)
+ASQ-3, Bayley III Bright Futures (36), Colson and Dworkin (16), 
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Talks with you in conversation using at least 2 
+back-and-forth exchanges
+e
+3 y CDC — Bayley III —
+Asks who, what, where, or why questions, like 
+“Where is mommy/daddy?”
+3 y New Ertem et al (43), Nair and Russell (57), 
+Sheldrick and Perrin (38)
+— ASHA (11), Colson and Dworkin (16)
+Says what action is happening in a picture when 
+asked, like running, eating, or playing
+3 y New Gladstone et al (46) ASQ-3, Bayley III Gerber et al (20), Knobloch et al (58), Scharf et al 
+(18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 23 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 23
+Source
+Language/Communication Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Says first name when asked 3 y CDC Gladstone et al (46), Haltiwanger and Coster 
+(52), Lansdown et al (51), Lejarraga et al (41), 
+Sheldrick and Perrin (38)
+ASQ-3 Gerber et al (20), Knobloch et al (58), Scharf et al 
+(18)
+Talks well enough for others to understand, most 
+of the time
+3 y CDC Ertem et al (35), Gladstone et al (46), 
+Lancaster et al (45)
+Bayley III ASHA (11), Bellman et al (42), Blackwell and 
+Baker (53), Bright Futures (36), Dosman et al (8), 
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Says sentences with ≥4 words
+e 4 y New — ASQ-3 ASHA (11)
+Says some words from a song, story, or nursery 
+rhyme
+e
+4 y CDC — — Colson and Dworkin (16)
+Talks about at least 1 thing that happened during 
+his day, like “I played soccer.”
+e
+4 y New — — ASHA (11)
+Answers simple questions, like “What is a coat 
+for,” or “What is a crayon for?”
+4 y New Ertem et al (43), Gladstone et al (46), 
+Lejarraga et al (41), Nair and Russell (57), 
+Sheldrick and Perrin (38)
+ASQ-3 ASHA (11), Gerber et al (20), Scharf et al (18)
+Tells a story she heard or made up with at least 2 
+events, like a cat stuck in a tree and a firefighter 
+saving it
+5 y CDC McCabe and Rollins (59), Sheldrick and Perrin 
+(38)
+— Gerber et al (20), Scharf et al (18)
+Answers simple questions about a book or story 
+after you read or tell it to him
+d
+5 y New — — ASHA (11)
+Keeps a conversation going with >3 back-and-
+forth exchange
+e
+5 y New — — ASHA (11)
+Uses or recognizes simple rhymes (bat-cat, ball-
+tall)
+5 y New — PEDS-DM ASHA (11), Gerber et al (20), Scharf et al (18)
+ASHA, American Speech-Language-Hearing Association; ASQ-3, Ages & Stages Questionnaires (3rd ed); Bayley III, Bayley Scales of Infant and Toddler Development (3rd ed); PEDS-DM, Parents’ 
+Evaluation of Developmental Status With Developmental Milestones. —, Empty cells indicate that type/category of data was not available to support inclusion of that milestone.aProvides baseline distribution data for age of attainment of a milestone for a given population.bSome commonly used developmental screening and diagnostic evaluation tools (not all available tools are represented).cUncited on the basis of clinical opinion and/or report the average or median age that a milestone should be achieved.dDosman et al8 contained both published clinical opinion and normative data.
+eSME agreement that additional research would be beneficial.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 24 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 24
+TABLE 5
+Cognitive Milestones With Supporting Normative Data, Evaluation Tools, and Published Clinical Opinion References
+Source
+Cognitive Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Watches you as you move 2 mo CDC Accardo and Capute (30), Atkinson et 
+al (60), Bhave et al (40), Ertem et al 
+(35), Sheldrick and Perrin (38)
+ASQ-3 (22) —
+Looks at a toy for several seconds 2 mo New Kumar et al (44) — Accardo and Capute (30), Bellman et al (42)
+If hungry opens mouth when she sees breast or bottle 4 mo New Carruth and Skinner (61), Thalagala 
+(39)
+ASQ-3, PEDS-DM 
+(25)
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Looks at his hands with interest 4 mo New Den Ouden et al (54), Ertem et al 
+(35), Lejarraga et al (41)
+— Bellman et al (42), Gerber et al (20), Johnson and 
+Blasco (15), Scharf et al (18)
+Puts things in her mouth to explore them 6 mo CDC Ertem et al (35) ASQ-3 Gerber et al (20), Scharf et al (18)
+Reaches to grab a toy he wants 6 mo CDC Den Ouden et al (54), Kumar et al 
+(44)
+ASQ-3 Dosman et al (8), Gerber et al (20), Johnson and 
+Blasco (15), Scharf et al (18)
+Closes lips to show she does not want more food
+d 6 mo New — PEDS-DM —
+Looks for objects when dropped out of sight (like his 
+spoon or toy)
+9 mo New Accardo and Capute (30), Ertem et al 
+(35)
+— Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Bangs 2 things together 9 mo CDC Ertem et al (35), Gladstone et al (46), 
+Sheldrick and Perrin (38)
+ASQ-3 Bellman et al (42), Bright Futures (36), Gerber et 
+al (20), Scharf et al (18)
+12 mo CDC Accardo and Capute (30), Gladstone 
+et al
+ASQ-3
+Puts something in a container, like a block in a cup (46), Lancaster et al (45), Thalagala 
+(39)
+Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Looks for things he sees you hide, like a toy under a 
+blanket
+12 mo CDC Accardo and Capute (30), Ertem et al 
+(35), Gladstone et al (46)
+— Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Tries to use things the right way, like a phone, cup, or 
+book
+d
+15 mo CDC — — Dosman et al (8), Johnson and Blasco (15)
+Stacks at least 2 small objects, like blocks 15 mo New — Beery VMI (28) —
+Copies you doing chores, like sweeping with a broom 18 mo CDC Den Ouden et al (54), Fenson et al 
+(47)
+ASQ-3, PEDS-DM Bellman et al (42), Dosman et al (8), Gerber et al 
+(20), Scharf et al (18)
+Plays with toys in a simple way, like pushing a toy car 18 mo CDC Ertem et al (43), Gladstone et al (46) 
+Lancaster et al (45)
+ASQ-3 Bellman et al (42), Dosman et al (8), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Holds something in 1 hand while using the other hand, 
+for example, holding a container and taking the lid off
+d
+24 mo New Kimmerle et al (62) — —
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 25 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 25
+Source
+Cognitive Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Tries to use switches, knobs, or buttons on a toy 24 mo CDC Ertem et al (35) ASQ-3 Bright Futures (36), Colson and Dworkin (16), 
+Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Plays with >1 toy at the same time, like putting toy 
+food on a toy plate
+24 mo New — PEDS-DM —
+30 mo New — ASQ-3
+Uses things to pretend, like feeding a block to a doll as 
+if it were food
+Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Scharf et al (18)
+Shows simple problem-solving skills, like standing on 
+a small stool to reach something
+30 mo New Lancaster et al (45) ASQ-3 —
+Follows 2-step instructions, for example, “Put the toy 
+down and close the door.”
+30 mo CDC Accardo and Capute (30), Ertem et al 
+(35), Gladstone et al (46) Lancaster et 
+al (45)
+Bayley III (27) AAP (12), Bright Futures (36), Dosman et al (8), 
+Gerber et al (20), Scharf et al (18)
+Shows that he knows at least 1 color, like pointing to a 
+red crayon when you ask, “Which one is red?”
+30 mo New Accardo and Capute (30), Sheldrick 
+and Perrin (38)
+— Knobloch et al (58)
+Draws a circle when you show him how 3 y CDC Accardo and Capute (30), Egan and 
+Brown (63)
+ASQ-3 Behrman et al (50), Bellman et al (42), Bright 
+Futures (36), Colson and Dworkin (16), Dosman 
+et al (8), Gerber et al (20), Scharf et al (18)
+Avoids touching hot objects, like a stove, when you 
+warn herd
+3 y New Haltiwanger and Coster (52) ASQ-SE (23) —
+Names a few colors of items 4 y CDC Accardo and Capute (30), Lejarraga et 
+al (41), Sheldrick and Perrin (38)
+ASQ-3, Bayley III, 
+PEDS- DM
+Gerber et al (20), Scharf et al (18)
+Tells what comes next in a well-known story
+d 4 y CDC — — Gerber et al (20), Scharf et al (18)
+4 y CDC Lejarraga et al (41), ASQ-3, PEDS-DM
+Draws a person with ≥3 body parts Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Counts to 10 5 y CDC — ASQ-3 Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Names some numbers between 1 and 5 when you point 
+to them
+5 y CDC Williams and Lerner (64) PEDS-DM ASHA (11), Gerber et al (20), Scharf et al (18)
+Uses words about time, like yesterday, tomorrow, 
+morning, or night
+5 y CDC Sheldrick and Perrin (38) PEDS-DM Colson and Dworkin (16), Gerber et al (20), Scharf 
+et al (18)
+Pays attention for 5–10 min during activities, for 
+example, during story time or making arts and crafts 
+(screen time does not count)d
+5 y New — ASQ-SE —
+Writes some letters in her name 5 y CDC Sheldrick and Perrin (38) ASQ-3, PEDS-DM Dosman et al (8), Gerber et al (20), Scharf et al 
+(18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 26 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 26
+Source
+Cognitive Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Names some letters when you point to them 5 y New Williams and Lerner (64) ASQ-3 Gerber et al (20), Scharf et al (18)
+ASHA, American Speech-Language-Hearing Association; ASQ-3, Ages & Stages Questionnaires (3rd ed); ASQ-SE, Ages & Stages Questionnaires: Social-Emotional; Bayley III, Bayley Scales of 
+Infant and Toddler Development (3rd ed); Beery VMI, Beery-Buktenica Developmental Test of Visual-Motor Integration; PEDS-DM, Parents’ Evaluation of Developmental Status With Developmental 
+Milestones. —, Empty cells indicate that type/category of data was not available to support inclusion of that milestone.aProvides baseline distribution data for age of attainment of a milestone for a given population.bSome commonly used developmental screening and diagnostic evaluation tools (not all available tools are represented).cUncited on the basis of clinical opinion and/or report the average or median age that a milestone should be achieved.dSME agreement that additional research would be beneficial.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 27 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 27
+TABLE 6
+Motor Milestones With Supporting Normative Data, Evaluation Tools, and Published Clinical Opinion References
+Source
+Motor Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Holds head up when on tummy 2 mo CDC Accardo and Capute (30), Carruth and Skinner (61), Den 
+Ouden et al (54)
+— Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Scharf et al (18)
+Moves both arms and both legs 2 mo New — ASQ-3 (22) Bright Futures (36)
+Opens hands briefly 2 mo New Accardo and Capute (30), Ertem et al (35), Lejarraga et al 
+(41)
+ASQ-3 Bright Futures (36)
+Holds head steady without support 
+when you are holding her
+4 mo CDC Ertem et al (35), Lejarraga et al (41), Sheldrick and Perrin 
+(38)
+PEDS-DM (25) Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Holds a toy when you put it in his 
+hand
+4 mo CDC Dosman et al (8)d — Bellman et al (42), Gerber et al (20), Scharf et al (18)
+Uses her arm to swing at toys 4 mo CDC Bhave et al (40), Dosman et al (8), Ertem et al (43), Kumar 
+et al (44)
+— Gerber et al (20), Scharf et al (18)
+Brings hands to mouth 4 mo CDC Den Ouden et al (54), Ertem et al (35), Lejarraga et al (41), 
+Sheldrick and Perrin (38)
+— Bright Futures (36), Dosman et al (8)
+Pushes up onto elbows/forearms 
+when on tummy
+4 mo CDC Accardo and Capute (30), Lejarraga et al (41), Thalagala 
+(39)
+— Gerber et al (20), Scharf et al (18)
+Rolls from tummy to back 6 mo CDC Accardo and Capute (30), Den Ouden et al (54), Dosman et 
+al (8), Ertem et al (35)
+ASQ-3 Gerber et al (20), Scharf et al (18)
+Pushes up with straight arms when 
+on tummy
+6 mo CDC Accardo and Capute (30), Carruth and Skinner (61), 
+Thalagala (39)
+— Gerber et al (20), Scharf et al (18)
+Leans on hands to support himself 
+when sitting
+6 mo CDC Accardo and Capute (30), Carruth and Skinner (61), 
+Dosman et al (8), Ertem et al (35), Kitsao-Wekulo et al 
+(65), Lejarraga et al (41)
+ASQ-3 Gerber et al (20), Scharf et al (18)
+Gets to a sitting position by herself 9 mo CDC Accardo and Capute (30), Bhave et al (40), Gajewska et al 
+(66), Sheldrick and Perrin (38)
+— Gerber et al (20), Scharf et al (18)
+Sits without support 9 mo CDC Accardo and Capute (30), Bhave et al (40), Cox et al (67), 
+Dosman et al (8), Ertem et al (35), Gladstone et al (46), 
+Lancaster et al (44), Lejarraga et al (41)
+— Bellman et al (42), Gerber et al (20), Scharf et al (18)
+Uses fingers to “rake” food toward 
+himself
+9 mo New Accardo and Capute (30), Carruth and Skinner (61), Ertem 
+et al (43), Gladstone et al (46), Sheldrick and Perrin (38)
+ASQ-3 Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Moves things from 1 hand to her 
+other hand
+9 mo CDC Accardo and Capute (30), Carruth and Skinner (61), Cox 
+et al (67), Den Ouden et al (54), Gladstone et al (46), 
+Kitsao-Wekulo et al (65), Lancaster et al (45), Lejarraga et 
+al (41), Sheldrick and Perrin (38), Thalagala (39)
+ASQ-3 Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Scharf et al (18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 28 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 28
+Source
+Motor Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Pulls up to stand 12 mo CDC Accardo and Capute (30), Bhave et al (40), Den Ouden et 
+al (54), Dosman et al (8), Ertem et al (43), Gladstone et al 
+(46), Lancaster et al (45), Lejarraga et al (41), World Health 
+Organization (68)
+— Bellman et al (42), Gerber et al (20), Scharf et al (18)
+Walks, holding onto furniture 12 mo CDC Accardo and Capute (30), Ertem et al (43), Lejarraga et al 
+(41), World Health Organization (68)
+— Bellman et al (42), Gerber et al (20), Scharf et al (18)
+Drinks from a cup without a lid, as 
+you hold it
+12 mo New Gladstone et al (46), Lancaster et al (45) ASQ-3, PEDS-DM Bright Futures (36), Gerber et al (20), Johnson and 
+Blasco (15), Scharf et al (18)
+Picks things up between thumb and 
+pointer finger, like small bits of 
+food
+12 mo CDC Ertem et al (43), Gladstone et al (46), Kumar et al (44), 
+Lancaster et al (45), Lejarraga et al (41)
+— Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Scharf et al (18)
+Takes a few steps on his own 15 mo CDC Ertem et al (43), Gladstone et al (46), Noller and Ingrisano 
+(69)
+— Bright Futures (36)
+Uses fingers to feed herself some 
+food
+15 mo New Carruth and Skinner (61), Dosman et al (8), Kumar et al 
+(44), Lejarraga et al (41)
+— Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Walks without holding onto 
+anyone or anything
+18 mo CDC Accardo and Capute (30), Bhave et al (40), Gladstone et 
+al (46), Kitsao-Wekulo et al (65), Lancaster et al (45), 
+Lejarraga et al (41), Sheldrick and Perrin (38)
+ASQ-3, PEDS-DM Bellman et al (42), Bright Futures (36), Dosman et al 
+(8)
+Scribbles 18 mo CDC Accardo and Capute (30), Ertem et al (43), Kitsao-Wekulo 
+et al (65), Lancaster et al (45), Lansdown et al (51), 
+Lejarraga et al (41)
+ASQ-3 Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Drinks from a cup without a lid 
+and may spill sometimes
+18 mo CDC Den Ouden et al (54), Ertem et al (43), Gladstone et al (46), 
+Lancaster et al (45)
+ASQ-3 Bright Futures (36), Dosman et al (8), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Feeds herself with her fingers 18 mo New Carruth and Skinner (61), Dosman et al (8), Kumar et al 
+(44), Lejarraga et al (41)
+— Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Tries to use a spoon 18 mo New Ertem et al (43), Gladstone et al (46) ASQ-3 Bellman et al (42), Bright Futures (70), Dosman et 
+al (8), Gerber et al (20), Johnson and Blasco (15), 
+Scharf et al (18)
+Climbs on and off a couch or chair 
+without help
+18 mo CDC Carruth and Skinner (61), Kitsao-Wekulo et al (65), 
+Lancaster et al (45), Lejarraga et al (41)
+— Bright Futures (36), Colson and Dworkin (16), 
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Kicks a ball 24 mo CDC Ertem et al (43), Gladstone et al (46), Lancaster et al (45), 
+Lejarraga et al (41), Sheldrick and Perrin (38), Thalagala 
+(39)
+ASQ-3 Bellman et al (42), Bright Futures (36), Colson and 
+Dworkin (16), Dosman et al (8), Gerber et al (20), 
+Johnson and Blasco (15), Scharf et al (18)
+Runs 24 mo CDC Accardo and Capute (30), Gladstone et al (46), Sheldrick 
+and Perrin (38)
+ASQ-3 Bellman et al (42), Bright Futures (36), Colson and 
+Dworkin (16), Dosman et al (8), Gerber et al (20), 
+Scharf et al (18)
+Walks (not climbs) up a few stairs 
+with or without help
+24 mo CDC Bhave et al (40), Ertem et al (43), Sheldrick and Perrin (38) ASQ-3, PEDS-DM Bellman et al (42), Bright Futures (70), Colson and 
+Dworkin (16), Dosman et al (8), Gerber et al (20), 
+Johnson and Blasco (15), Scharf et al (18)
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 29 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 29
+Source
+Motor Milestones Age
+CDC or 
+New Normative Dataa
+Developmental 
+Screening and 
+Evaluation Toolsb Published Clinical Opinionc
+Eats with a spoon 24 mo CDC Dosman et al (8), Ertem et al (43), Gladstone et al (46), 
+Muluk et al (56)
+— Bright Futures (36), Colson and Dworkin (16), 
+Dosman et al (8), Gerber et al (20), Johnson and 
+Blasco (15), Scharf et al (18)
+Uses hands to twist things, like 
+turning doorknobs or unscrewing 
+lids
+30 mo CDC Lancaster et al (45) MSEL (32) Bright Futures (36), Johnson and Blasco (15)
+Takes some clothes off by himself, 
+like loose pants or an open jacket
+30 mo CDC Dosman et al (8), Ertem et al (43), Gladstone et al (46) ASQ-3, PEDS-DM Bellman et al (42), Bright Futures (36), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Jumps off the ground with both 
+feet
+30 mo New Gladstone et al (46), Kitsao-Wekulo et al (65), Lejarraga et 
+al (41), Sheldrick and Perrin (38)
+ASQ-3 Bright Futures (36), Colson and Dworkin (16), 
+Gerber et al (20), Johnson and Blasco (15), Scharf 
+et al (18)
+Turns book pages, 1 at a time, 
+when you read to her
+30 mo CDC — MSEL Bright Futures (36), Knobloch et al (58)
+Strings items together, like large 
+beads or macaroni
+3 y New Gladstone et al (46) ASQ-3 Gerber et al (20), Knobloch et al (58), Scharf et al 
+(18)
+Puts on some clothes by himself, 
+like loose pants or a jacket
+3 y CDC Dosman et al (8), Ertem et al (35) ASQ-3, PEDS-DM Bellman et al (42), Bright Futures (36), Gerber et al 
+(20), Johnson and Blasco (15), Scharf et al (18)
+Uses a fork 3 y CDC Dosman et al (8) ASQ-3 Bellman et al (42), Bright Futures (36)
+Catches a large ball most of the 
+time
+4 y CDC — ASQ-3 Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Serves himself food or pours 
+water, with adult supervision
+4 y CDC — ASQ-3 Gerber et al (20), Scharf et al (18)
+Unbuttons some buttons 4 y New Ohtoshi et al (71) — Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Holds crayon or pencil between 
+fingers and thumb (not in a fist)
+4 y New Egan and Brown (63), Ertem et al (43) ASQ-3 Bright Futures (36), Dosman et al (8), Knobloch et al 
+(58)
+Buttons some buttons 5 y New Ohtoshi et al (71) ASQ-3 Bright Futures (36), Gerber et al (20), Scharf et al 
+(18)
+Hops on 1 foot 5 y CDC Gladstone et al (46), Kitsao-Wekulo et al (65), Nair and 
+Russell (57)
+ASQ-3 Bellman et al (42), Bright Futures (36), Gerber et al 
+(20), Scharf et al (18)
+ASQ-3, Ages & Stages Questionnaires (3rd ed); MSEL, Mullen Scales of Early Learning; PEDS-DM, Parents’ Evaluation of Developmental Status With Developmental Milestones. —, Empty cells indicate 
+that type/category of data was not available to support inclusion of that milestone.aProvides baseline distribution data for age of attainment of a milestone for a given population.bSome commonly used developmental screening and diagnostic evaluation tools (not all available tools are represented).cUncited, based on clinical opinion, and/or report the average or median age that a milestone should be achieved.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.
+=== PAGE 30 ===
+Author Manuscript Author Manuscript Author Manuscript Author Manuscript
+Zubler et al. Page 30
+dDosman et al8 contained both published clinical opinion and normative data.
+Pediatrics. Author manuscript; available in PMC 2022 November 22.

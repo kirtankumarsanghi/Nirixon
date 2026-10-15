@@ -5,23 +5,27 @@ Clinician what-if sandbox — Stage 4 stub.
 from __future__ import annotations
 
 import logging
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth import require_internal
-from app.core.session import ScreeningSession as CoreSession, FinalResult
 from app.core.orchestrator import get_next_action
+from app.core.session import FinalResult
+from app.core.session import ScreeningSession as CoreSession
 from app.db.models import ScreeningSession as DbSession
 from app.db.session import get_db
 from app.db.session_repo import SessionRepository, get_session_repo
-from app.ml.inference_service import InferenceService, inference_service, build_feature_vector
+from app.ml.inference_service import (
+    InferenceService,
+    build_feature_vector,
+    inference_service,
+)
+from app.routers.screen import _override_rule_name, _result_payload_from_prediction
 from app.schemas.sandbox import SandboxSimulateRequest
 from app.schemas.screen import ResultPayload
-from app.routers.screen import _result_payload_from_prediction, _override_rule_name
 
 logger = logging.getLogger(__name__)
 
@@ -45,24 +49,30 @@ async def simulate_session(
     Clinician sandbox: what-if re-scoring of a completed session.
     Takes optional model_name, answer_overrides, and age override.
     """
-    stmt = select(DbSession).where(DbSession.id == session_id).options(selectinload(DbSession.answers))
+    stmt = (
+        select(DbSession)
+        .where(DbSession.id == session_id)
+        .options(selectinload(DbSession.answers))
+    )
     result = await db.execute(stmt)
     db_row = result.scalar_one_or_none()
 
     if db_row is None:
         raise HTTPException(status_code=404, detail="Session not found")
     if db_row.status != "completed":
-        raise HTTPException(status_code=400, detail="Can only simulate completed sessions")
+        raise HTTPException(
+            status_code=400, detail="Can only simulate completed sessions"
+        )
 
     # Reconstruct core session state
     core = repo.get(session_id)
     if core is None:
         core = CoreSession.from_dict(db_row.state_json)
-        
+
     # Apply what-if overrides
     if body.corrected_age_months is not None:
         core.corrected_age_months = body.corrected_age_months
-        
+
     for item_id, ans in body.answer_overrides.items():
         if item_id in core.mandatory_answered:
             core.mandatory_answered[item_id] = ans
@@ -81,18 +91,18 @@ async def simulate_session(
         # Let's derive labels anyway.
         action = FinalResult(
             real_answers=core.all_answers(),
-            imputed_answers={}, # We could re-impute, but simplified for sandbox
+            imputed_answers={},  # We could re-impute, but simplified for sandbox
             deterministic_override=None,
             caveats=["Session not fully complete after what-if overrides"],
             stopping_reason="sandbox_incomplete",
         )
-        
+
     # Re-impute if needed (in a real scenario we'd call label_derivation directly)
     # For now, let's use the actual FinalResult returned by orchestrator.
 
     model_to_use = None
     target_model_name = body.model_name or inference.production_model_name
-    
+
     if target_model_name != inference.production_model_name:
         try:
             model_to_use = inference.load_model_by_name(target_model_name)
@@ -107,7 +117,7 @@ async def simulate_session(
     )
 
     override_rule = _override_rule_name(action.deterministic_override, core)
-    
+
     try:
         pred = inference.predict(
             features,

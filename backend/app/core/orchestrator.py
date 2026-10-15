@@ -149,9 +149,33 @@ def _get_next_action_b(
     specific). No imputation — all Module B answers are real caregiver responses.
     Stopping floor uses Module B constants.
     """
+    from app.core.module_b.domains import to_api_domain
+    from app.core.module_b.engine_b import Session as EngineSession
+    from app.core.module_b.service import module_b_service
+
+    if module_b_service.is_loaded and session.module_b_state is not None:
+        eng_sess = EngineSession.from_dict(session.module_b_state)
+        action = module_b_service.engine.next_action(eng_sess)
+        if action.get("type") == "done":
+            return _build_final_result_b(session, "budget_exhausted")
+        if action.get("type") == "question":
+            session.pending_item_id = str(action["item_id"])
+            session.module_b_state = eng_sess.to_dict()
+            return NextQuestion(
+                item_id=str(action["item_id"]),
+                question_text=str(action["text"]),
+                domain=to_api_domain(str(action.get("track", ""))),
+                question_number=len(eng_sess.answers) + 1,
+                question_cap=session.question_cap,
+            )
+
     # Step 1 — Check stopping floor with Module B thresholds.
     # Domain floor is capped by how many domains the intake actually opened.
-    detected_n = len(session.detected_domains) if session.detected_domains else MIN_DOMAINS_COVERED_B
+    detected_n = (
+        len(session.detected_domains)
+        if session.detected_domains
+        else MIN_DOMAINS_COVERED_B
+    )
     domain_floor = min(MIN_DOMAINS_COVERED_B, max(1, detected_n))
     floor_met = can_stop_early(
         session,
@@ -185,7 +209,6 @@ def _build_final_result_b(
     Module B: no imputation — FinalResult carries only real answers.
     The feature vector for inference is assembled per-domain from answers.
     """
-    from data.generator.item_bank_b import MODULE_B_ITEM_BANK
 
     real_answers: dict[str, int] = dict(session.answers)
 

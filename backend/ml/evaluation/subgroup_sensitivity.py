@@ -23,8 +23,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from columns import LABEL_ORDER
-
 # Item prefix -> domain name mapping for sensitivity_by_domain()
 _ITEM_PREFIX_TO_DOMAIN = {
     "GM": "gross_motor",
@@ -36,9 +34,7 @@ _ITEM_PREFIX_TO_DOMAIN = {
 }
 
 
-def sensitivity_by_age_bracket(
-    y_test, y_pred, age_bracket_series
-) -> pd.DataFrame:
+def sensitivity_by_age_bracket(y_test, y_pred, age_bracket_series) -> pd.DataFrame:
     """
     Computes Refer-class recall and specificity (Monitor+Refer specificity)
     by ASQ-3 age bracket. Uses the age_bracket column from the test set
@@ -48,8 +44,9 @@ def sensitivity_by_age_bracket(
       bracket, refer_n, refer_recall, refer_specificity
     sorted in developmental order (youngest bracket first).
     """
-    import sys
     import os
+    import sys
+
     backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     if backend_dir not in sys.path:
         sys.path.insert(0, backend_dir)
@@ -96,9 +93,7 @@ def sensitivity_by_age_bracket(
     return pd.DataFrame(rows)
 
 
-def sensitivity_by_age_bin(
-    y_test, y_pred, age_months_series
-) -> pd.DataFrame:
+def sensitivity_by_age_bin(y_test, y_pred, age_months_series) -> pd.DataFrame:
     """
     Legacy 1-year-bin version — kept for backward compatibility with any
     callers not yet updated to the 17-bracket system.
@@ -157,9 +152,7 @@ def sensitivity_by_family_history(y_test, y_pred, fh_series) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def sensitivity_by_domain(
-    y_test, y_pred, X_test: pd.DataFrame
-) -> pd.DataFrame:
+def sensitivity_by_domain(y_test, y_pred, X_test: pd.DataFrame) -> pd.DataFrame:
     """
     For each of the 6 developmental domains, computes Refer-class recall on
     the test set using only the items belonging to that domain. This enables

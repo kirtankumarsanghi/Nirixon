@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = [
+    "E402",  # Module level import not at top of file (needed for sys.path manipulation)
+    "E501",  # Line length handled by black
+    "E741",  # Ambiguous variable name (e.g. single-letter 'l' in math/loop comprehensions)
+    "UP031", # Use format specifiers instead of percent format
+    "B008",  # Do not perform function call in argument defaults (FastAPI Depends)
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]

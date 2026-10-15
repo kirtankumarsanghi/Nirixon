@@ -18,6 +18,7 @@ import {
   WhatIfSimulator,
 } from "./pages/DeferredPages";
 import { ScreeningPage } from "./pages/ScreeningPage";
+import { LandingPage } from "./landing";
 import { RequireAuth, RequireConsent } from "./routes/guards";
 import { ToastProvider, ToastViewport } from "./toast/Toast";
 
@@ -40,6 +41,10 @@ function AppRoutes() {
     <>
       <UnauthorizedBridge />
       <Routes>
+        {/* Public landing page with live interactive screening demo */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
+
         <Route element={<AppLayout />}>
           <Route path="/login" element={<LoginScreen />} />
 
