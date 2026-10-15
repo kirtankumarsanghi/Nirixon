@@ -438,3 +438,166 @@ async def test_privacy_no_parent_text_or_evidence_saved(api_env):
         assert "baith hi nahi" not in state_str
         assert "notebook bhool" not in state_str
 
+
+@pytest.mark.asyncio
+async def test_module_b_triage_tier_and_comorbidity(api_env):
+    """Verify triage_tier contract and clinical comorbidity advisory in Module B."""
+    client = api_env["client"]
+    token = await _login(client)
+
+    note = "He cannot focus or sit still, and also reads very slowly and mixes up b and d."
+
+    def dual_high(q: dict) -> int | str:
+        track = q.get("track") or q.get("domain")
+        rt = q.get("response_type")
+        if track in ("attention", "reading"):
+            return "Yes" if rt in ("yesno", "yes_no") else 5
+        return "No" if rt in ("yesno", "yes_no") else 1
+
+    _, _, _, result = await _drive_session(
+        client,
+        token,
+        text=note,
+        months=108,
+        answer_fn=dual_high,
+    )
+
+    assert result["triage_tier"] == "Tier 3: Direct Referral"
+    assert result["reflex_branch_recommended"] is False
+    # Check comorbidity advisory
+    advs = result.get("guard_advisories", [])
+    assert any("Comorbidity" in a for a in advs)
+    assert any("Multidisciplinary" in a.lower() or "multidisciplinary" in a for a in advs)
+
+
+@pytest.mark.asyncio
+async def test_module_b_straight_lining_guard(api_env):
+    """Verify that answering with identical Likert options flags straight-lining."""
+    client = api_env["client"]
+    token = await _login(client)
+
+    note = "No problems at all, everything is fine."
+
+    _, _, _, result = await _drive_session(
+        client,
+        token,
+        text=note,
+        months=96,
+        answer_fn=lambda q: "No" if q.get("response_type") in ("yesno", "yes_no") else 1,
+    )
+
+    assert result["triage_tier"] == "Tier 1: Routine Pass"
+    assert result["guard_flags"].get("straight_lining") is True
+    assert any("straight-lining" in a.lower() for a in result.get("guard_advisories", []))
+
+
+@pytest.mark.asyncio
+async def test_module_b_bayesian_cat_fisher_info(api_env):
+    """Verify that Bayesian CAT estimates latent theta, standard error SE, and Fisher Information."""
+    client = api_env["client"]
+    token = await _login(client)
+
+    note = "He cannot sit still and forgets everything."
+    _, _, _, result = await _drive_session(
+        client,
+        token,
+        text=note,
+        months=108,
+        answer_fn=_likert_high_for("attention"),
+    )
+
+    domain_details = result.get("domain_details", {})
+    assert "attention" in domain_details
+    att_track = domain_details["attention"]
+    assert "irt_theta" in att_track
+    assert "irt_se" in att_track
+    assert "fisher_information" in att_track
+    assert isinstance(att_track["irt_theta"], (int, float))
+    assert isinstance(att_track["irt_se"], (int, float))
+    assert att_track["irt_se"] <= 1.0
+
+
+@pytest.mark.asyncio
+async def test_module_b_differential_masking(api_env):
+    """Verify differential masking gate distinguishes Auditory sequential delays from primary ADHD."""
+    client = api_env["client"]
+    token = await _login(client)
+
+    # Auditory delay complaint
+    note = "He cannot follow spoken instructions in class and needs everything repeated, but sits quietly and plays puzzles fine."
+
+    def aud_only(q: dict) -> int | str:
+        track = q.get("track") or q.get("domain")
+        rt = q.get("response_type")
+        if track in ("listening_speaking",):
+            return "Yes" if rt in ("yesno", "yes_no") else 5
+        # normal attention
+        return "No" if rt in ("yesno", "yes_no") else 1
+
+    _, _, _, result = await _drive_session(
+        client,
+        token,
+        text=note,
+        months=108,
+        answer_fn=aud_only,
+    )
+
+    diff = result.get("differential_masking", {})
+    assert diff.get("capd_vs_adhd") is True
+    assert any("auditory processing" in c.lower() for c in result.get("caveats", []))
+
+
+@pytest.mark.asyncio
+async def test_module_b_multi_informant_teacher_concordance(api_env):
+    """Verify DSM-5 Criterion C multi-informant teacher invite, item fetch, and concordance scoring."""
+    client = api_env["client"]
+    token = await _login(client)
+    headers = _auth(token)
+
+    # 1. Complete parent session
+    note = "He cannot focus and forgets homework."
+    session_id, _, _, parent_result = await _drive_session(
+        client,
+        token,
+        text=note,
+        months=108,
+        answer_fn=_likert_high_for("attention"),
+    )
+
+    # 2. Generate teacher invite
+    r_invite = await client.post(
+        f"/api/screen/{session_id}/teacher_invite",
+        headers=headers,
+    )
+    assert r_invite.status_code == 200, r_invite.text
+    invite_data = r_invite.json()
+    invite_code = invite_data["teacher_invite_code"]
+    assert invite_code.startswith("TCH-")
+
+    # 3. Fetch teacher items (public / teacher view, no auth header needed)
+    r_items = await client.get(f"/api/screen/teacher/{invite_code}/items")
+    assert r_items.status_code == 200, r_items.text
+    items_data = r_items.json()
+    assert len(items_data["items"]) >= 6
+
+    # 4. Teacher submits classroom observations (attention high, other areas typical)
+    teacher_answers = {}
+    for item in items_data["items"]:
+        iid = item["item_id"]
+        # Concordant high on attention, typical on others
+        teacher_answers[iid] = 5 if item["domain"] == "attention" else 1
+
+    r_submit = await client.post(
+        f"/api/screen/teacher/{invite_code}/submit",
+        json={"answers": teacher_answers},
+    )
+    assert r_submit.status_code == 200, r_submit.text
+    submit_data = r_submit.json()
+
+    assert submit_data["consistency_score"] >= 0.70
+    concordance = submit_data["concordance_classification"]
+    assert concordance.get("attention") == "concordant_high"
+    assert any("DSM-5 Criterion C met" in c for c in submit_data["caveats"])
+
+
+

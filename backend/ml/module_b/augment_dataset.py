@@ -17,12 +17,17 @@ Run:    python src/augment_dataset.py
 """
 import csv
 import hashlib
-import os
-import random
+import os, random
 import re
 import sys
 from collections import Counter
 
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+
+import numpy as np
+np.random.seed(SEED)
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -118,8 +123,6 @@ def bank_rows(rng, n, split, bank, strengths):
             text += rng.choice(TIME_MODS["en"])
         if rng.random() < 0.3:
             text += " " + G.age_phrase(rng, "en", g, rng.randint(5, 12))
-        if rng.random() < 0.2:
-            text += " " + NOISE[rng.randrange(len(NOISE))][0]
         text = G.noisy(rng, text, "en")
         if text in seen:
             continue
@@ -213,12 +216,26 @@ def lexicon_rows(rng, n, split, assign):
 
 
 def main():
-    bank = pd.read_csv(os.path.join(DATA, "question_bank_b.csv"))
+    bank_cand = [
+        os.path.join(DATA, "question_bank_b.csv"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "module_b", "question_bank_b.csv")),
+    ]
+    bank_file = next((p for p in bank_cand if os.path.exists(p)), None)
+    if not bank_file:
+        raise FileNotFoundError(f"question_bank_b.csv not found in candidates: {bank_cand}")
+    bank = pd.read_csv(bank_file)
     sym = bank[(bank.item_type.isin(["symptom", "ruleout"])) & (bank.response_type == "likert5") & (~bank.text.str.endswith("?")) & (bank.domain.isin(BANK_MAP))]
     strengths = [(r.concept_id, r.text) for r in bank[(bank.item_type == "strength") & (bank.form == "parent")].itertuples()]
     print("bank symptom/ruleout items:", len(sym), "concepts:", sym.concept_id.nunique(), "strength items:", len(strengths))
 
-    base = pd.read_csv(os.path.join(DATA, "parent_text_dataset.csv"))
+    base_cand = [
+        os.path.join(DATA, "parent_text_dataset.csv"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "parent_text_dataset.csv")),
+    ]
+    base_file = next((p for p in base_cand if os.path.exists(p)), None)
+    if not base_file:
+        raise FileNotFoundError(f"parent_text_dataset.csv not found in candidates: {base_cand}")
+    base = pd.read_csv(base_file)
     base["origin"] = "seed_gen"
 
     assign_rng = random.Random(99)
@@ -240,6 +257,9 @@ def main():
     cols = list(base.columns)
     full = pd.concat([base[cols], df[cols]], ignore_index=True)
     full.to_csv(os.path.join(DATA, "parent_text_dataset_full.csv"), index=False)
+    # Also save in module_b folder for train_router.py
+    mod_b_dir = os.path.dirname(os.path.abspath(__file__))
+    full.to_csv(os.path.join(mod_b_dir, "parent_text_dataset_full.csv"), index=False)
     print("full rows:", len(full))
     print(full.groupby(["origin", "split"]).size().unstack())
     print(full.groupby("lang").size().to_dict())

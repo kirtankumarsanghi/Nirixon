@@ -127,6 +127,9 @@ def build_result_payload(raw: dict[str, Any]) -> ResultPayload:
                 borderline=v.get("borderline"),
                 brief=v.get("brief"),
                 because=list(v.get("because") or []),
+                irt_theta=v.get("irt_theta"),
+                irt_se=v.get("irt_se"),
+                fisher_information=v.get("fisher_information"),
             )
         return out
 
@@ -142,6 +145,54 @@ def build_result_payload(raw: dict[str, Any]) -> ResultPayload:
             for a in (acts or [])
             if isinstance(a, dict)
         ]
+
+    # Tiered clinical triage
+    if final == "Refer" or mapped.get("safety"):
+        triage_tier = "Tier 3: Direct Referral"
+        reflex_recommended = False
+    elif final == "Monitor":
+        triage_tier = "Tier 2: Reflex-Branch"
+        reflex_recommended = True
+    else:
+        triage_tier = "Tier 1: Routine Pass"
+        reflex_recommended = False
+
+    target_reflex_domains = [
+        dom for dom, st in domain_classifications.items() if st == "Monitor"
+    ]
+
+    guard_flags = dict(mapped.get("guard_flags") or {})
+    guard_advisories: list[str] = []
+
+    if guard_flags.get("straight_lining"):
+        guard_advisories.append(
+            "Response Pattern Advisory: High uniformity detected across Likert responses "
+            "(straight-lining). Responses may reflect respondent rush or fatigue."
+        )
+
+    # Pediatric comorbidity synthesis (ADHD x SLD co-occurrence)
+    attn_concerning = domain_classifications.get("attention") in ("Refer", "Monitor")
+    acad_concerning = any(
+        domain_classifications.get(d) in ("Refer", "Monitor")
+        for d in ("reading", "writing", "numbers")
+    )
+    if attn_concerning and acad_concerning:
+        guard_advisories.append(
+            "Clinical Comorbidity Note: Co-occurring pattern of Attention/Executive Function and "
+            "Academic/Phonological Processing observed (~40% clinical overlap). Per AAP/DSM-5 guidance, "
+            "recommend multidisciplinary evaluation (Child Neurologist + Educational Psychologist)."
+        )
+
+    # Sensory vs Cognitive Differential Masking
+    diff_masking = dict(mapped.get("differential_masking") or {})
+    diff_advisories = list(mapped.get("differential_advisories") or [])
+    guard_advisories.extend(diff_advisories)
+
+    summary_text = mapped.get("summary")
+    if guard_advisories and summary_text:
+        for adv in guard_advisories:
+            if adv not in summary_text:
+                summary_text = f"{summary_text} {adv}"
 
     return ResultPayload(
         final_classification=final,
@@ -159,12 +210,13 @@ def build_result_payload(raw: dict[str, Any]) -> ResultPayload:
                 mapped.get("disclaimer")
                 or "Patterns worth a closer look. Not a diagnosis."
             )
-        ],
+        ]
+        + guard_advisories,
         real_answer_count=int(mapped.get("questions_asked") or 0),
         imputed_count=0,
         domain_classifications=domain_classifications,
         module="B",
-        summary=mapped.get("summary"),
+        summary=summary_text,
         activities=activities,
         domain_details=_tracks(mapped.get("domains")),
         ruleouts=_tracks(mapped.get("ruleouts")),
@@ -172,6 +224,12 @@ def build_result_payload(raw: dict[str, Any]) -> ResultPayload:
         help_routes=dict(mapped.get("help") or {}),
         safety=bool(mapped.get("safety")),
         disclaimer=mapped.get("disclaimer"),
+        triage_tier=triage_tier,
+        reflex_branch_recommended=reflex_recommended,
+        target_reflex_domains=target_reflex_domains,
+        guard_flags=guard_flags,
+        guard_advisories=guard_advisories,
+        differential_masking=diff_masking,
     )
 
 
@@ -181,7 +239,7 @@ def run_start(
     text: str,
     age_years: int,
     form: str = "parent",
-    seed: int = 0,
+    seed: int = 42,
 ) -> tuple[Session, dict[str, Any]]:
     s = engine.start(text, age_years, form=form, seed=seed)
     action = engine.next_action(s)

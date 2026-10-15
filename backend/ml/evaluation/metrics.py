@@ -54,6 +54,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
 
     cm = confusion_matrix(y_true, y_pred, labels=LABEL_ORDER)
     report = classification_report(y_true, y_pred, labels=LABEL_ORDER, zero_division=0)
+    report_dict = classification_report(y_true, y_pred, labels=LABEL_ORDER, output_dict=True, zero_division=0)
     sens_spec = compute_sensitivity_specificity(y_true, y_pred, labels=LABEL_ORDER)
 
     return {
@@ -65,6 +66,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
         "confusion_matrix": cm,
         "confusion_matrix_labels": LABEL_ORDER,
         "classification_report": report,
+        "classification_report_dict": report_dict,
         "sensitivity_specificity": sens_spec,
     }
 

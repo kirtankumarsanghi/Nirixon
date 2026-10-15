@@ -20,6 +20,15 @@ dist/
 # IDEs
 .vscode/
 .idea/
+.commandcode/
+.kilo/
 
 # OS
 .DS_Store
+
+# Generated datasets and benchmark run dumps
+backend/ml/data/
+backend/ml/evaluation/artifacts/
+backend/ml/validation/results/
+backend/ml/validation/results_production/
+backend/ml/validation/scratch/

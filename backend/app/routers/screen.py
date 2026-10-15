@@ -32,6 +32,11 @@ from app.core.nlp_router import DomainRouterResult, route_recall_chip, route_tex
 from app.core.orchestrator import get_next_action
 from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion
 from app.core.session import ScreeningSession as CoreSession
+from app.core.triage_guard import (
+    ITEM_METADATA,
+    evaluate_live_tiered_triage,
+    evaluate_response_guards,
+)
 from app.db.models import Answer, AuditLog, RiskResult, User
 from app.db.models import ScreeningSession as DbSession
 from app.db.session import get_db
@@ -57,6 +62,7 @@ from app.schemas.screen import (
     StartScreenRequest,
     TeacherAnswerRequest,
     TeacherAnswerResponse,
+    TeacherInviteResponse,
     TeacherItemPayload,
     TeacherItemsResponse,
 )
@@ -135,6 +141,11 @@ def _result_payload_from_prediction(
     imputed_count: int | None = None,
     domain_classifications: dict[str, str] | None = None,
     module: str = "A",
+    triage_tier: str | None = None,
+    reflex_branch_recommended: bool = False,
+    target_reflex_domains: list[str] | None = None,
+    guard_flags: dict[str, bool] | None = None,
+    guard_advisories: list[str] | None = None,
 ) -> ResultPayload:
     return ResultPayload(
         final_classification=pred.final_classification,
@@ -152,6 +163,11 @@ def _result_payload_from_prediction(
         imputed_count=imputed_count,
         domain_classifications=domain_classifications or {},
         module=module,  # type: ignore[arg-type]
+        triage_tier=triage_tier,
+        reflex_branch_recommended=reflex_branch_recommended,
+        target_reflex_domains=target_reflex_domains or [],
+        guard_flags=guard_flags or {},
+        guard_advisories=guard_advisories or [],
     )
 
 
@@ -190,7 +206,9 @@ async def _run_completion_b(
             payload.final_classification = final_cls
             payload.ml_classification = final_cls
             payload.safety_override_triggered = override_triggered
-            payload.override_rule = override_rule
+            if ro_flagged or override_triggered:
+                payload.triage_tier = "Tier 3: Direct Referral"
+                payload.reflex_branch_recommended = False
 
             db_row.module_b_state = engine_session.to_dict()
             core.module_b_state = db_row.module_b_state
@@ -218,6 +236,7 @@ async def _run_completion_b(
                     target_id=db_row.id,
                     detail=(
                         f"final={final_cls} "
+                        f"tier={payload.triage_tier} "
                         f"override={override_triggered} "
                         f"rule={override_rule}"
                     ),
@@ -378,6 +397,36 @@ async def _run_completion(
     # Domain classifications for Module B (empty dict for Module A)
     domain_cls: dict[str, str] = getattr(pred, "domain_classifications", {})
 
+    # Calculate domain scores from real answers for Module A
+    domain_totals: dict[str, float] = {}
+    domain_counts: dict[str, int] = {}
+    for item_id, ans in final.real_answers.items():
+        if item_id in ITEM_METADATA:
+            dom = ITEM_METADATA[item_id]["domain"]
+            domain_totals[dom] = domain_totals.get(dom, 0.0) + float(ans)
+            domain_counts[dom] = domain_counts.get(dom, 0) + 1
+    domain_scores = {
+        dom: (domain_totals[dom] / (2.0 * domain_counts[dom]))
+        for dom in domain_totals
+        if domain_counts.get(dom, 0) > 0
+    }
+
+    # Evaluate reporting quality & acquiescence/inconsistency guards
+    guard_flags, guard_advisories = evaluate_response_guards(
+        core.corrected_age_months,
+        final.real_answers,
+    )
+
+    # Evaluate 3-tier clinical triage allocation
+    prob_refer = float(pred.probabilities.get("Refer", 0.0))
+    triage_tier, reflex_rec, target_reflex_domains = evaluate_live_tiered_triage(
+        prob_refer=prob_refer,
+        safety_override=pred.safety_override_triggered,
+        domain_scores=domain_scores,
+    )
+
+    all_caveats = list(final.caveats) + guard_advisories
+
     risk = RiskResult(
         session_id=db_row.id,
         ml_score=pred.ml_score,
@@ -388,7 +437,7 @@ async def _run_completion(
         override_rule=pred.override_rule,
         shap_values=pred.shap_values,
         probabilities=pred.probabilities,
-        caveats=list(final.caveats),
+        caveats=all_caveats,
         stopping_reason=final.stopping_reason,
         domain_classifications=domain_cls,
     )
@@ -402,6 +451,19 @@ async def _run_completion(
                 f"final={pred.final_classification} "
                 f"override={pred.safety_override_triggered} "
                 f"rule={pred.override_rule}"
+            ),
+        )
+    )
+    db.add(
+        AuditLog(
+            actor_id=actor_id,
+            action="screen.triage",
+            target_id=db_row.id,
+            detail=(
+                f"tier={triage_tier} "
+                f"reflex={reflex_rec} "
+                f"targets={target_reflex_domains} "
+                f"guards={guard_flags}"
             ),
         )
     )
@@ -426,11 +488,16 @@ async def _run_completion(
         pred,
         model_name=inference.production_model_name,
         stopping_reason=final.stopping_reason,
-        caveats=list(final.caveats),
+        caveats=all_caveats,
         real_answer_count=len(final.real_answers),
         imputed_count=len(final.imputed_answers),
         domain_classifications=domain_cls,
         module=core.module,
+        triage_tier=triage_tier,
+        reflex_branch_recommended=reflex_rec,
+        target_reflex_domains=target_reflex_domains,
+        guard_flags=guard_flags,
+        guard_advisories=guard_advisories,
     )
 
 
@@ -1315,3 +1382,302 @@ def _compute_consistency(
         if flagged
     ]
     return round(overall_score, 3), flags, caveats
+
+
+@router.post("/{session_id}/reflex_branch", response_model=ScreenActionResponse)
+async def create_reflex_branch_session(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """
+    Reflex-Branches an ambiguous/borderline Module A session directly into Module B.
+    Creates a linked Module B micro-testing session for the child without requiring
+    the caregiver to re-enter demographic information.
+    """
+    db_row = await _load_owned_session(db, session_id, user.id)
+    if db_row.status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot reflex-branch an incomplete screening session",
+        )
+
+    if db_row.module != "A":
+        raise HTTPException(
+            status_code=400,
+            detail="Reflex-branching is only applicable from Module A screening",
+        )
+
+    new_session_id = str(uuid.uuid4())
+    core_b = CoreSession(
+        child_id=db_row.child_ref,
+        corrected_age_months=db_row.corrected_age_months,
+        age_bracket=db_row.age_bracket,
+        question_cap=15,
+        module="B",
+    )
+
+    db_row_b = DbSession(
+        id=new_session_id,
+        child_ref=db_row.child_ref,
+        parent_user_id=user.id,
+        status="in_progress",
+        corrected_age_months=db_row.corrected_age_months,
+        age_bracket=db_row.age_bracket,
+        question_cap=15,
+        module="B",
+        state_json=core_b.to_dict(),
+    )
+    db.add(db_row_b)
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            action="screen.reflex_branch",
+            target_id=new_session_id,
+            detail=f"source_session_id={session_id}",
+        )
+    )
+    await db.flush()
+    repo.save(new_session_id, core_b)
+
+    return ScreenActionResponse(
+        type="intake_required",
+        session_id=new_session_id,
+        status="in_progress",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Multi-Informant Teacher Triangulation (DSM-5 Criterion C Concordance)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{session_id}/teacher_invite",
+    response_model=TeacherInviteResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def generate_teacher_invite(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TeacherInviteResponse:
+    """Generate or retrieve a secure multi-informant teacher invite token for DSM-5 Criterion C concordance."""
+    res = await db.execute(
+        select(DbSession).where(
+            DbSession.id == session_id, DbSession.parent_user_id == user.id
+        )
+    )
+    db_row = res.scalar_one_or_none()
+    if db_row is None:
+        raise HTTPException(status_code=404, detail="Screening session not found")
+
+    state = dict(db_row.state_json or {})
+    invite = state.get("teacher_invite")
+    if not invite or not invite.get("code"):
+        code = f"TCH-{session_id[:8].upper()}"
+        invite = {
+            "code": code,
+            "session_id": session_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        state["teacher_invite"] = invite
+        db_row.state_json = state
+        await db.flush()
+    else:
+        code = str(invite["code"])
+
+    return TeacherInviteResponse(
+        session_id=session_id,
+        teacher_invite_code=code,
+        invite_url=f"/teacher/screen/{code}",
+        child_ref=db_row.child_ref,
+    )
+
+
+@router.get(
+    "/teacher/{invite_code}/items",
+    response_model=TeacherItemsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_teacher_assessment_items(
+    invite_code: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TeacherItemsResponse:
+    """Fetch an expedited 8-domain classroom behavior rating battery for the school teacher."""
+    code = invite_code.strip().upper()
+    all_res = await db.execute(select(DbSession).where(DbSession.module == "B"))
+    db_row = None
+    for candidate in all_res.scalars().all():
+        if (
+            candidate.id == invite_code
+            or (candidate.state_json or {}).get("teacher_invite", {}).get("code") == code
+        ):
+            db_row = candidate
+            break
+
+    if db_row is None:
+        raise HTTPException(
+            status_code=404, detail="Invalid teacher invite code or session not found"
+        )
+
+    age_y = months_to_module_b_age(db_row.corrected_age_months)
+    band = "5-7" if age_y <= 7 else "8-10" if age_y <= 10 else "11-12"
+    bank = module_b_service.engine.bank
+    usable_teacher = bank.df[
+        (bank.df.form == "teacher")
+        & (bank.df.bands.apply(lambda b: band in b if isinstance(b, list) else False))
+    ]
+
+    selected_items: list[TeacherItemPayload] = []
+    from app.core.module_b.router_b import DOMAINS
+
+    for dom in DOMAINS:
+        dom_pool = usable_teacher[usable_teacher.domain == dom]
+        if not dom_pool.empty:
+            item_row = dom_pool.iloc[0]
+            selected_items.append(
+                TeacherItemPayload(
+                    item_id=str(item_row["item_id"]),
+                    question_text=str(item_row["text"]),
+                    domain=to_api_domain(dom),
+                )
+            )
+
+    return TeacherItemsResponse(items=selected_items)
+
+
+@router.post(
+    "/teacher/{invite_code}/submit",
+    response_model=TeacherAnswerResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def submit_teacher_assessment(
+    invite_code: str,
+    payload: TeacherAnswerRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TeacherAnswerResponse:
+    """Submit teacher classroom ratings and calculate multi-informant DSM-5 Criterion C concordance."""
+    code = invite_code.strip().upper()
+    all_res = await db.execute(
+        select(DbSession)
+        .options(selectinload(DbSession.risk_result))
+        .where(DbSession.module == "B")
+    )
+    db_row = None
+    for candidate in all_res.scalars().all():
+        if (
+            candidate.id == invite_code
+            or (candidate.state_json or {}).get("teacher_invite", {}).get("code") == code
+        ):
+            db_row = candidate
+            break
+
+    if db_row is None:
+        raise HTTPException(
+            status_code=404, detail="Invalid teacher invite code or session not found"
+        )
+
+    parent_domains: dict[str, str] = {}
+    if db_row.risk_result and db_row.risk_result.domain_classifications:
+        parent_domains = dict(db_row.risk_result.domain_classifications)
+    elif db_row.module_b_state and "domains" in db_row.module_b_state:
+        parent_domains = {
+            to_api_domain(k): v.get("state", "Typical")
+            for k, v in db_row.module_b_state.get("domains", {}).items()
+            if isinstance(v, dict)
+        }
+
+    bank = module_b_service.engine.bank
+    teacher_scores: dict[str, float] = {}
+    from app.core.module_b.engine_b import concern_of
+
+    for item_id, ans_val in payload.answers.items():
+        if item_id in bank.df.index:
+            row = bank.row(item_id)
+            c = concern_of(row, ans_val)
+            dom_api = to_api_domain(str(row["domain"]))
+            teacher_scores[dom_api] = c if c is not None else 0.5
+
+    concordance: dict[str, str] = {}
+    divergent_flags: dict[str, bool] = {}
+    from app.core.module_b.domains import API_DOMAINS
+
+    for dom in API_DOMAINS:
+        p_state = parent_domains.get(dom, "Typical")
+        p_concern = p_state in ("Refer", "Monitor")
+        t_concern = teacher_scores.get(dom, 0.0) >= 0.50
+
+        if p_concern and t_concern:
+            concordance[dom] = "concordant_high"
+            divergent_flags[dom] = False
+        elif p_concern and not t_concern:
+            concordance[dom] = "home_only"
+            divergent_flags[dom] = True
+        elif not p_concern and t_concern:
+            concordance[dom] = "school_only"
+            divergent_flags[dom] = True
+        else:
+            concordance[dom] = "concordant_typical"
+            divergent_flags[dom] = False
+
+    concordant_count = sum(1 for div in divergent_flags.values() if not div)
+    consistency_score = round(concordant_count / max(1, len(divergent_flags)), 3)
+
+    caveats: list[str] = []
+    home_only_doms = [d for d, s in concordance.items() if s == "home_only"]
+    school_only_doms = [d for d, s in concordance.items() if s == "school_only"]
+    pervasive_doms = [d for d, s in concordance.items() if s == "concordant_high"]
+
+    if pervasive_doms:
+        caveats.append(
+            f"DSM-5 Criterion C met for {', '.join(pervasive_doms)}: symptoms manifest pervasively across "
+            "both home and classroom environments."
+        )
+    if home_only_doms:
+        caveats.append(
+            f"Situational home variance for {', '.join(home_only_doms)}: teacher reports normal classroom "
+            "functioning. Suggests home routine or behavioral boundary focus."
+        )
+    if school_only_doms:
+        caveats.append(
+            f"Situational school variance for {', '.join(school_only_doms)}: symptoms emerge specifically in "
+            "classroom. Assess school peer dynamics and curriculum pacing."
+        )
+
+    summary = (
+        f"Cross-setting concordance: {int(consistency_score * 100)}% agreement. "
+        + " ".join(caveats)
+    )
+
+    if db_row.risk_result:
+        db_row.risk_result.consistency_score = consistency_score
+        db_row.risk_result.consistency_flags = divergent_flags
+
+    mod_b_state = dict(db_row.module_b_state or {})
+    mod_b_state["consistency_score"] = consistency_score
+    mod_b_state["consistency_flags"] = divergent_flags
+    mod_b_state["concordance_classification"] = concordance
+    mod_b_state["teacher_answers"] = payload.answers
+    db_row.module_b_state = mod_b_state
+
+    db.add(
+        AuditLog(
+            actor_id=db_row.parent_user_id,
+            action="screen.teacher_concordance",
+            target_id=db_row.id,
+            detail=f"consistency_score={consistency_score} pervasive={len(pervasive_doms)}",
+        )
+    )
+    await db.flush()
+
+    return TeacherAnswerResponse(
+        session_id=db_row.id,
+        consistency_score=consistency_score,
+        consistency_flags=divergent_flags,
+        concordance_classification=concordance,
+        caveats=caveats,
+        summary=summary,
+    )
+

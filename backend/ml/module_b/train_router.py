@@ -8,11 +8,16 @@ Evaluation sets (never trained on):
 Thresholds are tuned on `val` only.
 """
 import json
-import os
+import os, random
 import sys
 import time
 
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+
 import numpy as np
+np.random.seed(SEED)
 import pandas as pd
 from scipy.sparse import hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -20,11 +25,18 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.pipeline import FeatureUnion
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "app", "core", "module_b")
+    ),
+)
 from router_b import DomainRouter, LABELS, DOMAINS, RULEOUTS, rule_scan
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA, ART = os.path.join(ROOT, "data"), os.path.join(ROOT, "artifacts")
+DATA = os.path.dirname(os.path.abspath(__file__))
+ART = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "artifacts", "module_b_router")
+)
 os.makedirs(ART, exist_ok=True)
 
 
@@ -101,7 +113,7 @@ def main():
         ("word", TfidfVectorizer(analyzer="word", ngram_range=(1, 2), min_df=2, sublinear_tf=True, lowercase=True, token_pattern=r"(?u)\b\w+\b")),
     ])
     Xtr = vec.fit_transform(tr.text)
-    clf = OneVsRestClassifier(LogisticRegression(C=6.0, max_iter=3000, solver="liblinear", class_weight="balanced"), n_jobs=1)
+    clf = OneVsRestClassifier(LogisticRegression(C=6.0, max_iter=3000, solver="liblinear", class_weight="balanced", random_state=SEED), n_jobs=1)
     clf.fit(Xtr, tr[LABELS].values)
     print("fit done %.1fs" % (time.time() - t0))
 

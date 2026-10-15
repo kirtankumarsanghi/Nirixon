@@ -1,0 +1,5 @@
+numpy
+pandas
+scikit-learn
+tabulate
+# optional: xgboost  (your production model; swap new_model() in src/stress.py)

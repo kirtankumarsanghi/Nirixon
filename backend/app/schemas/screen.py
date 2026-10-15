@@ -54,6 +54,9 @@ class DomainTrackPayload(BaseModel):
     borderline: int | bool | None = None
     brief: bool | None = None
     because: list[str] = Field(default_factory=list)
+    irt_theta: float | None = None
+    irt_se: float | None = None
+    fisher_information: float | None = None
 
 
 class QuestionPayload(BaseModel):
@@ -92,6 +95,11 @@ class ResultPayload(BaseModel):
     consistency_score: float | None = None
     # Module B: which domains have a meaningful divergence between raters
     consistency_flags: dict[str, bool] = {}
+    # DSM-5 Criterion C: per-domain multi-informant concordance classification
+    concordance_classification: dict[str, str] = Field(default_factory=dict)
+    # Sensory vs Cognitive Differential Masking (e.g. CAPD vs ADHD)
+    differential_masking: dict[str, Any] = Field(default_factory=dict)
+    teacher_invite_code: str | None = None
     # Module identifier propagated to the frontend for render branching
     module: Literal["A", "B"] = "A"
     # Module B additive fields
@@ -105,7 +113,13 @@ class ResultPayload(BaseModel):
     red_flags: list[dict[str, Any]] = Field(default_factory=list)
     help_routes: dict[str, Any] = Field(default_factory=dict)
     safety: bool = False
-    disclaimer: str | None = None
+    # Tiered Clinical Triage (Tier 1: Pass, Tier 2: Reflex-Branch, Tier 3: Direct Referral)
+    triage_tier: str | None = None
+    reflex_branch_recommended: bool = False
+    target_reflex_domains: list[str] = Field(default_factory=list)
+    # Reporting Quality & Behavioral Guards
+    guard_flags: dict[str, bool] = Field(default_factory=dict)
+    guard_advisories: list[str] = Field(default_factory=list)
 
 
 class ScreenActionResponse(BaseModel):
@@ -168,17 +182,28 @@ class RecallChoiceRequest(BaseModel):
     engine_session: str | None = None
 
 
+class TeacherInviteResponse(BaseModel):
+    session_id: str
+    teacher_invite_code: str
+    invite_url: str
+    child_ref: str = ""
+    expires_in_days: int = 7
+
+
 class TeacherAnswerRequest(BaseModel):
     """A batch of teacher-supplied item answers for a Module B session."""
 
-    # item_id -> 0/1/2 (same scale as parent answers)
+    # item_id -> 0/1/2 or 1..5 scale
     answers: dict[str, int]
 
 
 class TeacherAnswerResponse(BaseModel):
+    session_id: str
     consistency_score: float
     consistency_flags: dict[str, bool]  # domain -> True if divergent
-    caveats: list[str]
+    concordance_classification: dict[str, str] = Field(default_factory=dict)
+    caveats: list[str] = Field(default_factory=list)
+    summary: str | None = None
 
 
 class TeacherItemPayload(BaseModel):

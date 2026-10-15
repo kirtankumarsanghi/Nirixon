@@ -27,7 +27,10 @@ Design choices, stated plainly:
 from __future__ import annotations
 
 import numpy as np
-from data.generator.item_bank import DOMAINS
+try:
+    from item_bank import DOMAINS
+except ImportError:
+    from data.generator.item_bank import DOMAINS
 
 N_DOMAINS = len(DOMAINS)
 DOMAIN_INDEX = {d: i for i, d in enumerate(DOMAINS)}
@@ -53,24 +56,19 @@ CORR_MATRIX = _build_correlation_matrix()
 def sample_domain_latents(
     n: int,
     family_history_flag: np.ndarray,
-    rng: np.random.Generator,
+    sampler: np.random.Generator,
 ) -> np.ndarray:
     """
-    Returns an (n, 6) array of latent developmental-ability z-scores,
-    one column per domain (order = DOMAINS), correlated per
-    CORR_MATRIX. Mean 0 / sd 1 for a child with no family history flag;
-    family_history_flag shifts the mean down slightly for that child
-    across all domains.
-
-    multilingual_home_flag is deliberately NOT a parameter here - it
-    must have no effect on latent ability, by design.
+    Simulates an (n, 6) latent developmental profile using a continuous
+    Multivariate Normal Gaussian Copula parameterized by CORR_MATRIX.
+    
+    Zero-correlation invariance: Multilingual exposure (multilingual_home_flag)
+    is intentionally excluded from the latent ability equations to ensure fairness.
     """
     mean = np.zeros(N_DOMAINS)
-    latents = rng.multivariate_normal(mean=mean, cov=CORR_MATRIX, size=n)
+    latents = sampler.multivariate_normal(mean=mean, cov=CORR_MATRIX, size=n)
 
-    # Small, realistic downward shift for family history - not applied
-    # per-domain independently, so it doesn't break the correlation
-    # structure sampled above.
+    # Moderate familial risk shift: applies across domains to preserve covariance geometry
     fh_shift = -0.35
     latents[family_history_flag == 1] += fh_shift
 
@@ -80,20 +78,17 @@ def sample_domain_latents(
 def apply_regression_event(
     latents: np.ndarray,
     regression_flag: np.ndarray,
-    rng: np.random.Generator,
+    sampler: np.random.Generator,
 ) -> np.ndarray:
     """
-    For children with regression_flag == 1, simulate a lost skill: pick
-    one random domain and drop its latent sharply, independent of the
-    child's other domains. This is what makes regression_flag a
-    meaningful, near-automatic red flag rather than just another
-    correlated feature.
+    For children with regression_flag == 1, simulates a focal skill regression:
+    identifies an affected target domain and imposes a severe clinical deficit (-1.5 to -2.5 SD).
     """
     latents = latents.copy()
     flagged_idx = np.where(regression_flag == 1)[0]
     if len(flagged_idx) == 0:
         return latents
 
-    domains_to_hit = rng.integers(0, N_DOMAINS, size=len(flagged_idx))
-    latents[flagged_idx, domains_to_hit] -= rng.uniform(1.5, 2.5, size=len(flagged_idx))
+    domains_to_hit = sampler.integers(0, N_DOMAINS, size=len(flagged_idx))
+    latents[flagged_idx, domains_to_hit] -= sampler.uniform(1.5, 2.5, size=len(flagged_idx))
     return latents

@@ -6,8 +6,10 @@ import react from "@vitejs/plugin-react";
 
 import { fileURLToPath } from "node:url";
 
+import tailwindcss from "@tailwindcss/vite";
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "react-router-dom": fileURLToPath(
@@ -20,6 +22,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
   // @ts-expect-error vitest augments UserConfig with `test` at runtime
   test: {

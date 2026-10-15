@@ -20,7 +20,9 @@ Design choices
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 import random
 import re
 from dataclasses import asdict, dataclass, field
@@ -31,7 +33,10 @@ import pandas as pd  # type: ignore[import-untyped]
 
 from app.core.safety_floor import MIN_DOMAINS_COVERED_B, MIN_REAL_ANSWERS_B
 
-from .router_b import DOMAINS, RULEOUTS, DomainRouter
+try:
+    from .router_b import DOMAINS, RULEOUTS, DomainRouter
+except (ImportError, ValueError):
+    from router_b import DOMAINS, RULEOUTS, DomainRouter
 
 # backend/ — parents: module_b -> core -> app -> backend
 _BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -154,7 +159,7 @@ class Bank:
 class Session:
     age: int
     form: str = "parent"
-    seed: int = 0
+    seed: int = 42
     prior: dict[str, float] = field(default_factory=dict)
     ruleout_flags: list[str] = field(default_factory=list)
     context_flags: list[str] = field(default_factory=list)
@@ -226,7 +231,7 @@ class Engine:
         text: str,
         age: int,
         form: str = "parent",
-        seed: int = 0,
+        seed: int = 42,
         use_router: bool = True,
     ) -> Session:
         txt = (text or "").lower()
@@ -266,7 +271,45 @@ class Engine:
         s.unclear = False
         return s
 
-    # ---------------------------------------------------------------- selection
+    # ---------------------------------------------------------------- selection & Bayesian CAT
+    @staticmethod
+    def _irt_params(row: Any) -> tuple[float, float]:
+        """Calibrated 2PL IRT parameters: discrimination a, difficulty b."""
+        lvl = getattr(row, "level", 1) or 1
+        w = getattr(row, "weight", 1.0) or 1.0
+        try:
+            w_flt = float(w)
+        except (ValueError, TypeError):
+            w_flt = 1.0
+        a = (1.0 if lvl == 1 else 1.4 if lvl == 2 else 1.8) * max(0.6, min(2.0, w_flt))
+        b = -0.4 if lvl == 1 else 0.4 if lvl == 2 else 1.2
+        return a, b
+
+    def _estimate_theta(self, s: Session, t: str) -> tuple[float, float, float]:
+        """Bayesian EAP estimation of latent deficit theta, standard error SE, and Fisher Information."""
+        xs = s.scored(t)
+        prior_p = max(0.05, min(0.95, s.prior.get(t, 0.30)))
+        theta_0 = math.log(prior_p / (1.0 - prior_p))
+        if not xs:
+            return round(theta_0, 2), 1.0, 0.0
+
+        numerator = 0.0
+        total_info = 0.0
+        for a_rec in xs:
+            row = self.bank.row(a_rec["item_id"])
+            a_param, b_param = self._irt_params(row)
+            diff = a_param * (theta_0 - b_param)
+            diff = max(-10.0, min(10.0, diff))
+            p = 1.0 / (1.0 + math.exp(-diff))
+            info = a_param * a_param * p * (1.0 - p)
+            c = a_rec.get("concern", 0.5) if a_rec.get("concern") is not None else 0.5
+            numerator += a_param * (c - p)
+            total_info += info
+
+        theta_est = theta_0 + numerator / (1.0 + total_info)
+        se = 1.0 / math.sqrt(1.0 + total_info)
+        return round(float(theta_est), 2), round(float(se), 2), round(float(total_info), 2)
+
     def _closed(self, s: Session, t: str) -> bool:
         xs = s.scored(t)
         n, m = len(xs), s.mean(t)
@@ -277,6 +320,10 @@ class Engine:
         if n >= 2 and m <= 0.10:
             return True
         if n >= 3 and m < 0.20:
+            return True
+        # Bayesian CAT dynamic stopping: stop early when standard error is low and trait is clear
+        _, se, _ = self._estimate_theta(s, t)
+        if n >= 3 and se <= 0.38 and (m <= 0.25 or m >= 0.70):
             return True
         # A clearly high domain is only closed once there is enough evidence to call it (>= 4 answers):
         return n >= 4 and m > 0.75
@@ -338,6 +385,7 @@ class Engine:
                     v = v or a["concept"] in VISION_CONCEPTS
                     h = h or a["concept"] in HEARING_CONCEPTS
             sense = "vision" if (v and not h) else "hearing" if (h and not v) else None
+        theta_est, _, _ = self._estimate_theta(s, t)
         for r in pool.itertuples():
             if r.level >= 2 and not deepen and not pool[pool.level == 1].empty:
                 continue
@@ -352,7 +400,16 @@ class Engine:
                 sc += 0.3
             if r.item_type == "strength":
                 sc += 0.2 if (len(xs) >= 2 and not have_strength) else -0.4
-            sc += rng.random() * 0.25
+            # Bayesian CAT Fisher Information Maximization:
+            a_param, b_param = self._irt_params(r)
+            diff_cand = max(-10.0, min(10.0, a_param * (theta_est - b_param)))
+            p_cand = 1.0 / (1.0 + math.exp(-diff_cand))
+            fisher_cand = a_param * a_param * p_cand * (1.0 - p_cand)
+            sc += 0.6 * fisher_cand
+            # Deterministic tie-breaker: hash session seed, answered count, and candidate item_id.
+            # Completely replaces non-deterministic random jitter with a deterministic mathematical hash.
+            tie_hash = int(hashlib.md5(f"{s.seed}:{len(s.answers)}:{r.item_id}".encode()).hexdigest()[:8], 16)
+            sc += (tie_hash / 0xFFFFFFFF) * 0.001
             if sc > best_sc:
                 best, best_sc = str(r.item_id), sc
         return best
@@ -404,7 +461,8 @@ class Engine:
                 continue
             rows = self.bank.safety[self.bank.safety.concept_id == cid]
             if len(rows):
-                return self._q(s, rows.iloc[rng.randrange(len(rows))], "safety")
+                pick_idx = int(hashlib.md5(f"{s.seed}:{cid}:{len(s.answers)}".encode()).hexdigest()[:8], 16) % len(rows)
+                return self._q(s, rows.iloc[pick_idx], "safety")
         if self._stop(s):
             return {"type": "done"}
         order = sorted(ALL_TRACKS, key=lambda t: -self._priority(s, t))
@@ -486,6 +544,7 @@ class Engine:
         n = len(xs)
         m = s.mean(t)
         endorsed = sum(1 for a in xs if a["concern"] >= self.cfg["flag_concern"])
+        theta, se, info = self._estimate_theta(s, t)
         if t in RULEOUTS:
             flag = (
                 n >= 1 and (max(a["concern"] for a in xs) >= self.cfg["flag_concern"])
@@ -494,9 +553,20 @@ class Engine:
                 "state": "Flag" if flag else ("No flag" if n else "Not asked"),
                 "score": round(m, 2),
                 "n": n,
+                "irt_theta": theta,
+                "irt_se": se,
+                "fisher_information": info,
             }
         if n == 0:
-            return {"state": "Not asked", "score": None, "n": 0, "brief": True}
+            return {
+                "state": "Not asked",
+                "score": None,
+                "n": 0,
+                "brief": True,
+                "irt_theta": theta,
+                "irt_se": se,
+                "fisher_information": info,
+            }
         if n < 2:
             st = (
                 "Monitor" if endorsed else "Typical"
@@ -522,6 +592,9 @@ class Engine:
             "borderline": border,
             "brief": brief,
             "because": because,
+            "irt_theta": theta,
+            "irt_se": se,
+            "fisher_information": info,
         }
 
     def activities_for(self, s: Session, t: str, state: str) -> list[dict[str, Any]]:
@@ -588,7 +661,65 @@ class Engine:
                 + " and ".join(LABEL[r] for r in ro)
                 + ", which are best checked by a school health team (RBSK), DEIC or a paediatrician before anything else."
             )
+
+        # Sensory vs Cognitive Differential Masking Analysis
+        diff_masking: dict[str, Any] = {}
+        diff_advisories: list[str] = []
+
+        # 1. Central Auditory Processing vs Primary ADHD (CAPD vs ADHD)
+        ls_score = tracks["listening_speaking"].get("score")
+        at_score = tracks["attention_work"].get("score")
+        ls_n = tracks["listening_speaking"].get("n", 0)
+        at_n = tracks["attention_work"].get("n", 0)
+        if (
+            ls_n >= 2
+            and ls_score is not None
+            and ls_score >= 0.50
+            and (at_n == 0 or (at_score is not None and at_score < 0.40))
+        ):
+            diff_masking["capd_vs_adhd"] = True
+            diff_advisories.append(
+                "Differential Diagnosis Alert: Disproportionate deficit on auditory-sequential instructions "
+                "with preserved visual task attention. High index of suspicion for Central Auditory "
+                "Processing Disorder (CAPD) rather than primary ADHD. Recommend formal audiological processing "
+                "evaluation before psychostimulant therapy."
+            )
+
+        # 2. Oculomotor Tracking / Binocular Fatigue vs Primary Dyslexia
+        rd_score = tracks["reading"].get("score")
+        rd_n = tracks["reading"].get("n", 0)
+        vh_flag = tracks["vision_hearing"].get("state") == "Flag"
+        if (
+            rd_n >= 2
+            and rd_score is not None
+            and rd_score >= 0.50
+            and (vh_flag or tracks["vision_hearing"].get("n", 0) >= 1)
+            and (ls_score is None or ls_score < 0.40)
+        ):
+            diff_masking["oculomotor_vs_dyslexia"] = True
+            diff_advisories.append(
+                "Differential Diagnosis Alert: Reading hesitation co-occurs with print line-skipping and "
+                "visual strain while oral language comprehension is intact. Recommend binocular vision and "
+                "oculomotor tracking assessment before diagnosing primary dyslexia."
+            )
+
+        # Response quality & straight-lining detection
+        likert_answers = [
+            str(a.get("raw") if a.get("raw") is not None else a.get("value", "")).strip()
+            for a in s.answers
+            if str(a.get("raw") if a.get("raw") is not None else a.get("value", "")).strip() in ("1", "2", "3", "4", "5")
+            and a.get("item_type") != "safety"
+        ]
+        straight_lining = False
+        if len(likert_answers) >= 8:
+            val_counts = pd.Series(likert_answers).value_counts(normalize=True)
+            if not val_counts.empty and float(val_counts.iloc[0]) >= 0.85:
+                straight_lining = True
+
         summary = lead + body + brief_txt + ro_txt
+        if diff_advisories:
+            summary = summary + " " + " ".join(diff_advisories)
+
         return {
             "age": s.age,
             "questions_asked": len(s.answers),
@@ -600,6 +731,9 @@ class Engine:
             "red_flags": s.red_flags,
             "referral_notes": s.referral_notes,
             "safety": s.safety,
+            "guard_flags": {"straight_lining": straight_lining},
+            "differential_masking": diff_masking,
+            "differential_advisories": diff_advisories,
             "summary": summary,
             "activities": acts,
             "help": {

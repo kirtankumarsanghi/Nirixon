@@ -581,7 +581,10 @@ for _item in ITEM_BANK:
     )
 
 # Verify every bracket has at least 1 item per domain (fail fast if coverage gap exists)
-from data.generator.age_brackets import BRACKET_LABELS  # noqa: E402 — import after defs
+try:
+    from data.generator.age_brackets import BRACKET_LABELS  # noqa: E402
+except ImportError:
+    from age_brackets import BRACKET_LABELS  # noqa: E402
 
 _ITEM_BY_DOMAIN = {d: [i for i in ITEM_BANK if i.domain == d] for d in DOMAINS}
 for _label in BRACKET_LABELS:

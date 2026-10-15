@@ -5,20 +5,31 @@ Scripted demo: python src/demo_cli.py --age 9 --text "..." --auto attention_work
                (--auto simulates a parent whose child is concerning in the listed domains)
 """
 import argparse
-import os
-import random
+import os, random
+import numpy as np
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
-from engine_b import Engine, Bank
-from router_b import DomainRouter
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BACKEND_ROOT / "app" / "core" / "module_b"))
+sys.path.insert(0, str(BACKEND_ROOT))
+sys.path.insert(0, os.path.dirname(__file__))
+try:
+    from app.core.module_b.engine_b import Engine, Bank, concern_of
+    from app.core.module_b.router_b import DomainRouter
+except ImportError:
+    from engine_b import Engine, Bank, concern_of
+    from router_b import DomainRouter
 
 
 def auto_answer(row_track, row, sev, rng):
     """Simulated parent: answer around the child's severity for that track."""
-    from engine_b import concern_of
     s = sev.get(row_track, 0.08)
     if row["response_type"] == "yesno":
         return "Yes" if rng.random() < s else "No"
@@ -32,10 +43,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--text", required=True)
     ap.add_argument("--age", type=int, default=8)
-    ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--auto", default="")
     a = ap.parse_args()
-    router = DomainRouter.load(os.path.join(ROOT, "artifacts", "router_b.joblib"))
+    router_path = str(BACKEND_ROOT / "ml" / "artifacts" / "module_b_router" / "router_b.joblib")
+    if not os.path.exists(router_path):
+        router_path = str(BACKEND_ROOT / "artifacts" / "router_b.joblib")
+    router = DomainRouter.load(router_path)
     eng = Engine(router)
     s = eng.start(a.text, a.age, seed=a.seed)
     r = router.route(a.text)

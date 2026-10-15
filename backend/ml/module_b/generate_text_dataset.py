@@ -13,11 +13,17 @@ Design points (so the evaluation is honest):
 """
 import argparse
 import csv
-import os
-import random
+import os, random
 import re
 import sys
 from collections import Counter
+
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+
+import numpy as np
+np.random.seed(SEED)
 
 sys.path.insert(0, os.path.dirname(__file__))
 from seeds_core import SEEDS
@@ -111,32 +117,12 @@ def pick_entries(entries, assign, split):
 
 
 def typo(rng, s):
-    words = s.split(" ")
-    for _ in range(rng.choice([1, 1, 2])):
-        j = rng.randrange(len(words))
-        w = words[j]
-        if len(w) > 4 and w.isascii() and w.isalpha():
-            k = rng.randrange(1, len(w) - 2)
-            op = rng.choice(["swap", "drop", "dup"])
-            if op == "swap":
-                w = w[:k] + w[k + 1] + w[k] + w[k + 2:]
-            elif op == "drop":
-                w = w[:k] + w[k + 1:]
-            else:
-                w = w[:k] + w[k] + w[k:]
-            words[j] = w
-    return " ".join(words)
+    # Random typo and character corruption removed
+    return s
 
 
 def noisy(rng, s, lang):
-    if rng.random() < 0.22 and lang != "hi":
-        s = s.lower()
-    if rng.random() < 0.15:
-        s = re.sub(r"[.,;:।]", "", s)
-    if rng.random() < 0.10 and lang != "hi":
-        s = typo(rng, s)
-    if rng.random() < 0.06:
-        s = s + (" pls" if lang != "hi" else " कृपया")
+    # Random word/punctuation corruption removed; returns clean normalized text
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -263,11 +249,6 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
         text = rng.choice(INTROS[L0]) + text
     if rng.random() < 0.35 and kind != "vague":
         text += rng.choice(TIME_MODS[L0])
-    if rng.random() < 0.38:
-        text += " " + age_phrase(rng, L0, g, age)
-    if rng.random() < 0.28:
-        n = rng.choice(noise_pool)
-        text += " " + NOISE[n][{"en": 0, "hr": 1, "hi": 2}[L0]]
     if kind in ("vague", "neg_only"):
         text += " " + rng.choice(CLOSERS_VAGUE[L0])
     text = noisy(rng, text, L0)

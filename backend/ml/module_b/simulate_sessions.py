@@ -15,18 +15,30 @@ Run: python src/simulate_sessions.py [--n-gen 600 --reps 3]
 """
 import argparse
 import json
-import os
-import random
+import os, random
 import sys
 
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+
 import numpy as np
+np.random.seed(SEED)
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(__file__))
-from engine_b import Engine, DOMAINS, RULEOUTS
-from router_b import DomainRouter
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+MODULE_B_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BACKEND_ROOT / "app" / "core" / "module_b"))
+sys.path.insert(0, str(BACKEND_ROOT))
+sys.path.insert(0, str(MODULE_B_DIR))
+try:
+    from app.core.module_b.engine_b import Engine, DOMAINS, RULEOUTS
+    from app.core.module_b.router_b import DomainRouter
+except ImportError:
+    from engine_b import Engine, DOMAINS, RULEOUTS
+    from router_b import DomainRouter
 
 
 def simulate_answer(row, track, sev, rng):
@@ -81,12 +93,21 @@ def main():
     ap.add_argument("--n-gen", type=int, default=600)
     ap.add_argument("--reps", type=int, default=2)
     a = ap.parse_args()
-    router = DomainRouter.load(os.path.join(ROOT, "artifacts", "router_b.joblib"))
+    router_path = str(BACKEND_ROOT / "ml" / "artifacts" / "module_b_router" / "router_b.joblib")
+    if not os.path.exists(router_path):
+        router_path = str(BACKEND_ROOT / "artifacts" / "router_b.joblib")
+    router = DomainRouter.load(router_path)
     eng = Engine(router)
 
-    full = pd.read_csv(os.path.join(ROOT, "data", "parent_text_dataset_full.csv"))
-    hw = pd.read_csv(os.path.join(ROOT, "data", "handwritten_eval_b.csv"))
-    gen = full[(full.split == "test") & (full.is_unclear == 0) & (full.safety == 0)].sample(a.n_gen, random_state=5)
+    full_csv = MODULE_B_DIR / "parent_text_dataset_full.csv"
+    if not full_csv.exists():
+        full_csv = BACKEND_ROOT / "data" / "parent_text_dataset_full.csv"
+    hw_csv = MODULE_B_DIR / "handwritten_eval_b.csv"
+    if not hw_csv.exists():
+        hw_csv = BACKEND_ROOT / "data" / "handwritten_eval_b.csv"
+    full = pd.read_csv(str(full_csv))
+    hw = pd.read_csv(str(hw_csv))
+    gen = full[(full.split == "test") & (full.is_unclear == 0) & (full.safety == 0)].sample(a.n_gen, random_state=SEED)
 
     sets = {"handwritten(independent)": hw[(hw.is_unclear == 0) & (hw.safety == 0)], "generator test(unseen)": gen}
     out = {}
@@ -99,7 +120,7 @@ def main():
                 for i, r in enumerate(df.itertuples()):
                     true_d = [d for d in DOMAINS if getattr(r, d) == 1]
                     true_ro = [x for x in RULEOUTS if getattr(r, x) == 1]
-                    age = random.Random(i).randint(5, 12)
+                    age = random.Random(SEED + i).randint(5, 12)
                     rows.append(run(eng, r.text, age, true_d, true_ro, policy, seed=rep * 1000 + i))
             m = pd.DataFrame(rows)
             tp, fp, fn = m.tp.sum(), m.fp.sum(), m.fn.sum()
