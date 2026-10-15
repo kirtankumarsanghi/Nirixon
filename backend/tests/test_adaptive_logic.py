@@ -25,8 +25,8 @@ from __future__ import annotations
 from typing import Literal
 
 import pytest
-from fastapi.testclient import TestClient
 from app.stub_api import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -306,12 +306,14 @@ class TestSensitivityAtCaps:
     def test_budget_fully_utilized(self, cap: int):
         """Session must use at least (cap - 1) questions before stopping, bounded by available items."""
         age_months = 12.0
-        result = _run_full_session_via_api(corrected_age_months=age_months, question_cap=cap)
+        result = _run_full_session_via_api(
+            corrected_age_months=age_months, question_cap=cap
+        )
         real_count = result["real_answer_count"]
-        
-        from data.generator.item_bank import ITEM_BANK
+
         from data.generator.age_brackets import map_to_bracket_label
-        
+        from data.generator.item_bank import ITEM_BANK
+
         bracket = map_to_bracket_label(age_months)
         valid_items = [i for i in ITEM_BANK if bracket in i.valid_brackets]
         # Mandatory items (regression_flag, family_history_flag) are not in ITEM_BANK but are always asked

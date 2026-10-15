@@ -12,15 +12,14 @@ Simulates stress conditions and distributional shifts on the Nirixon ML pipeline
 
 from __future__ import annotations
 
-import os
-import sys
-import pickle
 import logging
+import pickle
+import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # Ensure root paths
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -28,13 +27,18 @@ sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(BACKEND_DIR / "ml"))
 sys.path.insert(0, str(BACKEND_DIR / "data" / "generator"))
 
-from sklearn.metrics import f1_score, average_precision_score, recall_score, precision_score
+from columns import LABEL_ORDER, reorder_proba
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 from sklearn.preprocessing import label_binarize
 
-from columns import LABEL_ORDER, get_feature_columns, reorder_proba
-from age_brackets import map_to_bracket_label, map_to_bracket_ordinal
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 ARTIFACTS_DIR = BACKEND_DIR / "ml" / "artifacts"
@@ -72,15 +76,21 @@ def compute_bootstrap_metrics(
     yp_int = np.array([label_to_int[y] for y in y_pred])
 
     # Point estimates
-    pt_f1 = f1_score(y_true, y_pred, labels=LABEL_ORDER, average="macro", zero_division=0)
+    pt_f1 = f1_score(
+        y_true, y_pred, labels=LABEL_ORDER, average="macro", zero_division=0
+    )
     pt_refer_sens = recall_score(y_true == "Refer", y_pred == "Refer", zero_division=0)
-    pt_refer_prec = precision_score(y_true == "Refer", y_pred == "Refer", zero_division=0)
+    pt_refer_prec = precision_score(
+        y_true == "Refer", y_pred == "Refer", zero_division=0
+    )
     try:
         pt_auprc = average_precision_score(y_true_bin, y_proba, average="macro")
     except Exception:
         pt_auprc = 0.0
     try:
-        pt_refer_auprc = average_precision_score(y_true == "Refer", y_proba[:, refer_idx])
+        pt_refer_auprc = average_precision_score(
+            y_true == "Refer", y_proba[:, refer_idx]
+        )
     except Exception:
         pt_refer_auprc = 0.0
 
@@ -106,7 +116,9 @@ def compute_bootstrap_metrics(
         prec_per_class = np.where(tp + fp > 0, tp / (tp + fp), 0.0)
         rec_per_class = np.where(tp + fn > 0, tp / (tp + fn), 0.0)
         denom_f1 = prec_per_class + rec_per_class
-        f1_per_class = np.where(denom_f1 > 0, 2.0 * prec_per_class * rec_per_class / denom_f1, 0.0)
+        f1_per_class = np.where(
+            denom_f1 > 0, 2.0 * prec_per_class * rec_per_class / denom_f1, 0.0
+        )
 
         boot_f1.append(float(np.mean(f1_per_class)))
         boot_refer_sens.append(float(rec_per_class[refer_idx]))
@@ -114,7 +126,13 @@ def compute_bootstrap_metrics(
 
         if b < 50:
             try:
-                boot_auprc.append(float(average_precision_score(y_true_bin[idx], y_proba[idx], average="macro")))
+                boot_auprc.append(
+                    float(
+                        average_precision_score(
+                            y_true_bin[idx], y_proba[idx], average="macro"
+                        )
+                    )
+                )
             except Exception:
                 pass
 
@@ -133,7 +151,9 @@ def compute_bootstrap_metrics(
     }
 
 
-def stress_test_label_noise(df: pd.DataFrame, model, feature_columns: list[str]) -> list[dict]:
+def stress_test_label_noise(
+    df: pd.DataFrame, model, feature_columns: list[str]
+) -> list[dict]:
     """Test 1: Label Noise (0% to 25% corrupted labels)"""
     logger.info("Running Stress Test 1: Label Noise...")
     rates = [0.0, 0.05, 0.10, 0.15, 0.20, 0.25]
@@ -143,7 +163,9 @@ def stress_test_label_noise(df: pd.DataFrame, model, feature_columns: list[str])
     X = df[feature_columns]
     y_true_orig = df["risk_label"].to_numpy()
     pred_raw = model.predict(X)
-    preds = np.array([LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw])
+    preds = np.array(
+        [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw]
+    )
     proba = model.predict_proba(X)
     if hasattr(model, "classes_"):
         proba = reorder_proba(proba, model.classes_)
@@ -159,20 +181,34 @@ def stress_test_label_noise(df: pd.DataFrame, model, feature_columns: list[str])
             y_noisy[mask] = alt_choices
 
         metrics = compute_bootstrap_metrics(y_noisy, preds, proba)
-        results.append({
-            "noise_rate": rate,
-            "macro_f1": metrics["macro_f1"],
-            "refer_sensitivity": metrics["refer_sensitivity"],
-            "macro_auprc": metrics["macro_auprc"],
-        })
+        results.append(
+            {
+                "noise_rate": rate,
+                "macro_f1": metrics["macro_f1"],
+                "refer_sensitivity": metrics["refer_sensitivity"],
+                "macro_auprc": metrics["macro_auprc"],
+            }
+        )
     return results
 
 
-def stress_test_reporting_bias(df: pd.DataFrame, model, feature_columns: list[str]) -> list[dict]:
+def stress_test_reporting_bias(
+    df: pd.DataFrame, model, feature_columns: list[str]
+) -> list[dict]:
     """Test 2: Caregiver Reporting Bias (Under-reporting vs Over-reporting)"""
     logger.info("Running Stress Test 2: Reporting Bias...")
     shifts = [-0.8, -0.5, -0.3, 0.0, 0.3, 0.5, 0.8]
-    item_cols = [c for c in feature_columns if c not in ("corrected_age_months", "age_bracket_ordinal", "family_history_flag", "regression_flag")]
+    item_cols = [
+        c
+        for c in feature_columns
+        if c
+        not in (
+            "corrected_age_months",
+            "age_bracket_ordinal",
+            "family_history_flag",
+            "regression_flag",
+        )
+    ]
     y_true = df["risk_label"].to_numpy()
     results = []
     rng = np.random.default_rng(42)
@@ -183,40 +219,67 @@ def stress_test_reporting_bias(df: pd.DataFrame, model, feature_columns: list[st
         if shift > 0:
             prob_bump = shift * 0.4
             mask = rng.random((len(df), len(item_cols))) < prob_bump
-            X_biased[item_cols] = np.clip(X_biased[item_cols].to_numpy() + mask.astype(int), 0, 2)
+            X_biased[item_cols] = np.clip(
+                X_biased[item_cols].to_numpy() + mask.astype(int), 0, 2
+            )
         elif shift < 0:
             prob_drop = abs(shift) * 0.4
             mask = rng.random((len(df), len(item_cols))) < prob_drop
-            X_biased[item_cols] = np.clip(X_biased[item_cols].to_numpy() - mask.astype(int), 0, 2)
+            X_biased[item_cols] = np.clip(
+                X_biased[item_cols].to_numpy() - mask.astype(int), 0, 2
+            )
 
         pred_raw = model.predict(X_biased)
-        preds = np.array([LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw])
+        preds = np.array(
+            [
+                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+                for i in pred_raw
+            ]
+        )
         proba = model.predict_proba(X_biased)
         if hasattr(model, "classes_"):
             proba = reorder_proba(proba, model.classes_)
 
         metrics = compute_bootstrap_metrics(y_true, preds, proba)
-        results.append({
-            "reporting_bias": shift,
-            "macro_f1": metrics["macro_f1"],
-            "refer_sensitivity": metrics["refer_sensitivity"],
-            "refer_precision": metrics["refer_precision"],
-            "macro_auprc": metrics["macro_auprc"],
-        })
+        results.append(
+            {
+                "reporting_bias": shift,
+                "macro_f1": metrics["macro_f1"],
+                "refer_sensitivity": metrics["refer_sensitivity"],
+                "refer_precision": metrics["refer_precision"],
+                "macro_auprc": metrics["macro_auprc"],
+            }
+        )
     return results
 
 
-def stress_test_missing_answers(df: pd.DataFrame, model, feature_columns: list[str]) -> list[dict]:
+def stress_test_missing_answers(
+    df: pd.DataFrame, model, feature_columns: list[str]
+) -> list[dict]:
     """Test 3: Adaptive Question Sparsity / Missingness (36 down to 4 items)"""
     logger.info("Running Stress Test 3: Adaptive Question Sparsity...")
     k_items = [36, 28, 22, 18, 14, 12, 10, 8, 6, 4]
-    item_cols = [c for c in feature_columns if c not in ("corrected_age_months", "age_bracket_ordinal", "family_history_flag", "regression_flag")]
+    item_cols = [
+        c
+        for c in feature_columns
+        if c
+        not in (
+            "corrected_age_months",
+            "age_bracket_ordinal",
+            "family_history_flag",
+            "regression_flag",
+        )
+    ]
     y_true = df["risk_label"].to_numpy()
 
     # Precalculate median values mapped to each row
     median_by_bracket = df.groupby("age_bracket")[item_cols].median()
-    bracket_medians_aligned = df["age_bracket"].map(median_by_bracket.to_dict(orient="index"))
-    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[item_cols].to_numpy()
+    bracket_medians_aligned = df["age_bracket"].map(
+        median_by_bracket.to_dict(orient="index")
+    )
+    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[
+        item_cols
+    ].to_numpy()
 
     results = []
     rng = np.random.default_rng(42)
@@ -229,45 +292,52 @@ def stress_test_missing_answers(df: pd.DataFrame, model, feature_columns: list[s
             # Generate random permutation ranks per row
             random_ranks = rng.random((len(df), len(item_cols))).argsort(axis=1)
             unasked_mask = random_ranks < n_unasked
-            
+
             # Apply median imputation in one vectorized step
             orig_items = X_imputed[item_cols].to_numpy()
             imputed_items = np.where(unasked_mask, median_matrix, orig_items)
             X_imputed[item_cols] = imputed_items
 
         pred_raw = model.predict(X_imputed)
-        preds = np.array([LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw])
+        preds = np.array(
+            [
+                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+                for i in pred_raw
+            ]
+        )
         proba = model.predict_proba(X_imputed)
         if hasattr(model, "classes_"):
             proba = reorder_proba(proba, model.classes_)
 
         metrics = compute_bootstrap_metrics(y_true, preds, proba)
-        results.append({
-            "k_answered": k,
-            "macro_f1": metrics["macro_f1"],
-            "refer_sensitivity": metrics["refer_sensitivity"],
-            "refer_precision": metrics["refer_precision"],
-            "macro_auprc": metrics["macro_auprc"],
-        })
+        results.append(
+            {
+                "k_answered": k,
+                "macro_f1": metrics["macro_f1"],
+                "refer_sensitivity": metrics["refer_sensitivity"],
+                "refer_precision": metrics["refer_precision"],
+                "macro_auprc": metrics["macro_auprc"],
+            }
+        )
     return results
 
 
 def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]:
     """Test 4: Train on Generator Setting A, Test on Setting B (Distributional Shift)"""
     logger.info("Running Stress Test 4: Generator Distributional Shift...")
+    from correlation_structure import (
+        apply_regression_event,
+        sample_domain_latents,
+    )
     from generate_synthetic_data import (
+        compute_domain_scores,
         sample_children,
         simulate_item_responses,
-        compute_domain_scores,
-    )
-    from correlation_structure import (
-        sample_domain_latents,
-        apply_regression_event,
     )
     from label_derivation import (
-        domain_percentiles,
-        composite_risk_score,
         assign_labels_by_quantile,
+        composite_risk_score,
+        domain_percentiles,
     )
 
     shifts = [0.0, 0.25, 0.50, 0.75, 1.0]
@@ -278,16 +348,26 @@ def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]
         n_test = 2000
         children = sample_children(n_test, rng)
         if s > 0:
-            children["regression_flag"] = (rng.random(n_test) < (0.05 + 0.05 * s)).astype(int)
+            children["regression_flag"] = (
+                rng.random(n_test) < (0.05 + 0.05 * s)
+            ).astype(int)
 
-        latents = sample_domain_latents(n_test, children["family_history_flag"].to_numpy(), rng)
-        latents = apply_regression_event(latents, children["regression_flag"].to_numpy(), rng)
+        latents = sample_domain_latents(
+            n_test, children["family_history_flag"].to_numpy(), rng
+        )
+        latents = apply_regression_event(
+            latents, children["regression_flag"].to_numpy(), rng
+        )
         latents = latents - (0.4 * s)
 
         item_df = simulate_item_responses(children, latents, rng)
         domain_scores = compute_domain_scores(item_df)
-        pct_df = domain_percentiles(domain_scores, children["corrected_age_months"].to_numpy())
-        composite = composite_risk_score(pct_df, children["regression_flag"].to_numpy(), rng)
+        pct_df = domain_percentiles(
+            domain_scores, children["corrected_age_months"].to_numpy()
+        )
+        composite = composite_risk_score(
+            pct_df, children["regression_flag"].to_numpy(), rng
+        )
         labels = assign_labels_by_quantile(composite)
 
         test_df = pd.concat([children, item_df], axis=1)
@@ -297,18 +377,25 @@ def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]
         y_test = test_df["risk_label"].to_numpy()
 
         pred_raw = model.predict(X_test)
-        preds = np.array([LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw])
+        preds = np.array(
+            [
+                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+                for i in pred_raw
+            ]
+        )
         proba = model.predict_proba(X_test)
         if hasattr(model, "classes_"):
             proba = reorder_proba(proba, model.classes_)
 
         metrics = compute_bootstrap_metrics(y_test, preds, proba)
-        results.append({
-            "shift_severity": s,
-            "macro_f1": metrics["macro_f1"],
-            "refer_sensitivity": metrics["refer_sensitivity"],
-            "macro_auprc": metrics["macro_auprc"],
-        })
+        results.append(
+            {
+                "shift_severity": s,
+                "macro_f1": metrics["macro_f1"],
+                "refer_sensitivity": metrics["refer_sensitivity"],
+                "macro_auprc": metrics["macro_auprc"],
+            }
+        )
     return results
 
 
@@ -320,7 +407,7 @@ def plot_and_save_curves(
     output_dir: Path,
 ):
     """Generates and saves scientific degradation curves."""
-    fig, axes = plt.subplots(2, 2, figsize=(14, 11), dpi=200)
+    _fig, axes = plt.subplots(2, 2, figsize=(14, 11), dpi=200)
 
     # 1. Label Noise Curve
     ax = axes[0, 0]
@@ -336,7 +423,9 @@ def plot_and_save_curves(
     ax.fill_between(x, f1_low, f1_high, color="#1f77b4", alpha=0.15)
     ax.plot(x, auprc, "s--", color="#ff7f0e", label="Macro AUPRC", lw=2)
     ax.fill_between(x, auprc_low, auprc_high, color="#ff7f0e", alpha=0.15)
-    ax.set_title("A. Graceful Degradation under Label Noise", fontsize=12, fontweight="bold")
+    ax.set_title(
+        "A. Graceful Degradation under Label Noise", fontsize=12, fontweight="bold"
+    )
     ax.set_xlabel("Label Noise Injection (%)", fontsize=10)
     ax.set_ylabel("Metric Score", fontsize=10)
     ax.set_ylim(0.4, 1.0)
@@ -353,12 +442,16 @@ def plot_and_save_curves(
     prec_low = [r["refer_precision"]["ci_lower"] for r in bias_res]
     prec_high = [r["refer_precision"]["ci_upper"] for r in bias_res]
 
-    ax.plot(x_bias, sens, "o-", color="#d62728", label="Refer Sensitivity (Recall)", lw=2)
+    ax.plot(
+        x_bias, sens, "o-", color="#d62728", label="Refer Sensitivity (Recall)", lw=2
+    )
     ax.fill_between(x_bias, sens_low, sens_high, color="#d62728", alpha=0.15)
     ax.plot(x_bias, prec, "^-.", color="#2ca02c", label="Refer Precision", lw=2)
     ax.fill_between(x_bias, prec_low, prec_high, color="#2ca02c", alpha=0.15)
     ax.axvline(0, color="gray", linestyle=":", alpha=0.7)
-    ax.set_title("B. Performance vs. Parent Reporting Bias", fontsize=12, fontweight="bold")
+    ax.set_title(
+        "B. Performance vs. Parent Reporting Bias", fontsize=12, fontweight="bold"
+    )
     ax.set_xlabel("Reporting Shift Δz (← Under-report | Over-report →)", fontsize=10)
     ax.set_ylabel("Refer Metric Score", fontsize=10)
     ax.set_ylim(0.4, 1.05)
@@ -379,7 +472,9 @@ def plot_and_save_curves(
     ax.fill_between(x_k, f1_k_low, f1_k_high, color="#1f77b4", alpha=0.15)
     ax.plot(x_k, sens_k, "s--", color="#d62728", label="Refer Sensitivity", lw=2)
     ax.fill_between(x_k, sens_k_low, sens_k_high, color="#d62728", alpha=0.15)
-    ax.axvspan(8, 18, color="green", alpha=0.10, label="Nirixon Adaptive Range (8–18 Qs)")
+    ax.axvspan(
+        8, 18, color="green", alpha=0.10, label="Nirixon Adaptive Range (8–18 Qs)"
+    )
     ax.set_title("C. Robustness vs. Question Sparsity", fontsize=12, fontweight="bold")
     ax.set_xlabel("Number of Questions Answered (out of 36)", fontsize=10)
     ax.set_ylabel("Metric Score", fontsize=10)
@@ -401,7 +496,11 @@ def plot_and_save_curves(
     ax.fill_between(x_s, f1_s_low, f1_s_high, color="#9467bd", alpha=0.15)
     ax.plot(x_s, auprc_s, "d--", color="#8c564b", label="Macro AUPRC", lw=2)
     ax.fill_between(x_s, auprc_s_low, auprc_s_high, color="#8c564b", alpha=0.15)
-    ax.set_title("D. Train on Setting A, Test on Setting B (Covariate Shift)", fontsize=12, fontweight="bold")
+    ax.set_title(
+        "D. Train on Setting A, Test on Setting B (Covariate Shift)",
+        fontsize=12,
+        fontweight="bold",
+    )
     ax.set_xlabel("Distribution Shift Severity (%)", fontsize=10)
     ax.set_ylabel("Metric Score", fontsize=10)
     ax.set_ylim(0.4, 1.0)
@@ -426,11 +525,16 @@ def main():
     missing_res = stress_test_missing_answers(df, model, feature_columns)
     shift_res = stress_test_generator_shift(model, feature_columns)
 
-    chart_path = plot_and_save_curves(noise_res, bias_res, missing_res, shift_res, EVAL_ARTIFACTS_DIR)
+    chart_path = plot_and_save_curves(
+        noise_res, bias_res, missing_res, shift_res, EVAL_ARTIFACTS_DIR
+    )
 
-    conv_artifacts_dir = Path(r"C:\Users\Kirtan Kumar Sanghi\.gemini\antigravity-ide\brain\90c65b98-3a24-4a12-9d72-90e4c4692b3f")
+    conv_artifacts_dir = Path(
+        r"C:\Users\Kirtan Kumar Sanghi\.gemini\antigravity-ide\brain\90c65b98-3a24-4a12-9d72-90e4c4692b3f"
+    )
     if conv_artifacts_dir.exists():
         import shutil
+
         dest = conv_artifacts_dir / "stress_test_degradation_curves.png"
         shutil.copyfile(chart_path, dest)
         logger.info("Copied plot to conversation artifacts: %s", dest)
@@ -443,6 +547,7 @@ def main():
     }
     with open(EVAL_ARTIFACTS_DIR / "stress_test_summary.json", "w") as f:
         import json
+
         json.dump(summary, f, indent=2)
 
     logger.info("Stress testing suite complete!")

@@ -1,8 +1,10 @@
 """Tests for Tiered Clinical Triage and Response Quality Guards integration."""
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -130,7 +132,7 @@ def test_triage_guard_units():
 
 def test_tiered_triage_allocation_units():
     # 1. Low risk -> Tier 1: Routine Pass
-    tier_1, reflex_1, targets_1 = evaluate_live_tiered_triage(
+    tier_1, reflex_1, _targets_1 = evaluate_live_tiered_triage(
         prob_refer=0.010,
         safety_override=False,
         domain_scores={"communication": 0.8, "gross_motor": 0.9},
@@ -149,7 +151,7 @@ def test_tiered_triage_allocation_units():
     assert "communication" in targets_2
 
     # 3. High risk (prob >= tau_refer) -> Tier 3: Direct Referral
-    tier_3, reflex_3, targets_3 = evaluate_live_tiered_triage(
+    tier_3, reflex_3, _targets_3 = evaluate_live_tiered_triage(
         prob_refer=0.250,
         safety_override=False,
         domain_scores={"communication": 0.2, "gross_motor": 0.2},
@@ -158,7 +160,7 @@ def test_tiered_triage_allocation_units():
     assert reflex_3 is False
 
     # 4. Safety override flag forces Tier 3
-    tier_so, reflex_so, _ = evaluate_live_tiered_triage(
+    tier_so, _reflex_so, _ = evaluate_live_tiered_triage(
         prob_refer=0.005,
         safety_override=True,
     )

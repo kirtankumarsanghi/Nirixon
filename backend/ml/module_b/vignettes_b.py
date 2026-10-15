@@ -17,9 +17,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.module_b.engine_b import Engine
-from app.core.module_b.router_b import DomainRouter
 from app.core.module_b.screen_bridge import build_result_payload
-
 
 VIGNETTES = [
     {
@@ -117,7 +115,9 @@ VIGNETTES = [
 
 def audit_vignettes() -> None:
     print("\n" + "=" * 90)
-    print("      NIRIXON MODULE B: GOLD-STANDARD DSM-5 / ICD-11 CLINICAL VIGNETTE AUDIT")
+    print(
+        "      NIRIXON MODULE B: GOLD-STANDARD DSM-5 / ICD-11 CLINICAL VIGNETTE AUDIT"
+    )
     print("=" * 90)
     print(
         f"{'ID':<4} | {'Phenotype':<30} | {'Expected Tier':<22} | {'Engine Tier':<22} | {'Status'}"
@@ -149,9 +149,17 @@ def audit_vignettes() -> None:
                 elif v["id"] == "V06":
                     # Safety crisis
                     ans = "Yes" if rt == "yesno" else 5
-                elif track in (v["primary_domain"], "vision_hearing", "global_asd", "ruleout_global_asd") and v["id"] in ("V01", "V02", "V03", "V04", "V05", "V07", "V08"):
+                elif track in (
+                    v["primary_domain"],
+                    "vision_hearing",
+                    "global_asd",
+                    "ruleout_global_asd",
+                ) and v["id"] in ("V01", "V02", "V03", "V04", "V05", "V07", "V08"):
                     ans = "Yes" if rt == "yesno" else 5
-                elif v["id"] == "V09" and track in ("emotion_school", "emotion_conduct"):
+                elif v["id"] == "V09" and track in (
+                    "emotion_school",
+                    "emotion_conduct",
+                ):
                     ans = "Yes" if rt == "yesno" else 3
                 else:
                     ans = "No" if rt == "yesno" else 1
@@ -184,7 +192,7 @@ def audit_vignettes() -> None:
             passed += 1
 
         print(
-            f"{v['id']:<4} | {v['name']:<30} | {v['expected_tier']:<22} | {str(actual_tier):<22} | {status_str}"
+            f"{v['id']:<4} | {v['name']:<30} | {v['expected_tier']:<22} | {actual_tier!s:<22} | {status_str}"
         )
 
     print("-" * 90)

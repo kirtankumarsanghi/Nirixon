@@ -37,7 +37,7 @@ ITEM_PREFIXES = ("GM", "FM", "CM", "CG", "PS", "SH")
 NON_FEATURE_COLUMNS = {
     "child_id",
     "age_months",
-    "age_bracket",          # string; age_bracket_ordinal is the model feature
+    "age_bracket",  # string; age_bracket_ordinal is the model feature
     "multilingual_home_flag",
     "risk_label",
 }

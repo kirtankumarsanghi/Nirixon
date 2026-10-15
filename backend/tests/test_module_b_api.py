@@ -21,11 +21,10 @@ Tests required by STEP 5:
 from __future__ import annotations
 
 import pytest
-from httpx import AsyncClient
-
 from app.core.module_b.engine_b import HEARING_CONCEPTS, VISION_CONCEPTS
 from app.core.module_b.service import module_b_service
 from app.core.safety_floor import MIN_DOMAINS_COVERED_B, MIN_REAL_ANSWERS_B
+from httpx import AsyncClient
 from tests.test_api import _auth, _login
 
 pytest_plugins = ("tests.test_api",)
@@ -419,8 +418,8 @@ async def test_privacy_no_parent_text_or_evidence_saved(api_env):
     )
     assert r.status_code == 200
 
-    from sqlalchemy import select
     from app.db.models import ScreeningSession as DbSession
+    from sqlalchemy import select
 
     async with session_factory() as db:
         res = await db.execute(select(DbSession).where(DbSession.id == session_id))
@@ -434,6 +433,7 @@ async def test_privacy_no_parent_text_or_evidence_saved(api_env):
         assert evidence == {}, f"Expected empty router_evidence, got {evidence}"
         # raw sensitive substrings must not exist in serialized states
         import json
+
         state_str = json.dumps(state)
         assert "baith hi nahi" not in state_str
         assert "notebook bhool" not in state_str
@@ -445,7 +445,9 @@ async def test_module_b_triage_tier_and_comorbidity(api_env):
     client = api_env["client"]
     token = await _login(client)
 
-    note = "He cannot focus or sit still, and also reads very slowly and mixes up b and d."
+    note = (
+        "He cannot focus or sit still, and also reads very slowly and mixes up b and d."
+    )
 
     def dual_high(q: dict) -> int | str:
         track = q.get("track") or q.get("domain")
@@ -467,7 +469,9 @@ async def test_module_b_triage_tier_and_comorbidity(api_env):
     # Check comorbidity advisory
     advs = result.get("guard_advisories", [])
     assert any("Comorbidity" in a for a in advs)
-    assert any("Multidisciplinary" in a.lower() or "multidisciplinary" in a for a in advs)
+    assert any(
+        "Multidisciplinary" in a.lower() or "multidisciplinary" in a for a in advs
+    )
 
 
 @pytest.mark.asyncio
@@ -483,12 +487,16 @@ async def test_module_b_straight_lining_guard(api_env):
         token,
         text=note,
         months=96,
-        answer_fn=lambda q: "No" if q.get("response_type") in ("yesno", "yes_no") else 1,
+        answer_fn=lambda q: (
+            "No" if q.get("response_type") in ("yesno", "yes_no") else 1
+        ),
     )
 
     assert result["triage_tier"] == "Tier 1: Routine Pass"
     assert result["guard_flags"].get("straight_lining") is True
-    assert any("straight-lining" in a.lower() for a in result.get("guard_advisories", []))
+    assert any(
+        "straight-lining" in a.lower() for a in result.get("guard_advisories", [])
+    )
 
 
 @pytest.mark.asyncio
@@ -556,7 +564,7 @@ async def test_module_b_multi_informant_teacher_concordance(api_env):
 
     # 1. Complete parent session
     note = "He cannot focus and forgets homework."
-    session_id, _, _, parent_result = await _drive_session(
+    session_id, _, _, _parent_result = await _drive_session(
         client,
         token,
         text=note,
@@ -598,6 +606,3 @@ async def test_module_b_multi_informant_teacher_concordance(api_env):
     concordance = submit_data["concordance_classification"]
     assert concordance.get("attention") == "concordant_high"
     assert any("DSM-5 Criterion C met" in c for c in submit_data["caveats"])
-
-
-

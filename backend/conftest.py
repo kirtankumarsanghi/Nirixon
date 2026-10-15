@@ -8,4 +8,5 @@ here so pytest ignores them (run them directly as scripts instead):
 Pre-existing failures (stub_api dependency, old test_api imports) are also
 excluded here — they were already failing before the Module B integration.
 """
+
 collect_ignore = []

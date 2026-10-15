@@ -64,17 +64,19 @@ DATA_PATH = os.path.abspath(
 MIN_BRACKET_N = 20
 
 # Columns in the CSV that are metadata, not item response columns
-_NON_ITEM_COLS = frozenset({
-    "child_id",
-    "age_months",
-    "corrected_age_months",
-    "age_bracket",
-    "age_bracket_ordinal",
-    "family_history_flag",
-    "multilingual_home_flag",
-    "regression_flag",
-    "risk_label",
-})
+_NON_ITEM_COLS = frozenset(
+    {
+        "child_id",
+        "age_months",
+        "corrected_age_months",
+        "age_bracket",
+        "age_bracket_ordinal",
+        "family_history_flag",
+        "multilingual_home_flag",
+        "regression_flag",
+        "risk_label",
+    }
+)
 
 
 def _load_medians(

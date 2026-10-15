@@ -1,16 +1,17 @@
 """Information check: compare Refer AUPRC across feature representations and item counts.
 Task 4: Prints the results and nothing else.
 """
+
 import os
 import sys
 from dataclasses import replace
-import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
 from config import SimConfig
-from sim_v2 import load_items, simulate, features
 from evaluate import refer_auprc
+from sim_v2 import features, load_items, simulate
 from stress import new_model
+
 
 def run_info_check():
     cfg = SimConfig()
@@ -45,6 +46,7 @@ def run_info_check():
     print("(c) Items asked per domain (domain scores):")
     for k, score in k_results.items():
         print(f"    K={k} ({k*6} items): Refer AUPRC = {score:.4f}")
+
 
 if __name__ == "__main__":
     run_info_check()

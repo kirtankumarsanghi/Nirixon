@@ -45,12 +45,15 @@ import pandas as pd
 from data.generator.item_bank import DOMAINS, ITEM_BANK, Item
 from data.generator.item_bank_b import (
     MODULE_B_DOMAINS,
-    MODULE_B_ITEM_BANK,
     MODULE_B_ITEM_BY_ID,
     MODULE_B_ITEMS_BY_DOMAIN,
 )
 
-from .safety_floor import MIN_DOMAINS_COVERED, MIN_DOMAINS_COVERED_B, _domains_with_real_answer
+from .safety_floor import (
+    MIN_DOMAINS_COVERED,
+    MIN_DOMAINS_COVERED_B,
+    _domains_with_real_answer,
+)
 from .session import MANDATORY_IDS, NextQuestion, ScreeningSession
 
 DATA_PATH = os.path.abspath(
@@ -110,15 +113,12 @@ def _domain_quota_fallback(
     Module B (filters by detected-domain items). Returns item_id or None.
     """
     item_by_id: dict[str, Any]
-    items_by_domain: dict[str, Any]
     if session.module == "B":
         domain_list = session.detected_domains or MODULE_B_DOMAINS
         item_by_id = MODULE_B_ITEM_BY_ID
-        items_by_domain = MODULE_B_ITEMS_BY_DOMAIN
     else:
         domain_list = DOMAINS
         item_by_id = ITEM_BY_ID
-        items_by_domain = ITEMS_BY_DOMAIN
 
     # Count how many non-mandatory items have been answered per domain
     domain_answered_count: dict[str, int] = {d: 0 for d in domain_list}
@@ -147,7 +147,9 @@ def _domain_quota_fallback(
         if session.module == "A":
             best = min(
                 domain_candidates,
-                key=lambda item: abs(item.typical_age_months - session.corrected_age_months),
+                key=lambda item: abs(
+                    item.typical_age_months - session.corrected_age_months
+                ),
             )
         else:
             best = domain_candidates[0]
@@ -231,7 +233,9 @@ def next_question(session: ScreeningSession, data_path: str = DATA_PATH) -> str 
     return max(mi_scores.keys(), key=lambda k: mi_scores[k])
 
 
-def _next_question_b(session: ScreeningSession, data_path: str = DATA_PATH_B) -> str | None:
+def _next_question_b(
+    session: ScreeningSession, data_path: str = DATA_PATH_B
+) -> str | None:
     """
     Module B item selection with answer-driven follow-ons.
 
@@ -301,11 +305,7 @@ def _next_question_b(session: ScreeningSession, data_path: str = DATA_PATH_B) ->
         vals = domain_answers.get(domain, [])
         hot_follow = 0
         # Only dig deeper when the latest answer in this domain was concerning
-        if (
-            vals
-            and vals[-1] >= 2
-            and len(vals) < max_items_for_domain(domain)
-        ):
+        if vals and vals[-1] >= 2 and len(vals) < max_items_for_domain(domain):
             hot_follow = -1
         uncovered = 0 if domain not in covered else 1
         return (hot_follow, uncovered, len(vals))
@@ -316,9 +316,7 @@ def _next_question_b(session: ScreeningSession, data_path: str = DATA_PATH_B) ->
     priority_domain = None
     for domain in sorted_domains:
         domain_cands = [
-            iid
-            for iid in candidate_ids
-            if MODULE_B_ITEM_BY_ID[iid].domain == domain
+            iid for iid in candidate_ids if MODULE_B_ITEM_BY_ID[iid].domain == domain
         ]
         if domain_cands:
             priority_domain = domain
@@ -366,7 +364,10 @@ def build_next_question_response(
         from app.core.module_b.domains import to_api_domain
         from app.core.module_b.service import module_b_service
 
-        if module_b_service.is_loaded and item_id in module_b_service.engine.bank.df.index:
+        if (
+            module_b_service.is_loaded
+            and item_id in module_b_service.engine.bank.df.index
+        ):
             row = module_b_service.engine.bank.row(item_id)
             return NextQuestion(
                 item_id=item_id,

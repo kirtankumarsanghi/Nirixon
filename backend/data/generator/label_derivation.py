@@ -67,7 +67,6 @@ from age_brackets import BRACKETS, adjacent_brackets, map_to_bracket_label
 MIN_BRACKET_N = 20
 
 
-
 def domain_percentiles(
     domain_scores: pd.DataFrame,
     corrected_age_months: np.ndarray,
@@ -87,9 +86,7 @@ def domain_percentiles(
     children in the pooled group are ranked together.
     """
     # Assign every child to a bracket label
-    bracket_labels = np.array(
-        [map_to_bracket_label(a) for a in corrected_age_months]
-    )
+    bracket_labels = np.array([map_to_bracket_label(a) for a in corrected_age_months])
 
     out = pd.DataFrame(
         index=domain_scores.index, columns=domain_scores.columns, dtype=float

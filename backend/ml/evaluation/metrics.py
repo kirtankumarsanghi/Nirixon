@@ -54,7 +54,9 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
 
     cm = confusion_matrix(y_true, y_pred, labels=LABEL_ORDER)
     report = classification_report(y_true, y_pred, labels=LABEL_ORDER, zero_division=0)
-    report_dict = classification_report(y_true, y_pred, labels=LABEL_ORDER, output_dict=True, zero_division=0)
+    report_dict = classification_report(
+        y_true, y_pred, labels=LABEL_ORDER, output_dict=True, zero_division=0
+    )
     sens_spec = compute_sensitivity_specificity(y_true, y_pred, labels=LABEL_ORDER)
 
     return {
@@ -70,30 +72,32 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
         "sensitivity_specificity": sens_spec,
     }
 
+
 def compute_sensitivity_specificity(y_true, y_pred, labels=LABEL_ORDER):
     """
     Computes sensitivity (recall/TPR) and specificity (TNR) per class.
     Returns a dictionary mapping class label to {'sensitivity': val, 'specificity': val}.
     """
     from sklearn.metrics import confusion_matrix
+
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     result = {}
-    
+
     # Calculate for each class i
     for i, label in enumerate(labels):
         tp = cm[i, i]
         fn = np.sum(cm[i, :]) - tp
         fp = np.sum(cm[:, i]) - tp
         tn = np.sum(cm) - (tp + fn + fp)
-        
+
         sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
-        
+
         result[label] = {
             "sensitivity": float(sensitivity),
-            "specificity": float(specificity)
+            "specificity": float(specificity),
         }
-        
+
     return result
 
 

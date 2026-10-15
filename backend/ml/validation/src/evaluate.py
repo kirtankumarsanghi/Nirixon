@@ -1,4 +1,5 @@
 """Metrics with uncertainty (Module A plan, step 8)."""
+
 import numpy as np
 from sklearn.metrics import average_precision_score, precision_score, recall_score
 
@@ -40,9 +41,14 @@ def threshold_for_recall(y_status, risk, target=0.85):
 def refer_at(y_status, risk, thr):
     pred = risk >= thr
     y = y_status == 2
-    return dict(recall=recall_score(y, pred), precision=precision_score(y, pred, zero_division=0),
-                flagged_share=float(pred.mean()))
+    return {
+        "recall": recall_score(y, pred),
+        "precision": precision_score(y, pred, zero_division=0),
+        "flagged_share": float(pred.mean()),
+    }
 
 
 def macro_auprc(y_status, proba):
-    return float(np.mean([average_precision_score(y_status == k, proba[:, k]) for k in range(3)]))
+    return float(
+        np.mean([average_precision_score(y_status == k, proba[:, k]) for k in range(3)])
+    )

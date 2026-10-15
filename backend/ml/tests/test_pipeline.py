@@ -1,7 +1,6 @@
 import json
 import re
 from pathlib import Path
-import pytest
 
 ML_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = ML_DIR.parent
@@ -29,7 +28,7 @@ def collect_all_numeric_tokens(obj) -> set[str]:
         for num in re.findall(r"\b\d+\.?\d*\b", obj):
             tokens.add(num)
     elif isinstance(obj, dict):
-        for k, v in obj.items():
+        for v in obj.values():
             tokens.update(collect_all_numeric_tokens(v))
     elif isinstance(obj, (list, tuple)):
         for item in obj:
@@ -65,7 +64,7 @@ def collect_all_floats(obj) -> set[float]:
 
 def test_master_metrics_file_exists_and_complete():
     assert METRICS_JSON_PATH.exists(), f"metrics.json missing at {METRICS_JSON_PATH}"
-    with open(METRICS_JSON_PATH, "r", encoding="utf-8") as f:
+    with open(METRICS_JSON_PATH, encoding="utf-8") as f:
         data = json.load(f)
 
     required_sections = [
@@ -82,7 +81,9 @@ def test_master_metrics_file_exists_and_complete():
         "stress_tests",
     ]
     for section in required_sections:
-        assert section in data, f"Required section '{section}' missing from metrics.json"
+        assert (
+            section in data
+        ), f"Required section '{section}' missing from metrics.json"
 
     # Verify production winner
     assert data["model_selection"]["winner"] == "xgboost"
@@ -92,16 +93,46 @@ def test_master_metrics_file_exists_and_complete():
 
 def test_no_document_table_shows_number_not_in_metrics_file():
     assert METRICS_JSON_PATH.exists()
-    with open(METRICS_JSON_PATH, "r", encoding="utf-8") as f:
+    with open(METRICS_JSON_PATH, encoding="utf-8") as f:
         metrics_data = json.load(f)
 
     valid_tokens = collect_all_numeric_tokens(metrics_data)
     valid_floats = collect_all_floats(metrics_data)
 
     exempt_tokens = {
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-        "21", "22", "24", "27", "28", "30", "33", "36", "42", "48", "54", "60",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "24",
+        "27",
+        "28",
+        "30",
+        "33",
+        "36",
+        "42",
+        "48",
+        "54",
+        "60",
         "100",
     }
 
@@ -112,8 +143,10 @@ def test_no_document_table_shows_number_not_in_metrics_file():
         text = path.read_text(encoding="utf-8")
 
         table_lines = [
-            line for line in text.splitlines()
-            if line.strip().startswith("|") and not re.match(r"^\|\s*[-:]+\s*\|", line.strip())
+            line
+            for line in text.splitlines()
+            if line.strip().startswith("|")
+            and not re.match(r"^\|\s*[-:]+\s*\|", line.strip())
         ]
         assert len(table_lines) > 0, f"Expected tables in {path.name}"
 

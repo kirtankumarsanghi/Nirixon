@@ -2,20 +2,21 @@
 Evaluates the triage system against 10 published pediatric phenotypes (DSM-5, ICD-11, Nelson Pediatrics)
 to prove clinical validity and explainability without requiring private hospital records.
 """
+
 import os
 import sys
+
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from config import SimConfig
-from sim_v2 import load_items, simulate, features
 from baseline import fit_norms, predict
+from config import SimConfig
 from guards import compute_guards
-from tiered_triage import evaluate_tiered_triage
+from sim_v2 import features, load_items, simulate
 from stress import new_model
-
+from tiered_triage import evaluate_tiered_triage
 
 CLINICAL_VIGNETTES = [
     {
@@ -35,7 +36,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 2],  # personal_social
             [2, 2, 2],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-02",
@@ -52,7 +53,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 2],  # personal_social
             [1, 2, 1],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-03",
@@ -69,7 +70,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 1],  # personal_social
             [2, 2, 2],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-04",
@@ -86,7 +87,7 @@ CLINICAL_VIGNETTES = [
             [0, 1, 0],  # personal_social
             [0, 0, 1],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-05",
@@ -103,7 +104,7 @@ CLINICAL_VIGNETTES = [
             [0, 0, 0],  # personal_social (severe deficit)
             [1, 2, 1],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-06",
@@ -120,7 +121,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 1],  # personal_social
             [1, 1, 2],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-07",
@@ -138,7 +139,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 2],  # self_help
         ],
         "force_advanced_items": True,  # Presenting forward items to test guard
-        "expected_guard": "Acquiescence"
+        "expected_guard": "Acquiescence",
     },
     {
         "id": "VIG-08",
@@ -155,7 +156,7 @@ CLINICAL_VIGNETTES = [
             [2, 0, 2],  # personal_social
             [0, 2, 1],  # self_help
         ],
-        "expected_guard": "Inconsistency"
+        "expected_guard": "Inconsistency",
     },
     {
         "id": "VIG-09",
@@ -172,7 +173,7 @@ CLINICAL_VIGNETTES = [
             [2, 2, 2],  # personal_social
             [1, 2, 1],  # self_help
         ],
-        "expected_guard": None
+        "expected_guard": None,
     },
     {
         "id": "VIG-10",
@@ -189,8 +190,8 @@ CLINICAL_VIGNETTES = [
             [2, 2, 2],  # personal_social
             [1, 1, 1],  # self_help (mild slump)
         ],
-        "expected_guard": None
-    }
+        "expected_guard": None,
+    },
 ]
 
 
@@ -199,19 +200,23 @@ def audit_clinical_vignettes(seed=42):
     Fits the upgraded frequency-scale model on normative synthetic training data,
     evaluates all 10 clinical vignettes, and prints an audit report.
     """
-    cfg = SimConfig(response_scale="frequency", pace_mode="empirical", enable_guards=True)
+    cfg = SimConfig(
+        response_scale="frequency", pace_mode="empirical", enable_guards=True
+    )
     items = load_items("data/item_source.csv", cfg.domains)
 
     # 1. Fit reference population model
     tr = simulate(cfg, items, 8000, seed)
     va = simulate(cfg, items, 4000, seed + 1)
-    
+
     clf = new_model(seed=seed).fit(features(tr), tr["status"])
     norms = fit_norms(tr["age_used"], tr["domain_scores"], tr["status"])
 
     # Determine triage thresholds
     p_va = clf.predict_proba(features(va))[:, 2]
-    tri = evaluate_tiered_triage(va["status"], p_va, direct_refer_target=0.15, total_recall_target=0.85)
+    tri = evaluate_tiered_triage(
+        va["status"], p_va, direct_refer_target=0.15, total_recall_target=0.85
+    )
     tau_refer = tri["tau_refer"]
     tau_mon = tri["tau_monitor"]
 
@@ -227,15 +232,15 @@ def audit_clinical_vignettes(seed=42):
             "age": np.array([age_val]),
             "age_used": np.array([age_val]),
             "answers": ans_arr,
-            "domain_scores": scores
+            "domain_scores": scores,
         }
         feat = features(sim_mock)
         prob_refer = float(clf.predict_proba(feat)[0, 2])
-        prob_typical = float(clf.predict_proba(feat)[0, 0])
-        prob_monitor = float(clf.predict_proba(feat)[0, 1])
+        float(clf.predict_proba(feat)[0, 0])
+        float(clf.predict_proba(feat)[0, 1])
 
         # ASQ-3 Baseline evaluation
-        asq_tier, asq_risk = predict(np.array([age_val]), scores, norms)
+        asq_tier, _asq_risk = predict(np.array([age_val]), scores, norms)
         asq_tier_str = {0: "Pass", 1: "Monitor", 2: "Refer"}[int(asq_tier[0])]
 
         # Assign Model Tier
@@ -249,19 +254,18 @@ def audit_clinical_vignettes(seed=42):
         # Compute Guards
         # For VIG-07, test out-of-age milestones
         guard_df = compute_guards(np.array([age_val]), ans_arr, items, cfg.domains, K=3)
-        
+
         # Artificial forward check for VIG-07 demonstration if requested
         if vig.get("force_advanced_items", False):
             # Check if any items presented or tested >= age + 6
             # For 9mo child, 18mo or 24mo items are > 9 + 6
             acq_flag = 1.0
-            acq_score = 1.0
         else:
             acq_flag = float(guard_df["acquiescence_suspect"].iloc[0])
-            acq_score = float(guard_df["acquiescence_score"].iloc[0])
+            float(guard_df["acquiescence_score"].iloc[0])
 
         incons_flag = float(guard_df["inconsistency_suspect"].iloc[0])
-        incons_score = float(guard_df["inconsistency_score"].iloc[0])
+        float(guard_df["inconsistency_score"].iloc[0])
 
         guard_status_str = "CLEAR"
         if acq_flag > 0:
@@ -269,28 +273,47 @@ def audit_clinical_vignettes(seed=42):
         elif incons_flag > 0 or vig["id"] == "VIG-08":
             guard_status_str = "FLAG: Inconsistency (Inversion)"
 
-        results.append({
-            "ID": vig["id"],
-            "Phenotype": vig["name"],
-            "Age": f"{age_val:.0f}m",
-            "P(Refer)": f"{prob_refer:.3f}",
-            "Assigned Tier": model_tier,
-            "Expected Tier": vig["expected_tier"],
-            "ASQ-3 Rule": asq_tier_str,
-            "Guard Status": guard_status_str,
-            "Clinical Concordance": "CONCORDANT" if (
-                ("Pass" in model_tier and "Pass" in vig["expected_tier"]) or
-                ("Reflex" in model_tier and "Reflex" in vig["expected_tier"]) or
-                ("Direct" in model_tier and "Direct" in vig["expected_tier"]) or
-                ("Any Tier" in vig["expected_tier"])
-            ) else "REVIEW"
-        })
+        results.append(
+            {
+                "ID": vig["id"],
+                "Phenotype": vig["name"],
+                "Age": f"{age_val:.0f}m",
+                "P(Refer)": f"{prob_refer:.3f}",
+                "Assigned Tier": model_tier,
+                "Expected Tier": vig["expected_tier"],
+                "ASQ-3 Rule": asq_tier_str,
+                "Guard Status": guard_status_str,
+                "Clinical Concordance": (
+                    "CONCORDANT"
+                    if (
+                        ("Pass" in model_tier and "Pass" in vig["expected_tier"])
+                        or ("Reflex" in model_tier and "Reflex" in vig["expected_tier"])
+                        or ("Direct" in model_tier and "Direct" in vig["expected_tier"])
+                        or ("Any Tier" in vig["expected_tier"])
+                    )
+                    else "REVIEW"
+                ),
+            }
+        )
 
     df_res = pd.DataFrame(results)
     print("\n" + "=" * 95)
     print("      PEDIATRIC CLINICAL VIGNETTES AUDIT (10 CODIFIED PHENOTYPES)")
     print("=" * 95)
-    print(df_res[["ID", "Phenotype", "Age", "P(Refer)", "Assigned Tier", "ASQ-3 Rule", "Guard Status", "Clinical Concordance"]].to_string(index=False))
+    print(
+        df_res[
+            [
+                "ID",
+                "Phenotype",
+                "Age",
+                "P(Refer)",
+                "Assigned Tier",
+                "ASQ-3 Rule",
+                "Guard Status",
+                "Clinical Concordance",
+            ]
+        ].to_string(index=False)
+    )
     print("=" * 95)
     return df_res
 

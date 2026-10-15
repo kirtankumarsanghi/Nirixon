@@ -1,5 +1,7 @@
 """Validation guards: Acquiescence (ceiling distortion) and Inconsistency (Guttman scale violations).
-Protects against parental reporting distortion without washing out valid model training."""
+Protects against parental reporting distortion without washing out valid model training.
+"""
+
 import numpy as np
 import pandas as pd
 
@@ -7,14 +9,14 @@ import pandas as pd
 def compute_guards(age_used, answers, items, domains, K=3):
     """
     Computes acquiescence and inconsistency indices per child.
-    
+
     Parameters:
       age_used: (n,) array of chronological age used by app
       answers: (n, D, K) array of item responses (binary 0/1 or frequency 0/1/2)
       items: DataFrame containing item metadata
       domains: list/tuple of domain names
       K: items per domain
-      
+
     Returns:
       DataFrame with columns:
         - acquiescence_score: continuous fraction of advanced milestones endorsed
@@ -23,7 +25,7 @@ def compute_guards(age_used, answers, items, domains, K=3):
         - inconsistency_suspect: 1.0 if multiple Guttman scale violations detected
     """
     n = len(age_used)
-    D = len(domains)
+    len(domains)
     is_frequency = (answers > 1.0).any()
     max_val = 2.0 if is_frequency else 1.0
 
@@ -45,7 +47,7 @@ def compute_guards(age_used, answers, items, domains, K=3):
             # Find the indices of items presented to child i
             presented_idx = np.argsort(diff)[:K]
             presented_a75 = a75[presented_idx]
-            presented_ans = answers[i, j, :len(presented_idx)]
+            presented_ans = answers[i, j, : len(presented_idx)]
 
             for k_idx, item_age in enumerate(presented_a75):
                 if np.isnan(presented_ans[k_idx]):
@@ -71,14 +73,18 @@ def compute_guards(age_used, answers, items, domains, K=3):
 
         acq_rate = (forward_endorsed / forward_total) if forward_total > 0 else 0.0
         acquiescence_scores[i] = acq_rate
-        acquiescence_flags[i] = 1.0 if (forward_total >= 2 and acq_rate >= 0.60) else 0.0
+        acquiescence_flags[i] = (
+            1.0 if (forward_total >= 2 and acq_rate >= 0.60) else 0.0
+        )
 
         inconsistency_counts[i] = inversions
         inconsistency_flags[i] = 1.0 if inversions >= 2 else 0.0
 
-    return pd.DataFrame({
-        "acquiescence_score": acquiescence_scores,
-        "acquiescence_suspect": acquiescence_flags,
-        "inconsistency_score": inconsistency_counts,
-        "inconsistency_suspect": inconsistency_flags,
-    })
+    return pd.DataFrame(
+        {
+            "acquiescence_score": acquiescence_scores,
+            "acquiescence_suspect": acquiescence_flags,
+            "inconsistency_score": inconsistency_counts,
+            "inconsistency_suspect": inconsistency_flags,
+        }
+    )

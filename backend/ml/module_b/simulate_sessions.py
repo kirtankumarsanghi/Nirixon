@@ -13,9 +13,11 @@ finds the right domains efficiently - NOT clinical accuracy. Real validation nee
 and clinician-rated outcomes.
 Run: python src/simulate_sessions.py [--n-gen 600 --reps 3]
 """
+
 import argparse
 import json
-import os, random
+import os
+import random
 import sys
 
 SEED = 42
@@ -23,10 +25,11 @@ os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 
 import numpy as np
-np.random.seed(SEED)
-import pandas as pd
 
+np.random.seed(SEED)
 from pathlib import Path
+
+import pandas as pd
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 MODULE_B_DIR = Path(__file__).resolve().parent
@@ -34,10 +37,10 @@ sys.path.insert(0, str(BACKEND_ROOT / "app" / "core" / "module_b"))
 sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(MODULE_B_DIR))
 try:
-    from app.core.module_b.engine_b import Engine, DOMAINS, RULEOUTS
+    from app.core.module_b.engine_b import DOMAINS, RULEOUTS, Engine
     from app.core.module_b.router_b import DomainRouter
 except ImportError:
-    from engine_b import Engine, DOMAINS, RULEOUTS
+    from engine_b import DOMAINS, RULEOUTS, Engine
     from router_b import DomainRouter
 
 
@@ -48,7 +51,7 @@ def simulate_answer(row, track, sev, rng):
     c = min(1.0, max(0.0, rng.gauss(s, 0.17)))
     if int(row["reverse_scored"]) == 1:
         c = 1 - c
-    return int(round(1 + 4 * c))
+    return round(1 + 4 * c)
 
 
 def run(eng, text, age, true_d, true_ro, policy, seed):
@@ -60,7 +63,9 @@ def run(eng, text, age, true_d, true_ro, policy, seed):
         s.prior = {d: (0.9 if d in true_d else 0.06) for d in DOMAINS}
         s.prior.update({r: (0.6 if r in true_ro else 0.0) for r in RULEOUTS})
         s.safety, s.unclear = False, False
-    if policy == "full" and s.unclear:                 # Recall Help: simulate a parent who taps their true domains
+    if (
+        policy == "full" and s.unclear
+    ):  # Recall Help: simulate a parent who taps their true domains
         eng.apply_recall_choice(s, list(true_d) or [])
     first_hit = None
     guard = 0
@@ -70,22 +75,42 @@ def run(eng, text, age, true_d, true_ro, policy, seed):
         if a["type"] in ("safety_notice",):
             continue
         if a["type"] == "recall_help":
-            eng.apply_recall_choice(s, list(true_d)); continue
+            eng.apply_recall_choice(s, list(true_d))
+            continue
         if a["type"] == "done":
             break
         row = eng.bank.row(a["item_id"])
         if first_hit is None and a["track"] in (set(true_d) | set(true_ro)):
             first_hit = len(s.answers) + 1
-        eng.answer(s, a["item_id"], simulate_answer(row, a["track"], sev, rng), track=a["track"])
+        eng.answer(
+            s,
+            a["item_id"],
+            simulate_answer(row, a["track"], sev, rng),
+            track=a["track"],
+        )
     res = eng.result(s)
     pred = set(res["flagged_domains"])
-    tp = len(pred & set(true_d)); fp = len(pred - set(true_d)); fn = len(set(true_d) - pred)
+    tp = len(pred & set(true_d))
+    fp = len(pred - set(true_d))
+    fn = len(set(true_d) - pred)
     # depth on true domains = how many items asked there
     depth = np.mean([len(s.scored(d)) for d in true_d]) if true_d else np.nan
-    return dict(tp=tp, fp=fp, fn=fn, nq=len(s.answers), first_hit=first_hit, depth=depth,
-                ro_found=int(bool(set(true_ro) & set(res["ruleout_flags"]))) if true_ro else None,
-                n_true=len(true_d), exact=int(pred == set(true_d)),
-                refer_in_true=sum(1 for d in true_d if res["domains"][d]["state"] == "Refer"))
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "nq": len(s.answers),
+        "first_hit": first_hit,
+        "depth": depth,
+        "ro_found": (
+            int(bool(set(true_ro) & set(res["ruleout_flags"]))) if true_ro else None
+        ),
+        "n_true": len(true_d),
+        "exact": int(pred == set(true_d)),
+        "refer_in_true": sum(
+            1 for d in true_d if res["domains"][d]["state"] == "Refer"
+        ),
+    }
 
 
 def main():
@@ -93,7 +118,9 @@ def main():
     ap.add_argument("--n-gen", type=int, default=600)
     ap.add_argument("--reps", type=int, default=2)
     a = ap.parse_args()
-    router_path = str(BACKEND_ROOT / "ml" / "artifacts" / "module_b_router" / "router_b.joblib")
+    router_path = str(
+        BACKEND_ROOT / "ml" / "artifacts" / "module_b_router" / "router_b.joblib"
+    )
     if not os.path.exists(router_path):
         router_path = str(BACKEND_ROOT / "artifacts" / "router_b.joblib")
     router = DomainRouter.load(router_path)
@@ -107,9 +134,14 @@ def main():
         hw_csv = BACKEND_ROOT / "data" / "handwritten_eval_b.csv"
     full = pd.read_csv(str(full_csv))
     hw = pd.read_csv(str(hw_csv))
-    gen = full[(full.split == "test") & (full.is_unclear == 0) & (full.safety == 0)].sample(a.n_gen, random_state=SEED)
+    gen = full[
+        (full.split == "test") & (full.is_unclear == 0) & (full.safety == 0)
+    ].sample(a.n_gen, random_state=SEED)
 
-    sets = {"handwritten(independent)": hw[(hw.is_unclear == 0) & (hw.safety == 0)], "generator test(unseen)": gen}
+    sets = {
+        "handwritten(independent)": hw[(hw.is_unclear == 0) & (hw.safety == 0)],
+        "generator test(unseen)": gen,
+    }
     out = {}
     for sname, df in sets.items():
         df = df[df[DOMAINS].sum(axis=1) > 0]
@@ -121,17 +153,38 @@ def main():
                     true_d = [d for d in DOMAINS if getattr(r, d) == 1]
                     true_ro = [x for x in RULEOUTS if getattr(r, x) == 1]
                     age = random.Random(SEED + i).randint(5, 12)
-                    rows.append(run(eng, r.text, age, true_d, true_ro, policy, seed=rep * 1000 + i))
+                    rows.append(
+                        run(
+                            eng,
+                            r.text,
+                            age,
+                            true_d,
+                            true_ro,
+                            policy,
+                            seed=rep * 1000 + i,
+                        )
+                    )
             m = pd.DataFrame(rows)
             tp, fp, fn = m.tp.sum(), m.fp.sum(), m.fn.sum()
             P, R = tp / max(1, tp + fp), tp / max(1, tp + fn)
-            res = dict(domain_P=round(P, 3), domain_R=round(R, 3), F1=round(2 * P * R / max(1e-9, P + R), 3),
-                       exact_set=round(m.exact.mean(), 3), mean_questions=round(m.nq.mean(), 1),
-                       first_relevant_q=round(m.first_hit.dropna().mean(), 2), items_per_true_domain=round(m.depth.mean(), 2),
-                       ruleout_found=None if m.ro_found.dropna().empty else round(m.ro_found.dropna().mean(), 2))
+            res = {
+                "domain_P": round(P, 3),
+                "domain_R": round(R, 3),
+                "F1": round(2 * P * R / max(1e-9, P + R), 3),
+                "exact_set": round(m.exact.mean(), 3),
+                "mean_questions": round(m.nq.mean(), 1),
+                "first_relevant_q": round(m.first_hit.dropna().mean(), 2),
+                "items_per_true_domain": round(m.depth.mean(), 2),
+                "ruleout_found": (
+                    None
+                    if m.ro_found.dropna().empty
+                    else round(m.ro_found.dropna().mean(), 2)
+                ),
+            }
             out[f"{sname}|{policy}"] = res
-            print(f"  {policy:8s}", res)
-    json.dump(out, open(os.path.join(ROOT, "artifacts", "simulation_results.json"), "w"), indent=1)
+    out_path = MODULE_B_DIR / "simulation_results.json"
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=1)
 
 
 if __name__ == "__main__":

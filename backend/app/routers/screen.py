@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -182,7 +182,7 @@ async def _run_completion_b(
 ) -> ResultPayload:
     core.completed = True
     db_row.status = "completed"
-    db_row.completed_at = datetime.now(timezone.utc)
+    db_row.completed_at = datetime.now(UTC)
 
     # Use the finished Module B engine result if loaded
     if module_b_service.is_loaded and (
@@ -391,7 +391,7 @@ async def _run_completion(
 
     core.completed = True
     db_row.status = "completed"
-    db_row.completed_at = datetime.now(timezone.utc)
+    db_row.completed_at = datetime.now(UTC)
     db_row.state_json = core.to_dict()
 
     # Domain classifications for Module B (empty dict for Module A)
@@ -1480,7 +1480,7 @@ async def generate_teacher_invite(
         invite = {
             "code": code,
             "session_id": session_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         state["teacher_invite"] = invite
         db_row.state_json = state
@@ -1512,7 +1512,8 @@ async def get_teacher_assessment_items(
     for candidate in all_res.scalars().all():
         if (
             candidate.id == invite_code
-            or (candidate.state_json or {}).get("teacher_invite", {}).get("code") == code
+            or (candidate.state_json or {}).get("teacher_invite", {}).get("code")
+            == code
         ):
             db_row = candidate
             break
@@ -1569,7 +1570,8 @@ async def submit_teacher_assessment(
     for candidate in all_res.scalars().all():
         if (
             candidate.id == invite_code
-            or (candidate.state_json or {}).get("teacher_invite", {}).get("code") == code
+            or (candidate.state_json or {}).get("teacher_invite", {}).get("code")
+            == code
         ):
             db_row = candidate
             break
@@ -1680,4 +1682,3 @@ async def submit_teacher_assessment(
         caveats=caveats,
         summary=summary,
     )
-

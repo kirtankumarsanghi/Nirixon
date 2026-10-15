@@ -1,5 +1,6 @@
 """Diagnostic: Compare K=1 nearest, K=3 nearest, and K=3 within-6-months item selection.
 Validates K=3 nearest against results/base_by_seed.csv."""
+
 import argparse
 import os
 import sys
@@ -9,14 +10,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import numpy as np
 import pandas as pd
-from config import SimConfig
-from sim_v2 import load_items, simulate, features
 from baseline import fit_norms, predict
+from config import SimConfig
 from evaluate import refer_auprc
-from stress import new_model, assert_distinct_seeds
+from sim_v2 import features, load_items, simulate
+from stress import assert_distinct_seeds, new_model
 
 
-def run_diag(items_path="data/item_source.csv", base_path="results/base_by_seed.csv", seeds=None):
+def run_diag(
+    items_path="data/item_source.csv", base_path="results/base_by_seed.csv", seeds=None
+):
     if seeds is None:
         seeds = [10, 42, 100, 200, 300]
 
@@ -37,7 +40,7 @@ def run_diag(items_path="data/item_source.csv", base_path="results/base_by_seed.
         for name, k, sel in modes:
             c = replace(cfg, items_asked_per_domain=k)
             tr = simulate(c, items, 8000, s, selection=sel)
-            va = simulate(c, items, 4000, s + 1, selection=sel)
+            simulate(c, items, 4000, s + 1, selection=sel)
             te = simulate(c, items, 5000, s + 2, selection=sel)
 
             m = new_model(seed=s).fit(features(tr), tr["status"])
@@ -58,13 +61,15 @@ def run_diag(items_path="data/item_source.csv", base_path="results/base_by_seed.
     for name, _, _ in modes:
         mls = np.array(results[name]["ml"])
         rules = np.array(results[name]["rule"])
-        summary_rows.append({
-            "Configuration": name,
-            "ML Refer AUPRC Mean": f"{mls.mean():.4f}",
-            "ML Range": f"[{mls.min():.4f}, {mls.max():.4f}]",
-            "Rule Refer AUPRC Mean": f"{rules.mean():.4f}",
-            "Rule Range": f"[{rules.min():.4f}, {rules.max():.4f}]",
-        })
+        summary_rows.append(
+            {
+                "Configuration": name,
+                "ML Refer AUPRC Mean": f"{mls.mean():.4f}",
+                "ML Range": f"[{mls.min():.4f}, {mls.max():.4f}]",
+                "Rule Refer AUPRC Mean": f"{rules.mean():.4f}",
+                "Rule Range": f"[{rules.min():.4f}, {rules.max():.4f}]",
+            }
+        )
     df_summary = pd.DataFrame(summary_rows)
 
     print("\n=== Item Selection Diagnostics (Refer AUPRC) ===")
@@ -82,12 +87,14 @@ def run_diag(items_path="data/item_source.csv", base_path="results/base_by_seed.
                 diag_ml = seed_details[s]["K=3 nearest"]
                 diff = abs(diag_ml - base_ml)
                 diffs.append(diff)
-                comp_rows.append({
-                    "Seed": s,
-                    "Diag K=3 Nearest": f"{diag_ml:.4f}",
-                    "Base Run AUPRC": f"{base_ml:.4f}",
-                    "Abs Diff": f"{diff:.6f}",
-                })
+                comp_rows.append(
+                    {
+                        "Seed": s,
+                        "Diag K=3 Nearest": f"{diag_ml:.4f}",
+                        "Base Run AUPRC": f"{base_ml:.4f}",
+                        "Abs Diff": f"{diff:.6f}",
+                    }
+                )
         df_comp = pd.DataFrame(comp_rows)
         print("\n=== K=3 Nearest vs results/base_by_seed.csv ===")
         print(df_comp.to_markdown(index=False))

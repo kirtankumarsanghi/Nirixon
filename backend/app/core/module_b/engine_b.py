@@ -308,7 +308,11 @@ class Engine:
 
         theta_est = theta_0 + numerator / (1.0 + total_info)
         se = 1.0 / math.sqrt(1.0 + total_info)
-        return round(float(theta_est), 2), round(float(se), 2), round(float(total_info), 2)
+        return (
+            round(float(theta_est), 2),
+            round(float(se), 2),
+            round(float(total_info), 2),
+        )
 
     def _closed(self, s: Session, t: str) -> bool:
         xs = s.scored(t)
@@ -408,7 +412,12 @@ class Engine:
             sc += 0.6 * fisher_cand
             # Deterministic tie-breaker: hash session seed, answered count, and candidate item_id.
             # Completely replaces non-deterministic random jitter with a deterministic mathematical hash.
-            tie_hash = int(hashlib.md5(f"{s.seed}:{len(s.answers)}:{r.item_id}".encode()).hexdigest()[:8], 16)
+            tie_hash = int(
+                hashlib.md5(
+                    f"{s.seed}:{len(s.answers)}:{r.item_id}".encode()
+                ).hexdigest()[:8],
+                16,
+            )
             sc += (tie_hash / 0xFFFFFFFF) * 0.001
             if sc > best_sc:
                 best, best_sc = str(r.item_id), sc
@@ -461,7 +470,12 @@ class Engine:
                 continue
             rows = self.bank.safety[self.bank.safety.concept_id == cid]
             if len(rows):
-                pick_idx = int(hashlib.md5(f"{s.seed}:{cid}:{len(s.answers)}".encode()).hexdigest()[:8], 16) % len(rows)
+                pick_idx = int(
+                    hashlib.md5(
+                        f"{s.seed}:{cid}:{len(s.answers)}".encode()
+                    ).hexdigest()[:8],
+                    16,
+                ) % len(rows)
                 return self._q(s, rows.iloc[pick_idx], "safety")
         if self._stop(s):
             return {"type": "done"}
@@ -481,9 +495,9 @@ class Engine:
             "text": str(row["text"]),
             "track": track,
             "response_type": str(row["response_type"]),
-            "scale": str(row["scale_labels"])
-            if pd.notna(row["scale_labels"])
-            else None,
+            "scale": (
+                str(row["scale_labels"]) if pd.notna(row["scale_labels"]) else None
+            ),
             "progress": {"answered": len(s.answers), "max": self.cfg["max_questions"]},
         }
 
@@ -602,9 +616,11 @@ class Engine:
         a = a[(a.domain == t) & (a.age_min <= s.age) & (a.age_max >= s.age)]
         pick = a[a.level.isin(["any", "monitor" if state == "Monitor" else "refer"])]
         order = pick.assign(
-            k=pick.level.map({"refer": 0, "any": 1, "monitor": 2})
-            if state == "Refer"
-            else pick.level.map({"any": 0, "monitor": 1})
+            k=(
+                pick.level.map({"refer": 0, "any": 1, "monitor": 2})
+                if state == "Refer"
+                else pick.level.map({"any": 0, "monitor": 1})
+            )
         )
         return (
             order.sort_values("k")
@@ -705,9 +721,14 @@ class Engine:
 
         # Response quality & straight-lining detection
         likert_answers = [
-            str(a.get("raw") if a.get("raw") is not None else a.get("value", "")).strip()
+            str(
+                a.get("raw") if a.get("raw") is not None else a.get("value", "")
+            ).strip()
             for a in s.answers
-            if str(a.get("raw") if a.get("raw") is not None else a.get("value", "")).strip() in ("1", "2", "3", "4", "5")
+            if str(
+                a.get("raw") if a.get("raw") is not None else a.get("value", "")
+            ).strip()
+            in ("1", "2", "3", "4", "5")
             and a.get("item_type") != "safety"
         ]
         straight_lining = False

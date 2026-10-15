@@ -23,26 +23,25 @@ os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["SEED_USER_EMAIL"] = "parent@example.com"
 os.environ["SEED_USER_PASSWORD"] = "changeme"
 
-from sqlalchemy import select  # noqa: E402
-
-from app.auth import hash_password  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.db.models import RiskResult, User  # noqa: E402
-from app.db.session import (  # noqa: E402
+from app.auth import hash_password
+from app.config import get_settings
+from app.db.models import RiskResult, User
+from app.db.session import (
     Base,
     configure_engine,
     get_db,
     get_session_factory,
     reset_engine,
 )
-from app.db.session_repo import InMemorySessionRepo, set_session_repo  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.ml.inference_service import (  # noqa: E402
+from app.db.session_repo import InMemorySessionRepo, set_session_repo
+from app.main import create_app
+from app.ml.inference_service import (
     FeatureColumnMismatchError,
     InferenceService,
     build_feature_vector,
     inference_service,
 )
+from sqlalchemy import select
 
 ARTIFACTS = Path(__file__).resolve().parents[1] / "ml" / "artifacts"
 
@@ -490,9 +489,9 @@ async def test_predict_column_mismatch_returns_500(api_env):
         headers=_auth(token),
         json={"features": {"not_a_real_column": 1}},
     )
-    assert r.status_code == 500, (
-        f"Expected 500 for column mismatch on /api/predict, got {r.status_code}: {r.text}"
-    )
+    assert (
+        r.status_code == 500
+    ), f"Expected 500 for column mismatch on /api/predict, got {r.status_code}: {r.text}"
 
 
 # ---------------------------------------------------------------------------
@@ -512,10 +511,14 @@ async def test_login_writes_audit_log(api_env):
 
     async with factory() as session:
         rows = (
-            await session.execute(
-                select(AuditLog).where(AuditLog.action == "auth.login")
+            (
+                await session.execute(
+                    select(AuditLog).where(AuditLog.action == "auth.login")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     assert len(rows) >= 1, "Expected at least one auth.login AuditLog row after login"
     assert rows[0].actor_id is not None
 
@@ -538,24 +541,34 @@ async def test_override_writes_dedicated_audit_log(api_env):
 
     async with factory() as session:
         override_rows = (
-            await session.execute(
-                select(AuditLog).where(
-                    AuditLog.action == "override.applied",
-                    AuditLog.target_id == session_id,
+            (
+                await session.execute(
+                    select(AuditLog).where(
+                        AuditLog.action == "override.applied",
+                        AuditLog.target_id == session_id,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         complete_rows = (
-            await session.execute(
-                select(AuditLog).where(
-                    AuditLog.action == "screen.complete",
-                    AuditLog.target_id == session_id,
+            (
+                await session.execute(
+                    select(AuditLog).where(
+                        AuditLog.action == "screen.complete",
+                        AuditLog.target_id == session_id,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
-    assert len(override_rows) == 1, (
-        "Expected exactly one override.applied AuditLog row for the overridden session"
-    )
+    assert (
+        len(override_rows) == 1
+    ), "Expected exactly one override.applied AuditLog row for the overridden session"
     assert override_rows[0].detail == "regression_flag"
-    assert len(complete_rows) == 1, "screen.complete row must still exist as a separate entry"
+    assert (
+        len(complete_rows) == 1
+    ), "screen.complete row must still exist as a separate entry"

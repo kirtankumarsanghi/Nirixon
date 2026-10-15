@@ -1,31 +1,34 @@
 """Tiered Clinical Triage Architecture (Pass / Reflex-Branch / Refer).
-Eliminates clinic flooding by routing borderline cases into automated Module B reflex questions."""
+Eliminates clinic flooding by routing borderline cases into automated Module B reflex questions.
+"""
+
 import numpy as np
-import pandas as pd
 
 
-def evaluate_tiered_triage(y_status, risk_scores, direct_refer_target=0.15, total_recall_target=0.85):
+def evaluate_tiered_triage(
+    y_status, risk_scores, direct_refer_target=0.15, total_recall_target=0.85
+):
     """
     Evaluates a 3-tier triage system:
       - Tier 0: Pass (Routine checkup)
       - Tier 1: Reflex-Branch to Module B (Borderline/Monitor)
       - Tier 2: Direct Clinical Referral (High Risk)
-      
+
     Parameters:
       y_status: (n,) array of true labels (0=Typical, 1=Monitor, 2=Refer)
       risk_scores: (n,) array of continuous Refer risk probabilities
       direct_refer_target: Max fraction of total cohort allowed for direct clinic referral (e.g., 0.15)
       total_recall_target: Target combined recall (e.g., 0.85 of true Refer cases identified)
-      
+
     Returns:
       Dictionary of triage thresholds and operational outcomes.
     """
     n = len(risk_scores)
-    y_refer = (y_status == 2)
+    y_refer = y_status == 2
     n_refer = int(y_refer.sum())
 
     # 1. Direct Refer selection (sets direct clinic load to direct_refer_target even with ties)
-    k_refer = int(round(direct_refer_target * n))
+    k_refer = round(direct_refer_target * n)
     order = np.argsort(-risk_scores)
     direct_refer_mask = np.zeros(n, dtype=bool)
     if k_refer > 0:
@@ -41,8 +44,8 @@ def evaluate_tiered_triage(y_status, risk_scores, direct_refer_target=0.15, tota
 
     # 3. Assign Tiers
     tier = np.zeros(n, dtype=int)
-    tier[risk_scores >= tau_monitor] = 1   # Reflex-Branch
-    tier[direct_refer_mask] = 2            # Direct Refer
+    tier[risk_scores >= tau_monitor] = 1  # Reflex-Branch
+    tier[direct_refer_mask] = 2  # Direct Refer
 
     # 4. Compute Operational Yields
     direct_refer_share = float((tier == 2).mean())
@@ -55,7 +58,9 @@ def evaluate_tiered_triage(y_status, risk_scores, direct_refer_target=0.15, tota
 
     direct_refer_recall = direct_refer_detected / n_refer if n_refer > 0 else 0.0
     total_refer_recall = total_detected / n_refer if n_refer > 0 else 0.0
-    direct_refer_precision = direct_refer_detected / (tier == 2).sum() if (tier == 2).sum() > 0 else 0.0
+    direct_refer_precision = (
+        direct_refer_detected / (tier == 2).sum() if (tier == 2).sum() > 0 else 0.0
+    )
 
     # Clinic flood reduction: share of un-referred children spared from clinical visits
     clinic_flood_reduction = 1.0 - direct_refer_share

@@ -2,6 +2,7 @@
 Per age bracket and domain: mean and SD from simulated typical children; flag Refer below -2 SD and
 Monitor between -1 and -2 SD; the child's tier is the worst domain. Do NOT copy ASQ-3's own cutoff
 tables (copyrighted); these norms come from YOUR simulated or real typical children."""
+
 import numpy as np
 
 
@@ -24,4 +25,4 @@ def predict(age, scores, norms, width=6.0, refer_z=-2.0, monitor_z=-1.0):
         mk = bins == b
         min_z[mk] = ((scores[mk] - mu) / sd).min(1)
     tier = np.where(min_z < refer_z, 2, np.where(min_z < monitor_z, 1, 0))
-    return tier, -min_z          # -min_z is a continuous risk score (higher = riskier)
+    return tier, -min_z  # -min_z is a continuous risk score (higher = riskier)

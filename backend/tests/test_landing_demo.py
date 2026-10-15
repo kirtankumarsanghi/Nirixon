@@ -9,6 +9,7 @@ Tests for the landing-page demo flow:
 3. test_e2e_question_counter — verifies the question counter is live (not static)
                                across multiple answers.
 """
+
 from __future__ import annotations
 
 import os
@@ -25,19 +26,19 @@ os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["SEED_USER_EMAIL"] = "parent@example.com"
 os.environ["SEED_USER_PASSWORD"] = "changeme"
 
-from app.auth import hash_password  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.db.models import User  # noqa: E402
-from app.db.session import (  # noqa: E402
+from app.auth import hash_password
+from app.config import get_settings
+from app.db.models import User
+from app.db.session import (
     Base,
     configure_engine,
     get_db,
     get_session_factory,
     reset_engine,
 )
-from app.db.session_repo import InMemorySessionRepo, set_session_repo  # noqa: E402
-from app.main import create_app  # noqa: E402
-from app.ml.inference_service import inference_service  # noqa: E402
+from app.db.session_repo import InMemorySessionRepo, set_session_repo
+from app.main import create_app
+from app.ml.inference_service import inference_service
 
 ARTIFACTS = Path(__file__).resolve().parents[1] / "ml" / "artifacts"
 
@@ -103,6 +104,7 @@ async def demo_env(tmp_path):
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
+
 async def _login(client: AsyncClient) -> dict:
     resp = await client.post(
         "/api/auth/login",
@@ -130,6 +132,7 @@ async def _start_demo_session(
 
 
 # ── test 1: happy path ───────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_demo_happy_path(demo_env):
@@ -204,12 +207,13 @@ async def test_demo_happy_path(demo_env):
         assert "domain_classifications" in result
 
         # question counter was live (more than one unique question number seen)
-        assert len(seen_question_numbers) > 1, (
-            "Expected multiple question numbers during the screening"
-        )
+        assert (
+            len(seen_question_numbers) > 1
+        ), "Expected multiple question numbers during the screening"
 
 
 # ── test 2: safety rule bypass ───────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_safety_rule_bypass(demo_env):
@@ -258,21 +262,22 @@ async def test_safety_rule_bypass(demo_env):
 
         if regression_triggered:
             # Safety rule must have fired
-            assert result["safety_override_triggered"] is True, (
-                "Expected safety override when regression_flag=1"
-            )
-            assert result["override_rule"] == "regression_flag", (
-                f"Expected override_rule='regression_flag', got {result['override_rule']}"
-            )
-            assert result["final_classification"] == "Refer", (
-                f"Expected Refer after regression, got {result['final_classification']}"
-            )
+            assert (
+                result["safety_override_triggered"] is True
+            ), "Expected safety override when regression_flag=1"
+            assert (
+                result["override_rule"] == "regression_flag"
+            ), f"Expected override_rule='regression_flag', got {result['override_rule']}"
+            assert (
+                result["final_classification"] == "Refer"
+            ), f"Expected Refer after regression, got {result['final_classification']}"
         else:
             # No yes_no item in this session bracket — test still passes
             pytest.skip("No regression_flag item in this age bracket's adaptive set")
 
 
 # ── test 3: question counter is live ─────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_e2e_question_counter_is_live(demo_env):
@@ -304,11 +309,11 @@ async def test_e2e_question_counter_is_live(demo_env):
 
         if data["type"] == "question":
             second_q = data["question"]
-            assert second_q["question_number"] == 2, (
-                f"Second question must be #2, got {second_q['question_number']}"
-            )
-            assert second_q["question_cap"] == first_q["question_cap"], (
-                "question_cap must be stable across questions"
-            )
+            assert (
+                second_q["question_number"] == 2
+            ), f"Second question must be #2, got {second_q['question_number']}"
+            assert (
+                second_q["question_cap"] == first_q["question_cap"]
+            ), "question_cap must be stable across questions"
         # If the session completed after just one question that's also valid
         # (extremely short adaptive path for this age bracket)

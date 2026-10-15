@@ -32,23 +32,26 @@ from __future__ import annotations
 import json
 import logging
 import os
-from pathlib import Path
 import pickle
 import random
 import re
 import sys
 import time
+from pathlib import Path
 
 SEED = 42
 os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 
 import numpy as np
+
 np.random.seed(SEED)
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Dynamic path resolution: works from any working directory
@@ -66,17 +69,17 @@ GENERATOR_README_PATH = BACKEND_DIR / "data" / "generator" / "README.md"
 sys.path.insert(0, str(BASE_DIR))
 sys.path.insert(0, str(BACKEND_DIR))
 
-from columns import AGE_COLUMN, LABEL_ORDER, get_feature_columns, reorder_proba
+from columns import LABEL_ORDER, get_feature_columns, reorder_proba
 from evaluation.ablation_study import print_ablation_comparison, run_ablation
 from evaluation.fairness_check import print_fairness_result, run_fairness_check
 from evaluation.metrics import compute_metrics, print_metrics
+from evaluation.rule_baseline import evaluate_rule_vs_xgboost
 from evaluation.subgroup_sensitivity import (
     print_subgroup_tables,
     sensitivity_by_age_bracket,
     sensitivity_by_domain,
     sensitivity_by_family_history,
 )
-from evaluation.rule_baseline import evaluate_rule_vs_xgboost
 from explainability.shap_explainer import build_explainer, save_explainer
 from models.calibration import calibrate_model
 from models.model_comparison import run_grid_search
@@ -87,7 +90,9 @@ LATENCY_BENCHMARK_N = 200
 
 def load_data() -> pd.DataFrame:
     if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Dataset not found at {DATA_PATH}. Run Stage 1 generator first.")
+        raise FileNotFoundError(
+            f"Dataset not found at {DATA_PATH}. Run Stage 1 generator first."
+        )
     df = pd.read_csv(DATA_PATH)
     return df
 
@@ -129,7 +134,9 @@ def _y_for_model(name: str, y: pd.Series) -> np.ndarray | pd.Series:
     return y
 
 
-def evaluate_candidate_on_val(search_result, X_val, y_val) -> tuple[float, np.ndarray, list]:
+def evaluate_candidate_on_val(
+    search_result, X_val, y_val
+) -> tuple[float, np.ndarray, list]:
     best_estimator = search_result.best_estimator_
     proba = best_estimator.predict_proba(X_val)
     proba = reorder_proba(proba, best_estimator.classes_)
@@ -139,7 +146,9 @@ def evaluate_candidate_on_val(search_result, X_val, y_val) -> tuple[float, np.nd
     return metrics["macro_auprc"], proba, preds
 
 
-def benchmark_latency(model, X_sample: pd.DataFrame, n: int = LATENCY_BENCHMARK_N) -> dict:
+def benchmark_latency(
+    model, X_sample: pd.DataFrame, n: int = LATENCY_BENCHMARK_N
+) -> dict:
     row = X_sample.iloc[:1]
     latencies_ms = []
     for _ in range(n):
@@ -206,10 +215,12 @@ def _write_model_selection_report(
         "# Model Selection Report\n\n",
         "## Decision\n\n",
         f"**Production model: `{winner_name}`**\n\n",
-        "Selection criteria: highest validation-set macro AUPRC. "
-        "If XGBoost and Random Forest within 0.005 AUPRC, prefer Random Forest "
-        "(lower latency, lower memory). Logistic Regression wins only if it "
-        "strictly outperforms both tree models.\n\n",
+        (
+            "Selection criteria: highest validation-set macro AUPRC. "
+            "If XGBoost and Random Forest within 0.005 AUPRC, prefer Random Forest "
+            "(lower latency, lower memory). Logistic Regression wins only if it "
+            "strictly outperforms both tree models.\n\n"
+        ),
         "## Validation AUPRC (model selection set)\n\n",
         "| Model | Val Macro AUPRC |\n",
         "|---|---|\n",
@@ -266,11 +277,15 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
 
     refer_rec = winner_test.get("class_recall", {}).get(
         "Refer",
-        winner_test.get("sensitivity_specificity", {}).get("Refer", {}).get("sensitivity", 0.0)
+        winner_test.get("sensitivity_specificity", {})
+        .get("Refer", {})
+        .get("sensitivity", 0.0),
     )
     mon_rec = winner_test.get("class_recall", {}).get(
         "Monitor",
-        winner_test.get("sensitivity_specificity", {}).get("Monitor", {}).get("sensitivity", 0.0)
+        winner_test.get("sensitivity_specificity", {})
+        .get("Monitor", {})
+        .get("sensitivity", 0.0),
     )
 
     f_status = fairness.get("status", "PASS")
@@ -285,7 +300,9 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
                 f1_str = f"{r['macro_f1']['estimate']:.4f} [{r['macro_f1']['ci_lower']:.4f}, {r['macro_f1']['ci_upper']:.4f}]"
                 sens_str = f"{r['refer_sensitivity']['estimate']:.4f} [{r['refer_sensitivity']['ci_lower']:.4f}, {r['refer_sensitivity']['ci_upper']:.4f}]"
                 auprc_str = f"{r['macro_auprc']['estimate']:.4f} [{r['macro_auprc']['ci_lower']:.4f}, {r['macro_auprc']['ci_upper']:.4f}]"
-                stress_rows.append(f"| Missing Answers | {r['k_answered']} answered items | {f1_str} | {sens_str} | {auprc_str} |")
+                stress_rows.append(
+                    f"| Missing Answers | {r['k_answered']} answered items | {f1_str} | {sens_str} | {auprc_str} |"
+                )
 
     if "label_noise" in stress_tests:
         for r in stress_tests["label_noise"]:
@@ -293,16 +310,24 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
                 f1_str = f"{r['macro_f1']['estimate']:.4f} [{r['macro_f1']['ci_lower']:.4f}, {r['macro_f1']['ci_upper']:.4f}]"
                 sens_str = f"{r['refer_sensitivity']['estimate']:.4f} [{r['refer_sensitivity']['ci_lower']:.4f}, {r['refer_sensitivity']['ci_upper']:.4f}]"
                 auprc_str = f"{r['macro_auprc']['estimate']:.4f} [{r['macro_auprc']['ci_lower']:.4f}, {r['macro_auprc']['ci_upper']:.4f}]"
-                stress_rows.append(f"| Label Noise | {r['noise_rate']*100:.0f}% flip noise | {f1_str} | {sens_str} | {auprc_str} |")
+                stress_rows.append(
+                    f"| Label Noise | {r['noise_rate']*100:.0f}% flip noise | {f1_str} | {sens_str} | {auprc_str} |"
+                )
 
     if "reporting_bias" in stress_tests:
         for r in stress_tests["reporting_bias"]:
             if round(r["reporting_bias"], 1) in (-0.8, 0.0, 0.8):
-                desc = "under-report" if r["reporting_bias"] < 0 else ("calibrated" if r["reporting_bias"] == 0 else "over-report")
+                desc = (
+                    "under-report"
+                    if r["reporting_bias"] < 0
+                    else ("calibrated" if r["reporting_bias"] == 0 else "over-report")
+                )
                 f1_str = f"{r['macro_f1']['estimate']:.4f} [{r['macro_f1']['ci_lower']:.4f}, {r['macro_f1']['ci_upper']:.4f}]"
                 sens_str = f"{r['refer_sensitivity']['estimate']:.4f} [{r['refer_sensitivity']['ci_lower']:.4f}, {r['refer_sensitivity']['ci_upper']:.4f}]"
                 auprc_str = f"{r['macro_auprc']['estimate']:.4f} [{r['macro_auprc']['ci_lower']:.4f}, {r['macro_auprc']['ci_upper']:.4f}]"
-                stress_rows.append(f"| Caregiver Reporting Bias | shift = {r['reporting_bias']:+.1f} ({desc}) | {f1_str} | {sens_str} | {auprc_str} |")
+                stress_rows.append(
+                    f"| Caregiver Reporting Bias | shift = {r['reporting_bias']:+.1f} ({desc}) | {f1_str} | {sens_str} | {auprc_str} |"
+                )
 
     if "generator_shift" in stress_tests:
         for r in stress_tests["generator_shift"]:
@@ -310,7 +335,9 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
                 f1_str = f"{r['macro_f1']['estimate']:.4f} [{r['macro_f1']['ci_lower']:.4f}, {r['macro_f1']['ci_upper']:.4f}]"
                 sens_str = f"{r['refer_sensitivity']['estimate']:.4f} [{r['refer_sensitivity']['ci_lower']:.4f}, {r['refer_sensitivity']['ci_upper']:.4f}]"
                 auprc_str = f"{r['macro_auprc']['estimate']:.4f} [{r['macro_auprc']['ci_lower']:.4f}, {r['macro_auprc']['ci_upper']:.4f}]"
-                stress_rows.append(f"| Generator Parameter Shift | severity = {r['shift_severity']:.2f} | {f1_str} | {sens_str} | {auprc_str} |")
+                stress_rows.append(
+                    f"| Generator Parameter Shift | severity = {r['shift_severity']:.2f} | {f1_str} | {sens_str} | {auprc_str} |"
+                )
 
     stress_table_md = "\n".join(stress_rows)
 
@@ -378,8 +405,12 @@ A standard clinical baseline scores each developmental domain against published 
 **Single Source of Truth**: All metrics and evaluation tables are strictly synchronized from `backend/ml/artifacts/metrics.json`."""
 
     content = readme_path.read_text(encoding="utf-8")
-    start_marker = "## What came back — the actual numbers, not a promise of \"strong results\""
-    end_marker = "## Two real bugs caught while building this — worth knowing about, not hiding"
+    start_marker = (
+        '## What came back — the actual numbers, not a promise of "strong results"'
+    )
+    end_marker = (
+        "## Two real bugs caught while building this — worth knowing about, not hiding"
+    )
 
     if start_marker in content and end_marker in content:
         prefix = content.split(start_marker)[0]
@@ -388,12 +419,16 @@ A standard clinical baseline scores each developmental domain against published 
         readme_path.write_text(updated_content, encoding="utf-8")
         logger.info("Updated metrics section in %s", readme_path)
     else:
-        logger.warning("Could not find start/end markers in README.md; appending new metrics.")
+        logger.warning(
+            "Could not find start/end markers in README.md; appending new metrics."
+        )
 
 
 def _update_generator_readme_report(metrics_data: dict, readme_path: Path) -> None:
     if not readme_path.exists():
-        logger.warning("Generator README not found at %s; skipping update.", readme_path)
+        logger.warning(
+            "Generator README not found at %s; skipping update.", readme_path
+        )
         return
 
     ds = metrics_data.get("dataset_generation", {})
@@ -421,7 +456,9 @@ def _update_generator_readme_report(metrics_data: dict, readme_path: Path) -> No
     )
 
     content = readme_path.read_text(encoding="utf-8")
-    table_pattern = re.compile(r"\| Check \| Result \|.*?(?=\n\n\*\*The regression_flag fix)", re.DOTALL)
+    table_pattern = re.compile(
+        r"\| Check \| Result \|.*?(?=\n\n\*\*The regression_flag fix)", re.DOTALL
+    )
     if table_pattern.search(content):
         updated_content = table_pattern.sub(table_block, content)
         readme_path.write_text(updated_content, encoding="utf-8")
@@ -449,7 +486,7 @@ def _collect_all_numeric_tokens(obj) -> set[str]:
         for num in re.findall(r"\b\d+\.?\d*\b", obj):
             tokens.add(num)
     elif isinstance(obj, dict):
-        for k, v in obj.items():
+        for v in obj.values():
             tokens.update(_collect_all_numeric_tokens(v))
     elif isinstance(obj, (list, tuple)):
         for item in obj:
@@ -473,7 +510,9 @@ def _collect_all_floats(obj) -> set[float]:
     return floats
 
 
-def _verify_documents_against_metrics_file(metrics_data: dict, doc_paths: list[Path]) -> None:
+def _verify_documents_against_metrics_file(
+    metrics_data: dict, doc_paths: list[Path]
+) -> None:
     """
     Validation gate: scans document tables and asserts that every number
     displayed comes strictly from metrics.json.
@@ -484,10 +523,40 @@ def _verify_documents_against_metrics_file(metrics_data: dict, doc_paths: list[P
 
     # Standard non-metric tokens in markdown tables (dates, item numbers, age months 0-60)
     exempt_tokens = {
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-        "21", "22", "24", "27", "30", "33", "36", "42", "48", "54", "60",
-        "0", "100", "2000",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "24",
+        "27",
+        "30",
+        "33",
+        "36",
+        "42",
+        "48",
+        "54",
+        "60",
+        "0",
+        "100",
+        "2000",
     }
 
     for path in doc_paths:
@@ -496,7 +565,12 @@ def _verify_documents_against_metrics_file(metrics_data: dict, doc_paths: list[P
         text = path.read_text(encoding="utf-8")
 
         # Extract tables
-        table_lines = [line for line in text.splitlines() if line.strip().startswith("|") and not re.match(r"^\|\s*[-:]+\s*\|", line.strip())]
+        table_lines = [
+            line
+            for line in text.splitlines()
+            if line.strip().startswith("|")
+            and not re.match(r"^\|\s*[-:]+\s*\|", line.strip())
+        ]
         for line in table_lines:
             nums = re.findall(r"\b\d+\.?\d*\b", line)
             for n in nums:
@@ -504,7 +578,12 @@ def _verify_documents_against_metrics_file(metrics_data: dict, doc_paths: list[P
                     continue
                 try:
                     val = float(n)
-                    matched = any(abs(val - vf) < 0.005 or abs(val * 100 - vf) < 0.05 or abs(val - vf * 100) < 0.05 for vf in valid_floats)
+                    matched = any(
+                        abs(val - vf) < 0.005
+                        or abs(val * 100 - vf) < 0.05
+                        or abs(val - vf * 100) < 0.05
+                        for vf in valid_floats
+                    )
                     if not matched:
                         raise AssertionError(
                             f"Consistency violation in {path.name}: number '{n}' on line '{line.strip()}' "
@@ -523,13 +602,23 @@ def main():
     logger.info("Loading data from %s...", DATA_PATH)
     df = load_data()
     feature_columns = get_feature_columns(df)
-    logger.info("Feature columns (%d): %s...%s", len(feature_columns), feature_columns[:5], feature_columns[-3:])
+    logger.info(
+        "Feature columns (%d): %s...%s",
+        len(feature_columns),
+        feature_columns[:5],
+        feature_columns[-3:],
+    )
 
     splits = split_data(df, feature_columns)
     X_train, y_train, _aux_train = splits["train"]
     X_val, y_val, _aux_val = splits["val"]
     X_test, y_test, aux_test = splits["test"]
-    logger.info("Split sizes -> train: %d, val: %d, test: %d", len(X_train), len(X_val), len(X_test))
+    logger.info(
+        "Split sizes -> train: %d, val: %d, test: %d",
+        len(X_train),
+        len(X_val),
+        len(X_test),
+    )
 
     # --- Model comparison ---
     logger.info("Running model comparison with GridSearchCV...")
@@ -573,9 +662,15 @@ def main():
 
         # Extract per-class recall and precision
         rep_dict = metrics.get("classification_report_dict", {})
-        metrics["class_recall"] = {lbl: rep_dict.get(lbl, {}).get("recall", 0.0) for lbl in LABEL_ORDER}
-        metrics["class_precision"] = {lbl: rep_dict.get(lbl, {}).get("precision", 0.0) for lbl in LABEL_ORDER}
-        metrics["class_f1"] = {lbl: rep_dict.get(lbl, {}).get("f1-score", 0.0) for lbl in LABEL_ORDER}
+        metrics["class_recall"] = {
+            lbl: rep_dict.get(lbl, {}).get("recall", 0.0) for lbl in LABEL_ORDER
+        }
+        metrics["class_precision"] = {
+            lbl: rep_dict.get(lbl, {}).get("precision", 0.0) for lbl in LABEL_ORDER
+        }
+        metrics["class_f1"] = {
+            lbl: rep_dict.get(lbl, {}).get("f1-score", 0.0) for lbl in LABEL_ORDER
+        }
 
         test_metrics_by_model[name] = to_serializable(metrics)
         test_preds_by_model[name] = preds
@@ -617,12 +712,20 @@ def main():
     print_subgroup_tables(bracket_table, fh_table, domain_table)
 
     # --- Latency benchmark ---
-    logger.info("Benchmarking inference latency (n=%d calls per model)...", LATENCY_BENCHMARK_N)
+    logger.info(
+        "Benchmarking inference latency (n=%d calls per model)...", LATENCY_BENCHMARK_N
+    )
     latency_by_model: dict[str, dict] = {}
     for name, model in calibrated_models.items():
         lat = benchmark_latency(model, X_test, n=LATENCY_BENCHMARK_N)
         latency_by_model[name] = to_serializable(lat)
-        logger.info("  %-22s: p50=%.2fms, p95=%.2fms, p99=%.2fms", name, lat["p50_ms"], lat["p95_ms"], lat["p99_ms"])
+        logger.info(
+            "  %-22s: p50=%.2fms, p95=%.2fms, p99=%.2fms",
+            name,
+            lat["p50_ms"],
+            lat["p95_ms"],
+            lat["p99_ms"],
+        )
 
     with open(ARTIFACTS_DIR / "latency_benchmark.json", "w", encoding="utf-8") as f:
         json.dump(latency_by_model, f, indent=2)
@@ -631,7 +734,9 @@ def main():
     logger.info("Fitting SHAP explainer...")
     if winner_name in ("random_forest", "xgboost"):
         raw_tree_model = winner_pipeline.named_steps["clf"]
-        explainer = build_explainer(raw_tree_model, feature_columns, model_name=winner_name)
+        explainer = build_explainer(
+            raw_tree_model, feature_columns, model_name=winner_name
+        )
         save_explainer(explainer, ARTIFACTS_DIR / "shap_explainer.pkl")
 
     # --- Save production serving artifacts ---
@@ -649,9 +754,11 @@ def main():
     rule_baseline_res = evaluate_rule_vs_xgboost(df, winner_model, feature_columns)
 
     # --- Load or run stress tests ---
-    stress_summary_path = BASE_DIR / "evaluation" / "artifacts" / "stress_test_summary.json"
+    stress_summary_path = (
+        BASE_DIR / "evaluation" / "artifacts" / "stress_test_summary.json"
+    )
     if stress_summary_path.exists():
-        with open(stress_summary_path, "r", encoding="utf-8") as f:
+        with open(stress_summary_path, encoding="utf-8") as f:
             stress_tests_data = json.load(f)
     else:
         stress_tests_data = {}
@@ -678,8 +785,12 @@ def main():
     # --- COMPILE UNIFIED METRICS CONTRACT ---
     if not bracket_table.empty and "refer_recall" in bracket_table.columns:
         valid_recalls = bracket_table["refer_recall"].dropna()
-        min_subgroup_sens = round(float(valid_recalls.min()), 4) if not valid_recalls.empty else 0.0
-        max_subgroup_sens = round(float(valid_recalls.max()), 4) if not valid_recalls.empty else 0.0
+        min_subgroup_sens = (
+            round(float(valid_recalls.min()), 4) if not valid_recalls.empty else 0.0
+        )
+        max_subgroup_sens = (
+            round(float(valid_recalls.max()), 4) if not valid_recalls.empty else 0.0
+        )
     else:
         min_subgroup_sens = 0.0
         max_subgroup_sens = 0.0
@@ -687,7 +798,9 @@ def main():
     fairness_gap = float(fairness_result["refer_prob_gap"])
     monitor_gap = float(fairness_result["monitor_or_refer_prob_gap"])
     fairness_threshold = 0.05
-    fairness_passed = (fairness_gap <= fairness_threshold and monitor_gap <= fairness_threshold)
+    fairness_passed = (
+        fairness_gap <= fairness_threshold and monitor_gap <= fairness_threshold
+    )
     fairness_status = "PASS" if fairness_passed else "FAIL"
 
     fairness_dict = to_serializable(fairness_result)
@@ -730,17 +843,35 @@ def main():
         },
         "ablation_study": {
             "metric": "macro_auprc",
-            "with_age": round(float(test_metrics_by_model[winner_name]["macro_auprc"]), 4),
-            "without_age": round(float(ablation_result["ablated_metrics"]["macro_auprc"]), 4),
-            "delta": round(float(test_metrics_by_model[winner_name]["macro_auprc"] - ablation_result["ablated_metrics"]["macro_auprc"]), 4),
+            "with_age": round(
+                float(test_metrics_by_model[winner_name]["macro_auprc"]), 4
+            ),
+            "without_age": round(
+                float(ablation_result["ablated_metrics"]["macro_auprc"]), 4
+            ),
+            "delta": round(
+                float(
+                    test_metrics_by_model[winner_name]["macro_auprc"]
+                    - ablation_result["ablated_metrics"]["macro_auprc"]
+                ),
+                4,
+            ),
         },
         "fairness_check": fairness_dict,
         "subgroup_sensitivity": {
             "min_refer_sensitivity": min_subgroup_sens,
             "max_refer_sensitivity": max_subgroup_sens,
-            "by_age_bracket": bracket_table.to_dict(orient="records") if not bracket_table.empty else [],
-            "by_family_history": fh_table.to_dict(orient="records") if not fh_table.empty else [],
-            "by_domain": domain_table.to_dict(orient="records") if not domain_table.empty else [],
+            "by_age_bracket": (
+                bracket_table.to_dict(orient="records")
+                if not bracket_table.empty
+                else []
+            ),
+            "by_family_history": (
+                fh_table.to_dict(orient="records") if not fh_table.empty else []
+            ),
+            "by_domain": (
+                domain_table.to_dict(orient="records") if not domain_table.empty else []
+            ),
         },
         "rule_baseline_comparison": to_serializable(rule_baseline_res),
         "stress_tests": stress_tests_data,
@@ -760,8 +891,7 @@ def main():
 
     # Execute verification gate: confirm that every document table matches metrics.json
     _verify_documents_against_metrics_file(
-        all_metrics,
-        [MODEL_SELECTION_MD_PATH, README_MD_PATH, GENERATOR_README_PATH]
+        all_metrics, [MODEL_SELECTION_MD_PATH, README_MD_PATH, GENERATOR_README_PATH]
     )
 
     logger.info("Training pipeline and document synchronization complete!")

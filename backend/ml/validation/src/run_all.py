@@ -1,9 +1,10 @@
 """Multi-seed validation runner. Writes results/*.csv, results.json and numbers_sheet.md."""
+
 import argparse
-from dataclasses import replace
 import json
 import os
 import sys
+from dataclasses import replace
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -17,11 +18,11 @@ from stress import assert_distinct_seeds, new_model, run_loso, run_stress
 
 
 def recall_at_fixed_flagged(y_status, risk, target_share):
-    y = (y_status == 2)
+    y = y_status == 2
     n_pos = int(y.sum())
     if n_pos == 0:
         return np.nan
-    k = int(round(target_share * len(risk)))
+    k = round(target_share * len(risk))
     idx = np.argsort(-risk)[:k]
     return float(y[idx].sum() / n_pos)
 
@@ -30,9 +31,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--quick", action="store_true")
 ap.add_argument("--items", default="data/item_source.csv")
 ap.add_argument("--out_dir", default="results")
-ap.add_argument(
-    "--seeds", type=int, nargs="+", default=[10, 42, 100, 200, 300]
-)
+ap.add_argument("--seeds", type=int, nargs="+", default=[10, 42, 100, 200, 300])
 args = ap.parse_args()
 os.makedirs(args.out_dir, exist_ok=True)
 
@@ -47,10 +46,24 @@ s_counts = items["s_status"].value_counts().to_dict()
 status_rows = []
 for s in ["SOURCED", "AUTHOR-SET", "UNVERIFIED"]:
     cnt = age75_counts.get(s, 0)
-    status_rows.append({"Field": "age75_status", "Status": s, "Count": cnt, "Share": f"{(cnt / n_items):.1%}"})
+    status_rows.append(
+        {
+            "Field": "age75_status",
+            "Status": s,
+            "Count": cnt,
+            "Share": f"{(cnt / n_items):.1%}",
+        }
+    )
 for s in ["WHO-DERIVED", "AUTHOR-SET"]:
     cnt = s_counts.get(s, 0)
-    status_rows.append({"Field": "s_status", "Status": s, "Count": cnt, "Share": f"{(cnt / n_items):.1%}"})
+    status_rows.append(
+        {
+            "Field": "s_status",
+            "Status": s,
+            "Count": cnt,
+            "Share": f"{(cnt / n_items):.1%}",
+        }
+    )
 df_status = pd.DataFrame(status_rows)
 
 # 2. Multi-seed base experiment: train(seed), val(seed+1), test(seed+2)
@@ -82,8 +95,8 @@ for s in args.seeds:
 
     y_ref = te["status"] == 2
     n_ref = int(y_ref.sum())
-    k_ml_ref = int(round(ml_at["recall"] * n_ref))
-    k_rule_ref = int(round(rule_at["recall"] * n_ref))
+    k_ml_ref = round(ml_at["recall"] * n_ref)
+    k_rule_ref = round(rule_at["recall"] * n_ref)
 
     w_low_ml, w_high_ml = wilson(k_ml_ref, n_ref)
     w_low_rule, w_high_rule = wilson(k_rule_ref, n_ref)
@@ -104,36 +117,36 @@ for s in args.seeds:
     ref_share = float((te["status"] == 2).mean())
 
     seed_records.append(
-        dict(
-            seed=s,
-            ml_refer_auprc=round(float(ml_auprc), 4),
-            rule_refer_auprc=round(float(rule_auprc), 4),
-            paired_diff=round(float(paired_diff), 4),
-            ml_macro_auprc=round(float(ml_macro), 4),
-            ml_recall=round(float(ml_at["recall"]), 4),
-            ml_precision=round(float(ml_at["precision"]), 4),
-            ml_flagged=round(float(ml_at["flagged_share"]), 4),
-            ml_recall_wilson_low=round(float(w_low_ml), 4),
-            ml_recall_wilson_high=round(float(w_high_ml), 4),
-            rule_recall=round(float(rule_at["recall"]), 4),
-            rule_precision=round(float(rule_at["precision"]), 4),
-            rule_flagged=round(float(rule_at["flagged_share"]), 4),
-            rule_recall_wilson_low=round(float(w_low_rule), 4),
-            rule_recall_wilson_high=round(float(w_high_rule), 4),
-            ml_rec_f10=round(ml_rec_f10, 4),
-            ml_rec_f15=round(ml_rec_f15, 4),
-            ml_rec_f20=round(ml_rec_f20, 4),
-            ml_rec_f30=round(ml_rec_f30, 4),
-            rule_rec_f10=round(rule_rec_f10, 4),
-            rule_rec_f15=round(rule_rec_f15, 4),
-            rule_rec_f20=round(rule_rec_f20, 4),
-            rule_rec_f30=round(rule_rec_f30, 4),
-            refer_prev=round(float(ref_share), 4),
-            typical_prev=round(float(typ_share), 4),
-            monitor_prev=round(float(mon_share), 4),
-            n_refer=n_ref,
-            k_ml_refer=k_ml_ref,
-        )
+        {
+            "seed": s,
+            "ml_refer_auprc": round(float(ml_auprc), 4),
+            "rule_refer_auprc": round(float(rule_auprc), 4),
+            "paired_diff": round(float(paired_diff), 4),
+            "ml_macro_auprc": round(float(ml_macro), 4),
+            "ml_recall": round(float(ml_at["recall"]), 4),
+            "ml_precision": round(float(ml_at["precision"]), 4),
+            "ml_flagged": round(float(ml_at["flagged_share"]), 4),
+            "ml_recall_wilson_low": round(float(w_low_ml), 4),
+            "ml_recall_wilson_high": round(float(w_high_ml), 4),
+            "rule_recall": round(float(rule_at["recall"]), 4),
+            "rule_precision": round(float(rule_at["precision"]), 4),
+            "rule_flagged": round(float(rule_at["flagged_share"]), 4),
+            "rule_recall_wilson_low": round(float(w_low_rule), 4),
+            "rule_recall_wilson_high": round(float(w_high_rule), 4),
+            "ml_rec_f10": round(ml_rec_f10, 4),
+            "ml_rec_f15": round(ml_rec_f15, 4),
+            "ml_rec_f20": round(ml_rec_f20, 4),
+            "ml_rec_f30": round(ml_rec_f30, 4),
+            "rule_rec_f10": round(rule_rec_f10, 4),
+            "rule_rec_f15": round(rule_rec_f15, 4),
+            "rule_rec_f20": round(rule_rec_f20, 4),
+            "rule_rec_f30": round(rule_rec_f30, 4),
+            "refer_prev": round(float(ref_share), 4),
+            "typical_prev": round(float(typ_share), 4),
+            "monitor_prev": round(float(mon_share), 4),
+            "n_refer": n_ref,
+            "k_ml_refer": k_ml_ref,
+        }
     )
 
 df_seeds = pd.DataFrame(seed_records)
@@ -269,20 +282,22 @@ for k in k_values:
         k_rule_f20.append(recall_at_fixed_flagged(te_k["status"], rule_te, 0.20))
         k_rule_f30.append(recall_at_fixed_flagged(te_k["status"], rule_te, 0.30))
 
-    k_table_rows.append({
-        "Items/Domain (K)": k,
-        "Total Items Asked": k * len(cfg.domains),
-        "Refer AUPRC (Mean)": round(float(np.mean(k_auprcs)), 3),
-        "Refer AUPRC (Range)": f"[{np.min(k_auprcs):.3f}, {np.max(k_auprcs):.3f}]",
-        "ML Rec @ 10% Flagged": f"{np.mean(k_ml_f10):.3f} [{np.min(k_ml_f10):.3f}, {np.max(k_ml_f10):.3f}]",
-        "ML Rec @ 15% Flagged": f"{np.mean(k_ml_f15):.3f} [{np.min(k_ml_f15):.3f}, {np.max(k_ml_f15):.3f}]",
-        "ML Rec @ 20% Flagged": f"{np.mean(k_ml_f20):.3f} [{np.min(k_ml_f20):.3f}, {np.max(k_ml_f20):.3f}]",
-        "ML Rec @ 30% Flagged": f"{np.mean(k_ml_f30):.3f} [{np.min(k_ml_f30):.3f}, {np.max(k_ml_f30):.3f}]",
-        "Rule Rec @ 10% Flagged": f"{np.mean(k_rule_f10):.3f}",
-        "Rule Rec @ 20% Flagged": f"{np.mean(k_rule_f20):.3f}",
-        "Recall at 0.85 Target (Mean)": round(float(np.mean(k_recs)), 3),
-        "Flagged Share (Mean)": round(float(np.mean(k_flags)), 3),
-    })
+    k_table_rows.append(
+        {
+            "Items/Domain (K)": k,
+            "Total Items Asked": k * len(cfg.domains),
+            "Refer AUPRC (Mean)": round(float(np.mean(k_auprcs)), 3),
+            "Refer AUPRC (Range)": f"[{np.min(k_auprcs):.3f}, {np.max(k_auprcs):.3f}]",
+            "ML Rec @ 10% Flagged": f"{np.mean(k_ml_f10):.3f} [{np.min(k_ml_f10):.3f}, {np.max(k_ml_f10):.3f}]",
+            "ML Rec @ 15% Flagged": f"{np.mean(k_ml_f15):.3f} [{np.min(k_ml_f15):.3f}, {np.max(k_ml_f15):.3f}]",
+            "ML Rec @ 20% Flagged": f"{np.mean(k_ml_f20):.3f} [{np.min(k_ml_f20):.3f}, {np.max(k_ml_f20):.3f}]",
+            "ML Rec @ 30% Flagged": f"{np.mean(k_ml_f30):.3f} [{np.min(k_ml_f30):.3f}, {np.max(k_ml_f30):.3f}]",
+            "Rule Rec @ 10% Flagged": f"{np.mean(k_rule_f10):.3f}",
+            "Rule Rec @ 20% Flagged": f"{np.mean(k_rule_f20):.3f}",
+            "Recall at 0.85 Target (Mean)": round(float(np.mean(k_recs)), 3),
+            "Flagged Share (Mean)": round(float(np.mean(k_flags)), 3),
+        }
+    )
 df_k_summary = pd.DataFrame(k_table_rows)
 
 # 4. Pace sensitivity (trained and tested at the same pace)
@@ -307,16 +322,18 @@ for p in pace_values:
         p_prevs.append((te_p["status"] == 2).mean())
 
     diffs_p = np.array(p_ml_auprcs) - np.array(p_rule_auprcs)
-    pace_records.append({
-        "Pace": p,
-        "Prevalence (Mean)": f"{np.mean(p_prevs):.3f}",
-        "ML Refer AUPRC (Mean)": f"{np.mean(p_ml_auprcs):.3f}",
-        "ML Refer AUPRC (Range)": f"[{np.min(p_ml_auprcs):.3f}, {np.max(p_ml_auprcs):.3f}]",
-        "Rule Refer AUPRC (Mean)": f"{np.mean(p_rule_auprcs):.3f}",
-        "Rule Refer AUPRC (Range)": f"[{np.min(p_rule_auprcs):.3f}, {np.max(p_rule_auprcs):.3f}]",
-        "Paired Diff Mean (ML - Rule)": f"{np.mean(diffs_p):.3f}",
-        "Paired Diff Range": f"[{np.min(diffs_p):.3f}, {np.max(diffs_p):.3f}]",
-    })
+    pace_records.append(
+        {
+            "Pace": p,
+            "Prevalence (Mean)": f"{np.mean(p_prevs):.3f}",
+            "ML Refer AUPRC (Mean)": f"{np.mean(p_ml_auprcs):.3f}",
+            "ML Refer AUPRC (Range)": f"[{np.min(p_ml_auprcs):.3f}, {np.max(p_ml_auprcs):.3f}]",
+            "Rule Refer AUPRC (Mean)": f"{np.mean(p_rule_auprcs):.3f}",
+            "Rule Refer AUPRC (Range)": f"[{np.min(p_rule_auprcs):.3f}, {np.max(p_rule_auprcs):.3f}]",
+            "Paired Diff Mean (ML - Rule)": f"{np.mean(diffs_p):.3f}",
+            "Paired Diff Range": f"[{np.min(diffs_p):.3f}, {np.max(diffs_p):.3f}]",
+        }
+    )
 df_pace_summary = pd.DataFrame(pace_records)
 df_pace_summary.to_csv(os.path.join(args.out_dir, "pace_sensitivity.csv"), index=False)
 
@@ -327,74 +344,105 @@ for s in args.seeds:
     df_s["seed"] = s
     stress_frames.append(df_s)
 df_all_stress = pd.concat(stress_frames, ignore_index=True)
-df_all_stress.round(3).to_csv(os.path.join(args.out_dir, "stress_tests.csv"), index=False)
+df_all_stress.round(3).to_csv(
+    os.path.join(args.out_dir, "stress_tests.csv"), index=False
+)
 
 stress_summary = []
 for scenario, grp in df_all_stress.groupby("scenario", sort=False):
-    stress_summary.append({
-        "Scenario": scenario,
-        "Prevalence": f"{grp['refer_prevalence'].mean():.3f}",
-        "ML AUPRC Mean": f"{grp['ml_auprc'].mean():.3f}",
-        "ML AUPRC Range": f"[{grp['ml_auprc'].min():.3f}, {grp['ml_auprc'].max():.3f}]",
-        "Rule AUPRC Mean": f"{grp['rule_auprc'].mean():.3f}",
-        "Rule AUPRC Range": f"[{grp['rule_auprc'].min():.3f}, {grp['rule_auprc'].max():.3f}]",
-        "ML Recall Mean": f"{grp['ml_recall'].mean():.3f}",
-        "Rule Recall Mean": f"{grp['rule_recall'].mean():.3f}",
-        "ML Flagged Mean": f"{grp['ml_flagged'].mean():.3f}",
-        "Rule Flagged Mean": f"{grp['rule_flagged'].mean():.3f}",
-        "ML Precision Mean": f"{grp['ml_precision'].mean():.3f}",
-        "Rule Precision Mean": f"{grp['rule_precision'].mean():.3f}",
-    })
+    stress_summary.append(
+        {
+            "Scenario": scenario,
+            "Prevalence": f"{grp['refer_prevalence'].mean():.3f}",
+            "ML AUPRC Mean": f"{grp['ml_auprc'].mean():.3f}",
+            "ML AUPRC Range": f"[{grp['ml_auprc'].min():.3f}, {grp['ml_auprc'].max():.3f}]",
+            "Rule AUPRC Mean": f"{grp['rule_auprc'].mean():.3f}",
+            "Rule AUPRC Range": f"[{grp['rule_auprc'].min():.3f}, {grp['rule_auprc'].max():.3f}]",
+            "ML Recall Mean": f"{grp['ml_recall'].mean():.3f}",
+            "Rule Recall Mean": f"{grp['rule_recall'].mean():.3f}",
+            "ML Flagged Mean": f"{grp['ml_flagged'].mean():.3f}",
+            "Rule Flagged Mean": f"{grp['rule_flagged'].mean():.3f}",
+            "ML Precision Mean": f"{grp['ml_precision'].mean():.3f}",
+            "Rule Precision Mean": f"{grp['rule_precision'].mean():.3f}",
+        }
+    )
 df_stress_sheet = pd.DataFrame(stress_summary)
 
 # 6. Leave-one-simulator-out across all seeds with in-distribution handling
 loso_frames = []
 for s in args.seeds:
-    df_l = run_loso(cfg, items, rows_per_setting=800 if args.quick else 1500, n_test=3000 if args.quick else 5000, seed=s)
+    df_l = run_loso(
+        cfg,
+        items,
+        rows_per_setting=800 if args.quick else 1500,
+        n_test=3000 if args.quick else 5000,
+        seed=s,
+    )
     df_l["seed"] = s
     df_l["diff"] = df_l["randomized_auprc"] - df_l["single_simulator_auprc"]
     loso_frames.append(df_l)
 df_all_loso = pd.concat(loso_frames, ignore_index=True)
-df_all_loso[["seed", "held_out", "in_distribution", "single_simulator_auprc", "randomized_auprc", "diff", "prevalence"]].round(3).to_csv(os.path.join(args.out_dir, "leave_one_simulator_out.csv"), index=False)
+df_all_loso[
+    [
+        "seed",
+        "held_out",
+        "in_distribution",
+        "single_simulator_auprc",
+        "randomized_auprc",
+        "diff",
+        "prevalence",
+    ]
+].round(3).to_csv(
+    os.path.join(args.out_dir, "leave_one_simulator_out.csv"), index=False
+)
 
 # Held-out summary table
 loso_summary = []
 for held, grp in df_all_loso.groupby("held_out", sort=False):
     in_dist = grp["in_distribution"].iloc[0]
-    loso_summary.append({
-        "Held Out": held,
-        "In Distribution": bool(in_dist),
-        "Single AUPRC Mean": f"{grp['single_simulator_auprc'].mean():.3f}",
-        "Randomized AUPRC Mean": f"{grp['randomized_auprc'].mean():.3f}",
-        "Diff Mean (Rand - Single)": f"{grp['diff'].mean():.3f}",
-        "Diff Range": f"[{grp['diff'].min():.3f}, {grp['diff'].max():.3f}]",
-        "Prevalence": f"{grp['prevalence'].mean():.3f}",
-    })
+    loso_summary.append(
+        {
+            "Held Out": held,
+            "In Distribution": bool(in_dist),
+            "Single AUPRC Mean": f"{grp['single_simulator_auprc'].mean():.3f}",
+            "Randomized AUPRC Mean": f"{grp['randomized_auprc'].mean():.3f}",
+            "Diff Mean (Rand - Single)": f"{grp['diff'].mean():.3f}",
+            "Diff Range": f"[{grp['diff'].min():.3f}, {grp['diff'].max():.3f}]",
+            "Prevalence": f"{grp['prevalence'].mean():.3f}",
+        }
+    )
 df_loso_sheet = pd.DataFrame(loso_summary)
 
 # Per-factor summary table (excluding in_distribution rows)
 factors = ["pace", "flip_rate", "yes_bias_share", "g_weight"]
 factor_summary_rows = []
 for f in factors:
-    f_sub = df_all_loso[(df_all_loso["held_out"].str.startswith(f"{f}=")) & (~df_all_loso["in_distribution"])]
-    factor_summary_rows.append({
-        "Factor": f,
-        "OOD Settings": len(f_sub["held_out"].unique()),
-        "Single AUPRC Mean": f"{f_sub['single_simulator_auprc'].mean():.3f}",
-        "Randomized AUPRC Mean": f"{f_sub['randomized_auprc'].mean():.3f}",
-        "Diff Mean (Rand - Single)": f"{f_sub['diff'].mean():.3f}",
-        "Diff Range": f"[{f_sub['diff'].min():.3f}, {f_sub['diff'].max():.3f}]",
-    })
+    f_sub = df_all_loso[
+        (df_all_loso["held_out"].str.startswith(f"{f}="))
+        & (~df_all_loso["in_distribution"])
+    ]
+    factor_summary_rows.append(
+        {
+            "Factor": f,
+            "OOD Settings": len(f_sub["held_out"].unique()),
+            "Single AUPRC Mean": f"{f_sub['single_simulator_auprc'].mean():.3f}",
+            "Randomized AUPRC Mean": f"{f_sub['randomized_auprc'].mean():.3f}",
+            "Diff Mean (Rand - Single)": f"{f_sub['diff'].mean():.3f}",
+            "Diff Range": f"[{f_sub['diff'].min():.3f}, {f_sub['diff'].max():.3f}]",
+        }
+    )
 # Pooled OOD row
 ood_all = df_all_loso[~df_all_loso["in_distribution"]]
-factor_summary_rows.append({
-    "Factor": "Pooled (All OOD)",
-    "OOD Settings": len(ood_all["held_out"].unique()),
-    "Single AUPRC Mean": f"{ood_all['single_simulator_auprc'].mean():.3f}",
-    "Randomized AUPRC Mean": f"{ood_all['randomized_auprc'].mean():.3f}",
-    "Diff Mean (Rand - Single)": f"{ood_all['diff'].mean():.3f}",
-    "Diff Range": f"[{ood_all['diff'].min():.3f}, {ood_all['diff'].max():.3f}]",
-})
+factor_summary_rows.append(
+    {
+        "Factor": "Pooled (All OOD)",
+        "OOD Settings": len(ood_all["held_out"].unique()),
+        "Single AUPRC Mean": f"{ood_all['single_simulator_auprc'].mean():.3f}",
+        "Randomized AUPRC Mean": f"{ood_all['randomized_auprc'].mean():.3f}",
+        "Diff Mean (Rand - Single)": f"{ood_all['diff'].mean():.3f}",
+        "Diff Range": f"[{ood_all['diff'].min():.3f}, {ood_all['diff'].max():.3f}]",
+    }
+)
 df_loso_factor_summary = pd.DataFrame(factor_summary_rows)
 
 # 7. Write results.json
@@ -464,7 +512,19 @@ md_lines = [
     "",
     "## 8. Full Leave-One-Simulator-Out Table (All Seeds)",
     "",
-    df_all_loso[["seed", "held_out", "in_distribution", "single_simulator_auprc", "randomized_auprc", "diff", "prevalence"]].round(3).to_markdown(index=False),
+    df_all_loso[
+        [
+            "seed",
+            "held_out",
+            "in_distribution",
+            "single_simulator_auprc",
+            "randomized_auprc",
+            "diff",
+            "prevalence",
+        ]
+    ]
+    .round(3)
+    .to_markdown(index=False),
 ]
 
 sheet_content = "\n".join(md_lines)

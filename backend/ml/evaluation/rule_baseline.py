@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import f1_score
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +44,13 @@ def compute_domain_z_scores(
     Computes within-age-bracket z-scores for each of the 6 ASQ domains.
     """
     z_df = pd.DataFrame(index=df.index)
-    
+
     for dom, cols in DOMAINS.items():
         raw_sum = df[cols].sum(axis=1)
         grouped = df.groupby(bracket_col)
         dom_means = grouped.apply(lambda g, c=cols: g[c].sum(axis=1).mean()).to_dict()
         dom_stds = grouped.apply(lambda g, c=cols: g[c].sum(axis=1).std()).to_dict()
-        
+
         bracket_mean = df[bracket_col].map(dom_means)
         bracket_std = df[bracket_col].map(dom_stds).replace(0, 1.0)
         z_df[f"{dom}_z"] = (raw_sum - bracket_mean) / bracket_std
@@ -84,7 +85,10 @@ def predict_asq_rule(
     return preds
 
 
-from sklearn.metrics import classification_report, f1_score, recall_score, precision_score
+from sklearn.metrics import (
+    precision_score,
+    recall_score,
+)
 
 
 def evaluate_rule_vs_xgboost(
@@ -103,23 +107,56 @@ def evaluate_rule_vs_xgboost(
     rule_preds = predict_asq_rule(df, z_df=z_df)
     X = df[feature_columns]
     xgb_pred_raw = model.predict(X)
-    xgb_preds = np.array([
-        LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_pred_raw
-    ])
+    xgb_preds = np.array(
+        [
+            LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+            for i in xgb_pred_raw
+        ]
+    )
 
-    rule_macro_f1 = float(f1_score(y_true, rule_preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-    rule_refer_sens = float(recall_score(y_true == "Refer", rule_preds == "Refer", zero_division=0))
-    rule_refer_prec = float(precision_score(y_true == "Refer", rule_preds == "Refer", zero_division=0))
-    rule_typ_spec = float(recall_score(y_true != "Refer", rule_preds != "Refer", zero_division=0))
+    rule_macro_f1 = float(
+        f1_score(
+            y_true, rule_preds, labels=LABEL_ORDER, average="macro", zero_division=0
+        )
+    )
+    rule_refer_sens = float(
+        recall_score(y_true == "Refer", rule_preds == "Refer", zero_division=0)
+    )
+    rule_refer_prec = float(
+        precision_score(y_true == "Refer", rule_preds == "Refer", zero_division=0)
+    )
+    rule_typ_spec = float(
+        recall_score(y_true != "Refer", rule_preds != "Refer", zero_division=0)
+    )
 
-    xgb_macro_f1 = float(f1_score(y_true, xgb_preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-    xgb_refer_sens = float(recall_score(y_true == "Refer", xgb_preds == "Refer", zero_division=0))
-    xgb_refer_prec = float(precision_score(y_true == "Refer", xgb_preds == "Refer", zero_division=0))
-    xgb_typ_spec = float(recall_score(y_true != "Refer", xgb_preds != "Refer", zero_division=0))
+    xgb_macro_f1 = float(
+        f1_score(
+            y_true, xgb_preds, labels=LABEL_ORDER, average="macro", zero_division=0
+        )
+    )
+    xgb_refer_sens = float(
+        recall_score(y_true == "Refer", xgb_preds == "Refer", zero_division=0)
+    )
+    xgb_refer_prec = float(
+        precision_score(y_true == "Refer", xgb_preds == "Refer", zero_division=0)
+    )
+    xgb_typ_spec = float(
+        recall_score(y_true != "Refer", xgb_preds != "Refer", zero_division=0)
+    )
 
     # 2. Sparse data evaluation (simulating Nirixon adaptive window: average 12 items answered)
     rng = np.random.default_rng(42)
-    all_item_cols = [c for c in feature_columns if c not in ("corrected_age_months", "age_bracket_ordinal", "family_history_flag", "regression_flag")]
+    all_item_cols = [
+        c
+        for c in feature_columns
+        if c
+        not in (
+            "corrected_age_months",
+            "age_bracket_ordinal",
+            "family_history_flag",
+            "regression_flag",
+        )
+    ]
     k_answered = 12
     n_unasked = len(all_item_cols) - k_answered
 
@@ -133,10 +170,20 @@ def evaluate_rule_vs_xgboost(
     df_naive[all_item_cols] = items_naive
     naive_z = compute_domain_z_scores(df_naive)
     naive_preds = predict_asq_rule(df_naive, z_df=naive_z)
-    naive_macro_f1 = float(f1_score(y_true, naive_preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-    naive_refer_sens = float(recall_score(y_true == "Refer", naive_preds == "Refer", zero_division=0))
-    naive_refer_prec = float(precision_score(y_true == "Refer", naive_preds == "Refer", zero_division=0))
-    naive_typ_spec = float(recall_score(y_true == "Typical", naive_preds == "Typical", zero_division=0))
+    naive_macro_f1 = float(
+        f1_score(
+            y_true, naive_preds, labels=LABEL_ORDER, average="macro", zero_division=0
+        )
+    )
+    naive_refer_sens = float(
+        recall_score(y_true == "Refer", naive_preds == "Refer", zero_division=0)
+    )
+    naive_refer_prec = float(
+        precision_score(y_true == "Refer", naive_preds == "Refer", zero_division=0)
+    )
+    naive_typ_spec = float(
+        recall_score(y_true == "Typical", naive_preds == "Typical", zero_division=0)
+    )
     naive_fpr = 1.0 - naive_typ_spec
 
     # Prorated rule: scale partial sum by (6 / items_answered_in_domain)
@@ -149,30 +196,60 @@ def evaluate_rule_vs_xgboost(
         answered_counts = dom_items.notna().sum(axis=1).replace(0, 1)
         prorated_raw_sum = dom_items.fillna(0).sum(axis=1) * (6.0 / answered_counts)
         grouped = df.groupby("age_bracket")
-        dom_means = grouped.apply(lambda g, c=cols: df.loc[g.index, c].sum(axis=1).mean()).to_dict()
-        dom_stds = grouped.apply(lambda g, c=cols: df.loc[g.index, c].sum(axis=1).std()).to_dict()
+        dom_means = grouped.apply(
+            lambda g, c=cols: df.loc[g.index, c].sum(axis=1).mean()
+        ).to_dict()
+        dom_stds = grouped.apply(
+            lambda g, c=cols: df.loc[g.index, c].sum(axis=1).std()
+        ).to_dict()
         bracket_mean = df["age_bracket"].map(dom_means)
         bracket_std = df["age_bracket"].map(dom_stds).replace(0, 1.0)
         prorated_z[f"{dom}_z"] = (prorated_raw_sum - bracket_mean) / bracket_std
     prorated_preds = predict_asq_rule(df, z_df=prorated_z)
-    prorated_macro_f1 = float(f1_score(y_true, prorated_preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-    prorated_refer_prec = float(precision_score(y_true == "Refer", prorated_preds == "Refer", zero_division=0))
-    prorated_refer_sens = float(recall_score(y_true == "Refer", prorated_preds == "Refer", zero_division=0))
-    prorated_typ_spec = float(recall_score(y_true == "Typical", prorated_preds == "Typical", zero_division=0))
+    prorated_macro_f1 = float(
+        f1_score(
+            y_true, prorated_preds, labels=LABEL_ORDER, average="macro", zero_division=0
+        )
+    )
+    prorated_refer_prec = float(
+        precision_score(y_true == "Refer", prorated_preds == "Refer", zero_division=0)
+    )
+    prorated_refer_sens = float(
+        recall_score(y_true == "Refer", prorated_preds == "Refer", zero_division=0)
+    )
+    prorated_typ_spec = float(
+        recall_score(y_true == "Typical", prorated_preds == "Typical", zero_division=0)
+    )
 
     # XGBoost with peer-median imputation
     median_by_bracket = df.groupby("age_bracket")[all_item_cols].median()
-    bracket_medians_aligned = df["age_bracket"].map(median_by_bracket.to_dict(orient="index"))
-    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[all_item_cols].to_numpy()
+    bracket_medians_aligned = df["age_bracket"].map(
+        median_by_bracket.to_dict(orient="index")
+    )
+    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[
+        all_item_cols
+    ].to_numpy()
     imputed_items = np.where(unasked_mask, median_matrix, df[all_item_cols].to_numpy())
     X_imputed = df[feature_columns].copy().astype(float)
     X_imputed[all_item_cols] = imputed_items
     xgb_imp_raw = model.predict(X_imputed)
-    xgb_imp_preds = np.array([LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_imp_raw])
-    xgb_imp_macro_f1 = float(f1_score(y_true, xgb_imp_preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-    xgb_imp_refer_prec = float(precision_score(y_true == "Refer", xgb_imp_preds == "Refer", zero_division=0))
-    xgb_imp_refer_sens = float(recall_score(y_true == "Refer", xgb_imp_preds == "Refer", zero_division=0))
-    xgb_imp_typ_spec = float(recall_score(y_true == "Typical", xgb_imp_preds == "Typical", zero_division=0))
+    xgb_imp_preds = np.array(
+        [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_imp_raw]
+    )
+    xgb_imp_macro_f1 = float(
+        f1_score(
+            y_true, xgb_imp_preds, labels=LABEL_ORDER, average="macro", zero_division=0
+        )
+    )
+    xgb_imp_refer_prec = float(
+        precision_score(y_true == "Refer", xgb_imp_preds == "Refer", zero_division=0)
+    )
+    xgb_imp_refer_sens = float(
+        recall_score(y_true == "Refer", xgb_imp_preds == "Refer", zero_division=0)
+    )
+    xgb_imp_typ_spec = float(
+        recall_score(y_true == "Typical", xgb_imp_preds == "Typical", zero_division=0)
+    )
 
     return {
         "full_data": {

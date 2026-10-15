@@ -2,6 +2,7 @@
 Integrates validated 3-tier clinical allocation and parental response guards
 into the live production API and screening orchestration.
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,7 +37,7 @@ def evaluate_response_guards(
     Evaluates parental response reliability during screening:
     1. Acquiescence Guard: Detects positive reporting halo on out-of-age items (>= age + 6m).
     2. Inconsistency Guard: Detects Guttman inversions (failing past basic items while passing advanced).
-    
+
     Returns:
         (guard_flags, guard_advisories)
     """
@@ -80,10 +81,16 @@ def evaluate_response_guards(
                 earlier_age, earlier_score = sorted_pairs[i]
                 later_age, later_score = sorted_pairs[j]
                 # Inversion: earlier milestone is 0 (not yet), but later milestone is 2 (often/always)
-                if earlier_score == 0 and later_score >= 2 and (later_age - earlier_age >= 4.0):
+                if (
+                    earlier_score == 0
+                    and later_score >= 2
+                    and (later_age - earlier_age >= 4.0)
+                ):
                     inversions += 1
 
-    acquiescence_suspect = bool(forward_total >= 2 and (forward_endorsed / forward_total) >= 0.60)
+    acquiescence_suspect = bool(
+        forward_total >= 2 and (forward_endorsed / forward_total) >= 0.60
+    )
     inconsistency_suspect = bool(inversions >= 2)
 
     guard_flags = {
@@ -116,7 +123,7 @@ def evaluate_live_tiered_triage(
       - Tier 3: Direct Referral (Immediate Clinic Specialist)
       - Tier 2: Reflex-Branch (Automated Module B micro-tests within app)
       - Tier 1: Routine Pass (Reassured & scheduled for standard milestone interval)
-      
+
     Returns:
         (triage_tier, reflex_branch_recommended, target_reflex_domains)
     """
@@ -137,7 +144,9 @@ def evaluate_live_tiered_triage(
 
     # 2. Reflex-Branch to Module B (Tier 2)
     # Triggered by ambiguous/borderline risk (tau_monitor) or isolated domain dips
-    has_isolated_dip = bool(domain_scores and any(s <= 0.35 for s in domain_scores.values()))
+    has_isolated_dip = bool(
+        domain_scores and any(s <= 0.35 for s in domain_scores.values())
+    )
     if prob_refer >= TAU_REFLEX_MONITOR or has_isolated_dip:
         return "Tier 2: Reflex-Branch", True, target_domains
 

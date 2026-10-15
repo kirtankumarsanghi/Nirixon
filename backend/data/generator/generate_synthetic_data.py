@@ -10,7 +10,8 @@ Run directly:  python generate_synthetic_data.py
 
 from __future__ import annotations
 
-import os, random
+import os
+import random
 import sys
 
 SEED = 42
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
+
 np.random.seed(SEED)
 import pandas as pd
 from age_brackets import BRACKET_LABELS, map_to_bracket_label, map_to_bracket_ordinal
@@ -84,10 +86,10 @@ AGE_MIN, AGE_MAX = 0, 60  # months
 # ---------------------------------------------------------------------------
 BRACKET_SLOPES: dict[str, float] = {
     # 0–12 months: fast development
-    "2mo":  3.0,
-    "4mo":  3.0,
-    "6mo":  3.0,
-    "9mo":  3.5,
+    "2mo": 3.0,
+    "4mo": 3.0,
+    "6mo": 3.0,
+    "9mo": 3.5,
     "12mo": 4.0,
     # 12–24 months: language + walking refinement
     "15mo": 4.5,
@@ -105,9 +107,9 @@ BRACKET_SLOPES: dict[str, float] = {
     "54mo": 8.0,
     "60mo": 8.0,
 }
-assert set(BRACKET_SLOPES.keys()) == set(BRACKET_LABELS), (
-    "BRACKET_SLOPES keys must match BRACKET_LABELS exactly — check age_brackets.py"
-)
+assert set(BRACKET_SLOPES.keys()) == set(
+    BRACKET_LABELS
+), "BRACKET_SLOPES keys must match BRACKET_LABELS exactly — check age_brackets.py"
 
 # Default slope for any age that falls outside a named bracket
 # (should not occur in normal operation; this is a safety fallback)
@@ -156,14 +158,16 @@ def sample_children(n: int, sampler: np.random.Generator) -> pd.DataFrame:
     # and are also the grouping key for per-bracket analysis throughout the
     # evaluation pipeline.
     age_bracket = np.array([map_to_bracket_label(a) for a in corrected_age_months])
-    age_bracket_ordinal = np.array([map_to_bracket_ordinal(a) for a in corrected_age_months])
+    age_bracket_ordinal = np.array(
+        [map_to_bracket_ordinal(a) for a in corrected_age_months]
+    )
 
     return pd.DataFrame(
         {
             "child_id": [f"C{i:06d}" for i in range(n)],
             "age_months": age_months,
             "corrected_age_months": corrected_age_months,
-            "age_bracket": age_bracket,          # string label, e.g. "12mo"
+            "age_bracket": age_bracket,  # string label, e.g. "12mo"
             "age_bracket_ordinal": age_bracket_ordinal,  # integer 0–16 for ML
             "family_history_flag": family_history_flag,
             "multilingual_home_flag": multilingual_home_flag,
@@ -195,9 +199,9 @@ def simulate_item_responses(
     age_brackets_col = children["age_bracket"].to_numpy()
 
     # Build a per-child slope vector from their age bracket
-    child_slopes = np.array([
-        BRACKET_SLOPES.get(b, _DEFAULT_SLOPE) for b in age_brackets_col
-    ])
+    child_slopes = np.array(
+        [BRACKET_SLOPES.get(b, _DEFAULT_SLOPE) for b in age_brackets_col]
+    )
 
     # Precompute a combined "motor ability" latent (avg of gross+fine motor)
     # used for the motor_confound penalty, independent of an item's own domain.
@@ -268,7 +272,11 @@ def write_data_dictionary(path: str) -> None:
     ]
     for item in ITEM_BANK:
         brackets_str = ", ".join(item.valid_brackets)
-        unconfirmed_str = "NEEDS CLINICAL REVIEW" if item.bracket_assignment_unconfirmed else "confirmed"
+        unconfirmed_str = (
+            "NEEDS CLINICAL REVIEW"
+            if item.bracket_assignment_unconfirmed
+            else "confirmed"
+        )
         lines.append(
             f"| {item.item_id} | {item.domain} | {item.motor_confound} | "
             f"{item.live_elicitation_eligible} | {item.typical_age_months} | "

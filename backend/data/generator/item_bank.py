@@ -87,7 +87,6 @@ ITEM_BANK: list[Item] = [
     # =========================================================================
     # Gross motor (6)
     # =========================================================================
-
     # GM01: typical_age=2mo — head lift prone.
     # Valid: 2mo (emerges), 4mo (should be consolidating), 6mo (should be solid)
     Item(
@@ -162,11 +161,9 @@ ITEM_BANK: list[Item] = [
         valid_brackets=("27mo", "30mo", "33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
         bracket_assignment_unconfirmed=False,
     ),
-
     # =========================================================================
     # Fine motor (6)
     # =========================================================================
-
     # FM01: typical_age=3mo — hands to midline.
     # *** CLINICAL REVIEW REQUIRED *** — 3mo sits on 2mo/4mo boundary.
     # Valid: 2mo (very early), 4mo (peak), 6mo (well established)
@@ -239,14 +236,24 @@ ITEM_BANK: list[Item] = [
         20,
         True,
         True,
-        valid_brackets=("18mo", "21mo", "24mo", "27mo", "30mo", "33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
+        valid_brackets=(
+            "18mo",
+            "21mo",
+            "24mo",
+            "27mo",
+            "30mo",
+            "33mo",
+            "36mo",
+            "42mo",
+            "48mo",
+            "54mo",
+            "60mo",
+        ),
         bracket_assignment_unconfirmed=False,
     ),  # tagged motor_confound: also used to probe cognitive/problem-solving
-
     # =========================================================================
     # Communication (6)
     # =========================================================================
-
     # CM01: typical_age=2mo — cooing/gurgling.
     # Valid: 2mo (emerges), 4mo (consolidating), 6mo (should be present)
     Item(
@@ -318,14 +325,23 @@ ITEM_BANK: list[Item] = [
         24,
         False,
         False,
-        valid_brackets=("21mo", "24mo", "27mo", "30mo", "33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
+        valid_brackets=(
+            "21mo",
+            "24mo",
+            "27mo",
+            "30mo",
+            "33mo",
+            "36mo",
+            "42mo",
+            "48mo",
+            "54mo",
+            "60mo",
+        ),
         bracket_assignment_unconfirmed=False,
     ),
-
     # =========================================================================
     # Cognitive (6)
     # =========================================================================
-
     # CG01: typical_age=8mo — object permanence / visual tracking.
     # Note: at 2mo and 4mo the item serves as a visual-attention screen (does
     # the baby track a moving object?), not full object permanence — the text
@@ -405,11 +421,9 @@ ITEM_BANK: list[Item] = [
         valid_brackets=("33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
         bracket_assignment_unconfirmed=True,  # 36mo is on the 24–36/36–60 group boundary
     ),
-
     # =========================================================================
     # Personal-social (6)
     # =========================================================================
-
     # PS01: typical_age=2mo — social smile.
     # Valid: 2mo (emerges), 4mo (consolidated), 6mo (should be very present)
     Item(
@@ -468,7 +482,18 @@ ITEM_BANK: list[Item] = [
         24,
         False,
         False,
-        valid_brackets=("21mo", "24mo", "27mo", "30mo", "33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
+        valid_brackets=(
+            "21mo",
+            "24mo",
+            "27mo",
+            "30mo",
+            "33mo",
+            "36mo",
+            "42mo",
+            "48mo",
+            "54mo",
+            "60mo",
+        ),
         bracket_assignment_unconfirmed=False,
     ),
     # PS06: typical_age=36mo — turn-taking / sharing with another child.
@@ -484,11 +509,9 @@ ITEM_BANK: list[Item] = [
         valid_brackets=("33mo", "36mo", "42mo", "48mo", "54mo", "60mo"),
         bracket_assignment_unconfirmed=True,  # turn-taking onset spans 33–42mo
     ),
-
     # =========================================================================
     # Self-help / adaptive (6)
     # =========================================================================
-
     # SH01: typical_age=6mo — hand/object to mouth self-feeding.
     # At 2mo, the item measures self-soothing hand-to-mouth behaviour (fist
     # sucking), which is a normal early self-regulation milestone and the
@@ -582,9 +605,9 @@ for _item in ITEM_BANK:
 
 # Verify every bracket has at least 1 item per domain (fail fast if coverage gap exists)
 try:
-    from data.generator.age_brackets import BRACKET_LABELS  # noqa: E402
+    from data.generator.age_brackets import BRACKET_LABELS
 except ImportError:
-    from age_brackets import BRACKET_LABELS  # noqa: E402
+    from age_brackets import BRACKET_LABELS
 
 _ITEM_BY_DOMAIN = {d: [i for i in ITEM_BANK if i.domain == d] for d in DOMAINS}
 for _label in BRACKET_LABELS:
@@ -601,6 +624,6 @@ UNCONFIRMED_ITEMS: list[str] = [
 ]
 # 10 items flagged for clinical review (near bracket boundaries)
 # GM04, GM05, FM01, FM02, FM04, CM04, CM05, CG06, PS04, PS06, SH06
-assert len(UNCONFIRMED_ITEMS) > 0, (
-    "Expected at least some items flagged for clinical review — check item definitions."
-)
+assert (
+    len(UNCONFIRMED_ITEMS) > 0
+), "Expected at least some items flagged for clinical review — check item definitions."

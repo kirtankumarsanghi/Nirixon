@@ -138,9 +138,9 @@ class ScreeningSession:
             "microtask_telemetry": dict(self.microtask_telemetry),
             "completed": self.completed,
             "pending_item_id": self.pending_item_id,
-            "module_b_state": self.module_b_state.copy()
-            if self.module_b_state
-            else None,
+            "module_b_state": (
+                self.module_b_state.copy() if self.module_b_state else None
+            ),
         }
 
     @classmethod

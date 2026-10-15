@@ -9,7 +9,7 @@ items = [
         "s_months": 0.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Holds head up when on tummy; CDC 2-month milestone (75th percentile); s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM02",
@@ -18,7 +18,7 @@ items = [
         "s_months": 0.85,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Rolls from tummy to back; CDC 6-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM03",
@@ -27,7 +27,7 @@ items = [
         "s_months": 0.59,
         "source": "WHO Motor Development Study (Martorell et al. 2006)",
         "source_detail": "Sitting without support: 1st-99th window 3.8-9.2 months; m = midpoint, s = width/9.19, age75 = m + ln3*s",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM04",
@@ -36,7 +36,7 @@ items = [
         "s_months": 0.72,
         "source": "WHO Motor Development Study (Martorell et al. 2006)",
         "source_detail": "Standing with assistance: 1st-99th window 4.8-11.4 months; m = midpoint, s = width/9.19, age75 = m + ln3*s",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM05",
@@ -45,7 +45,7 @@ items = [
         "s_months": 1.02,
         "source": "WHO Motor Development Study (Martorell et al. 2006)",
         "source_detail": "Walking alone: 1st-99th window 8.2-17.6 months; m = midpoint, s = width/9.19, age75 = m + ln3*s",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM06",
@@ -54,7 +54,7 @@ items = [
         "s_months": 2.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Jumps off ground with both feet, runs; CDC 30-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM07",
@@ -63,7 +63,7 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Hops on one foot, catches large ball; CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "GM08",
@@ -72,9 +72,8 @@ items = [
         "s_months": 4.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Hops and skips, stands on one foot for 10 seconds; CDC 60-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
-
     # Fine Motor
     {
         "item_id": "FM01",
@@ -83,7 +82,7 @@ items = [
         "s_months": 0.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Brings hands to mouth / brings hands together at midline; CDC 4-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM02",
@@ -92,7 +91,7 @@ items = [
         "s_months": 1.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Reaches for and grabs nearby toy; CDC 6-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM03",
@@ -101,7 +100,7 @@ items = [
         "s_months": 1.20,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Passes toy from one hand to the other; CDC 9-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM04",
@@ -110,7 +109,7 @@ items = [
         "s_months": 1.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Picks up small object using thumb and pointer finger (pincer); CDC 12-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM05",
@@ -119,7 +118,7 @@ items = [
         "s_months": 2.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Scribbles with crayon on paper; CDC 18-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM06",
@@ -128,7 +127,7 @@ items = [
         "s_months": 2.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Stacks two or more small blocks; CDC 24-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM07",
@@ -137,7 +136,7 @@ items = [
         "s_months": 3.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Strings items together, draws a circle after being shown; CDC 36-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "FM08",
@@ -146,9 +145,8 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Holds crayon or pencil between fingers and thumb (not fist); CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
-
     # Communication
     {
         "item_id": "CM01",
@@ -157,7 +155,7 @@ items = [
         "s_months": 0.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Makes cooing or gurgling sounds; CDC 2-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM02",
@@ -166,7 +164,7 @@ items = [
         "s_months": 0.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Turns head toward familiar voice or sound; CDC 4-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM03",
@@ -175,7 +173,7 @@ items = [
         "s_months": 1.20,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Babbles with repeated syllables (mamama, bababa); CDC 9-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM04",
@@ -184,7 +182,7 @@ items = [
         "s_months": 1.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Says 1 or 2 clear words besides mama or dada; CDC 15-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM05",
@@ -193,7 +191,7 @@ items = [
         "s_months": 2.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Points to show you something interesting; CDC 18-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM06",
@@ -202,7 +200,7 @@ items = [
         "s_months": 2.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Puts two words together (e.g., more milk); CDC 24-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM07",
@@ -211,7 +209,7 @@ items = [
         "s_months": 3.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Talks in conversation with at least two back-and-forth exchanges; CDC 36-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CM08",
@@ -220,9 +218,8 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Says sentences with four or more words, tells stories; CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
-
     # Cognitive
     {
         "item_id": "CG01",
@@ -231,7 +228,7 @@ items = [
         "s_months": 1.20,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Looks for objects when dropped out of sight (object permanence); CDC 9-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG02",
@@ -240,7 +237,7 @@ items = [
         "s_months": 1.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Imitates simple action (plays pat-a-cake / claps); CDC 12-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG03",
@@ -249,7 +246,7 @@ items = [
         "s_months": 2.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Functional pretend play with object (feeding doll); CDC 18-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG04",
@@ -258,7 +255,7 @@ items = [
         "s_months": 2.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Points to named body parts or pictures in book; CDC 24-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG05",
@@ -267,7 +264,7 @@ items = [
         "s_months": 2.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Uses things to pretend / sorts shapes or colors; CDC 30-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG06",
@@ -276,7 +273,7 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Completes simple 3-4 piece puzzle, names colors; CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG07",
@@ -285,7 +282,7 @@ items = [
         "s_months": 0.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Watches hands or people move, explores environment; CDC 4-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "CG08",
@@ -294,9 +291,8 @@ items = [
         "s_months": 4.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Counts to 10, recognizes some printed letters/numbers; CDC 60-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
-
     # Personal-Social
     {
         "item_id": "PS01",
@@ -305,7 +301,7 @@ items = [
         "s_months": 0.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Smiles at you when you talk or smile (social smile); CDC 2-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS02",
@@ -314,7 +310,7 @@ items = [
         "s_months": 1.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Laughs out loud during play; CDC 6-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS03",
@@ -323,7 +319,7 @@ items = [
         "s_months": 1.20,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Plays back-and-forth games like peekaboo; CDC 9-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS04",
@@ -332,7 +328,7 @@ items = [
         "s_months": 1.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Shows you an object or favorite toy she likes; CDC 15-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS05",
@@ -341,7 +337,7 @@ items = [
         "s_months": 2.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Plays alongside other children (parallel play); CDC 30-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS06",
@@ -350,7 +346,7 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Asks to play with children / shares and takes turns; CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS07",
@@ -359,7 +355,7 @@ items = [
         "s_months": 0.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Smiles on his own to get your attention; CDC 4-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "PS08",
@@ -368,9 +364,8 @@ items = [
         "s_months": 4.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Follows simple game rules, takes turns with peers; CDC 60-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
-
     # Self-Help
     {
         "item_id": "SH01",
@@ -379,7 +374,7 @@ items = [
         "s_months": 1.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Puts food or objects to mouth to explore/feed; CDC 6-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH02",
@@ -388,7 +383,7 @@ items = [
         "s_months": 1.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Drinks from cup or holds bottle; CDC 12-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH03",
@@ -397,7 +392,7 @@ items = [
         "s_months": 1.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Feeds self with fingers (finger foods); CDC 15-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH04",
@@ -406,7 +401,7 @@ items = [
         "s_months": 2.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Tries to use a spoon by themselves; CDC 18-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH05",
@@ -415,7 +410,7 @@ items = [
         "s_months": 2.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Helps dress by pushing arm into sleeve; CDC 24-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH06",
@@ -424,7 +419,7 @@ items = [
         "s_months": 3.00,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Indicates wet diaper or uses toilet/potty; CDC 36-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH07",
@@ -433,7 +428,7 @@ items = [
         "s_months": 0.80,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Opens mouth when bottle or spoon approaches; CDC 4-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
+        "wording_status": "adapted for frequency scale",
     },
     {
         "item_id": "SH08",
@@ -442,8 +437,8 @@ items = [
         "s_months": 3.50,
         "source": "CDC 2022 milestone checklist (Zubler et al.)",
         "source_detail": "Washes and dries hands without help; CDC 48-month milestone; s_months author-set",
-        "wording_status": "adapted for frequency scale"
-    }
+        "wording_status": "adapted for frequency scale",
+    },
 ]
 
 df = pd.DataFrame(items)

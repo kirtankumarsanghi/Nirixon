@@ -1,11 +1,15 @@
 """Simulator v2: a hidden true status generates noisy answers; the label comes from the
 hidden status and is never recomputed from the answers (Module A plan, step 4)."""
+
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
-from functools import lru_cache
 from config import SimConfig
 
-LN3 = np.log(3.0)  # sigmoid(ln 3) = 0.75, so item difficulty m = age75 - ln3 * s puts 75% passing at age75
+LN3 = np.log(
+    3.0
+)  # sigmoid(ln 3) = 0.75, so item difficulty m = age75 - ln3 * s puts 75% passing at age75
 
 
 def make_placeholder_items(domains, n_per_domain=40, seed=1):
@@ -15,22 +19,44 @@ def make_placeholder_items(domains, n_per_domain=40, seed=1):
     for d in domains:
         a75 = np.sort(rng.uniform(3, 60, n_per_domain))
         for i, a in enumerate(a75):
-            rows.append(dict(item_id=f"{d[:3].upper()}{i:02d}", domain=d,
-                             age75_months=a, s_months=0.07 * a + 0.8, source="placeholder (author-set)",
-                             age75_status="AUTHOR-SET", s_status="AUTHOR-SET"))
+            rows.append(
+                {
+                    "item_id": f"{d[:3].upper()}{i:02d}",
+                    "domain": d,
+                    "age75_months": a,
+                    "s_months": 0.07 * a + 0.8,
+                    "source": "placeholder (author-set)",
+                    "age75_status": "AUTHOR-SET",
+                    "s_status": "AUTHOR-SET",
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def load_items(path, domains):
     try:
         df = pd.read_csv(path)
-        need = {"item_id", "domain", "age75_months", "s_months", "source", "age75_status", "s_status"}
+        need = {
+            "item_id",
+            "domain",
+            "age75_months",
+            "s_months",
+            "source",
+            "age75_status",
+            "s_status",
+        }
         assert need <= set(df.columns), f"item file needs columns {need}"
-        assert df[["age75_months", "s_months"]].notna().all().all(), "fill age75_months and s_months for every item"
+        assert (
+            df[["age75_months", "s_months"]].notna().all().all()
+        ), "fill age75_months and s_months for every item"
         valid_age_statuses = {"SOURCED", "AUTHOR-SET", "UNVERIFIED"}
-        assert set(df["age75_status"]).issubset(valid_age_statuses), f"invalid status in age75_status: {set(df['age75_status']) - valid_age_statuses}"
+        assert set(df["age75_status"]).issubset(
+            valid_age_statuses
+        ), f"invalid status in age75_status: {set(df['age75_status']) - valid_age_statuses}"
         valid_s_statuses = {"WHO-DERIVED", "AUTHOR-SET"}
-        assert set(df["s_status"]).issubset(valid_s_statuses), f"invalid status in s_status: {set(df['s_status']) - valid_s_statuses}"
+        assert set(df["s_status"]).issubset(
+            valid_s_statuses
+        ), f"invalid status in s_status: {set(df['s_status']) - valid_s_statuses}"
         missing = set(domains) - set(df.domain)
         assert not missing, f"no items for domains {missing}"
         return df
@@ -41,10 +67,13 @@ def load_items(path, domains):
 @lru_cache(maxsize=32)
 def status_cuts(target_mix, g_weight, n_domains, n_ref=400_000, seed=123):
     """Cutoffs on the worst-domain ability so that the hidden status hits target_mix.
-    Prevalence is therefore an explicit design setting, not an accident of the generator."""
+    Prevalence is therefore an explicit design setting, not an accident of the generator.
+    """
     rng = np.random.default_rng(seed)
     g = rng.normal(size=n_ref)
-    th = g_weight * g[:, None] + np.sqrt(1 - g_weight ** 2) * rng.normal(size=(n_ref, n_domains))
+    th = g_weight * g[:, None] + np.sqrt(1 - g_weight**2) * rng.normal(
+        size=(n_ref, n_domains)
+    )
     worst = th.min(1)
     refer_cut = np.quantile(worst, target_mix[2])
     monitor_cut = np.quantile(worst, target_mix[2] + target_mix[1])
@@ -57,14 +86,18 @@ def empirical_pace(age_months):
     return np.clip(0.20 - 0.0015 * np.asarray(age_months), 0.11, 0.22)
 
 
-def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: str = "nearest"):
+def simulate(
+    cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: str = "nearest"
+):
     rng = np.random.default_rng(seed)
     D, K = len(cfg.domains), cfg.items_asked_per_domain
     age = rng.uniform(cfg.age_min, cfg.age_max, n)
     g = rng.normal(size=n)
-    theta = cfg.g_weight * g[:, None] + np.sqrt(1 - cfg.g_weight ** 2) * rng.normal(size=(n, D))
+    theta = cfg.g_weight * g[:, None] + np.sqrt(1 - cfg.g_weight**2) * rng.normal(
+        size=(n, D)
+    )
 
-    age_used = age.copy()                     # age the app uses to pick items
+    age_used = age.copy()  # age the app uses to pick items
     if cfg.preterm_error_share > 0:
         wrong = rng.random(n) < cfg.preterm_error_share
         shift = rng.choice([-3.0, -2.0, 2.0, 3.0], wrong.sum())
@@ -97,8 +130,12 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
                 eta_i = (dev_age - m[idx_i]) / s[idx_i]
 
                 if use_freq:
-                    p_ge1 = cfg.slip + (1 - 2 * cfg.slip) / (1 + np.exp(-(eta_i + 0.70)))
-                    p_ge2 = cfg.slip + (1 - 2 * cfg.slip) / (1 + np.exp(-(eta_i - 0.70)))
+                    p_ge1 = cfg.slip + (1 - 2 * cfg.slip) / (
+                        1 + np.exp(-(eta_i + 0.70))
+                    )
+                    p_ge2 = cfg.slip + (1 - 2 * cfg.slip) / (
+                        1 + np.exp(-(eta_i - 0.70))
+                    )
                     u_i = rng.random(len(idx_i))
                     ans_i = np.where(u_i > p_ge1, 0, np.where(u_i > p_ge2, 1, 2))
                     if say_yes[i]:
@@ -115,7 +152,7 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
                     if cfg.flip_rate > 0:
                         flip = rng.random(len(ans_i)) < cfg.flip_rate
                         ans_i = np.where(flip, ~ans_i, ans_i)
-                answers[i, j, :len(idx_i)] = ans_i
+                answers[i, j, : len(idx_i)] = ans_i
         domain_scores = np.nanmean(answers, axis=2) / (2.0 if use_freq else 1.0)
     elif selection == "nearest":
         answers = np.zeros((n, D, K))
@@ -125,11 +162,13 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
             a75 = it.age75_months.to_numpy()
             s = it.s_months.to_numpy()
             m = a75 - LN3 * s
-            idx = np.argsort(np.abs(a75[None, :] - age_used[:, None]), axis=1)[:, :K]   # items nearest the age used
+            idx = np.argsort(np.abs(a75[None, :] - age_used[:, None]), axis=1)[
+                :, :K
+            ]  # items nearest the age used
 
             if use_freq:
                 pace_col = eff_pace[:, None] if use_emp_pace else eff_pace
-                dev_age = age[:, None] * np.exp(pace_col * theta[:, j:j+1])
+                dev_age = age[:, None] * np.exp(pace_col * theta[:, j : j + 1])
                 eta = (dev_age - m[idx]) / s[idx]
                 p_ge1 = cfg.slip + (1 - 2 * cfg.slip) / (1 + np.exp(-(eta + 0.70)))
                 p_ge2 = cfg.slip + (1 - 2 * cfg.slip) / (1 + np.exp(-(eta - 0.70)))
@@ -140,7 +179,9 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
                     flip = rng.random(y.shape) < cfg.flip_rate
                     y = np.where(flip, rng.choice([0, 1, 2], y.shape), y)
             else:
-                dev_age = age * np.exp(cfg.pace * theta[:, j])                               # true development drives answers
+                dev_age = age * np.exp(
+                    cfg.pace * theta[:, j]
+                )  # true development drives answers
                 p = 1 / (1 + np.exp(-(dev_age[:, None] - m[idx]) / s[idx]))
                 p = cfg.slip + (1 - 2 * cfg.slip) * p
                 y = rng.random(p.shape) < p
@@ -154,12 +195,21 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
 
     refer_cut, monitor_cut = status_cuts(cfg.target_mix, cfg.g_weight, D)
     worst = theta.min(1)
-    status = np.where(worst < refer_cut, 2, np.where(worst < monitor_cut, 1, 0))   # from hidden theta only
+    status = np.where(
+        worst < refer_cut, 2, np.where(worst < monitor_cut, 1, 0)
+    )  # from hidden theta only
 
-    out = dict(age=age, age_used=age_used, answers=answers,
-               domain_scores=domain_scores, status=status, theta=theta)
+    out = {
+        "age": age,
+        "age_used": age_used,
+        "answers": answers,
+        "domain_scores": domain_scores,
+        "status": status,
+        "theta": theta,
+    }
     if getattr(cfg, "enable_guards", False):
         from guards import compute_guards
+
         out["guards"] = compute_guards(age_used, answers, items, cfg.domains, K)
     return out
 
@@ -167,6 +217,8 @@ def simulate(cfg: SimConfig, items: pd.DataFrame, n: int, seed: int, selection: 
 def features(sim, mode="domain"):
     if mode == "raw":
         if np.isnan(sim["answers"]).any():
-            raise ValueError("answers contains NaN; cannot extract raw features when selection has variable items per child")
+            raise ValueError(
+                "answers contains NaN; cannot extract raw features when selection has variable items per child"
+            )
         return np.c_[sim["age_used"], sim["answers"].reshape(len(sim["age"]), -1)]
     return np.c_[sim["age_used"], sim["domain_scores"]]

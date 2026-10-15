@@ -77,9 +77,9 @@ def test_safety_summary_leads_with_helpline():
     _, _, res = run(
         "mera bachcha kehta hai ki main marna chahta hoon, school nahi jaana", 9, fine
     )
-    assert "1800-599-0019" in res["summary"], (
-        f"helpline missing from summary: {res['summary'][:120]}"
-    )
+    assert (
+        "1800-599-0019" in res["summary"]
+    ), f"helpline missing from summary: {res['summary'][:120]}"
 
 
 def test_safety_summary_no_reassuring_phrase():
@@ -123,9 +123,9 @@ def test_vision_ruleout_first():
     vision_qs = [q for q in qs if q["track"] == "vision_hearing"]
     assert vision_qs, "no vision_hearing questions found"
     concept = eng.bank.row(vision_qs[0]["item_id"])["concept_id"]
-    assert concept in VISION_CONCEPTS, (
-        f"vision text -> first ruleout concept: {concept}"
-    )
+    assert (
+        concept in VISION_CONCEPTS
+    ), f"vision text -> first ruleout concept: {concept}"
 
 
 def test_hearing_ruleout_first():
@@ -137,9 +137,9 @@ def test_hearing_ruleout_first():
     hearing_qs = [q for q in qs if q["track"] == "vision_hearing"]
     assert hearing_qs, "no vision_hearing questions found"
     concept = eng.bank.row(hearing_qs[0]["item_id"])["concept_id"]
-    assert concept in HEARING_CONCEPTS, (
-        f"hearing text -> first ruleout concept: {concept}"
-    )
+    assert (
+        concept in HEARING_CONCEPTS
+    ), f"hearing text -> first ruleout concept: {concept}"
 
 
 POS = [
@@ -202,9 +202,9 @@ def test_first_5_questions_differ_by_note():
     q_read = first5(
         "She reads very slowly, mixes up b and d and cries when asked to read aloud"
     )
-    assert q_att != q_read, (
-        "first-5 questions must differ between attention and reading notes"
-    )
-    assert len(q_att) == 5 and len(q_read) == 5, (
-        f"expected 5 questions each, got {len(q_att)}, {len(q_read)}"
-    )
+    assert (
+        q_att != q_read
+    ), "first-5 questions must differ between attention and reading notes"
+    assert (
+        len(q_att) == 5 and len(q_read) == 5
+    ), f"expected 5 questions each, got {len(q_att)}, {len(q_read)}"

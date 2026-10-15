@@ -60,7 +60,6 @@ MODEL_PKL_NAMES = {
 }
 
 
-
 class ModelNotLoadedError(RuntimeError):
     """Raised when inference is requested but artifacts are not loaded."""
 
@@ -135,7 +134,7 @@ class InferenceService:
                 self.feature_columns = list(pickle.load(f))
             with open(directory / "shap_explainer.pkl", "rb") as f:
                 self.shap_explainer = pickle.load(f)
-        except Exception as exc:  # noqa: BLE001 — surface any load failure
+        except Exception as exc:
             self._clear()
             self.load_error = f"model not trained — run train.py ({exc})"
             raise
@@ -232,7 +231,7 @@ class InferenceService:
             )
 
         X = self.validate_feature_vector(features)
-        
+
         scoring_model = model if model is not None else self.model
 
         proba = np.asarray(scoring_model.predict_proba(X)[0], dtype=float)
@@ -344,7 +343,7 @@ def build_feature_vector(
     explicitly. Values from real_answers win over imputed on collision.
     """
     from data.generator.age_brackets import map_to_bracket_ordinal
-    
+
     combined: dict[str, Any] = {}
     combined.update(imputed_answers)
     combined.update(real_answers)

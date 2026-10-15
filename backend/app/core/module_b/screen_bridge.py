@@ -41,9 +41,9 @@ def _question_from_action(
         question_number=answered + 1,
         question_cap=int(progress.get("max", question_cap)),
         response_type=ui_rt,  # type: ignore[arg-type]
-        scale_labels=action.get("scale")
-        if isinstance(action.get("scale"), str)
-        else None,
+        scale_labels=(
+            action.get("scale") if isinstance(action.get("scale"), str) else None
+        ),
         track=domain,
     )
 

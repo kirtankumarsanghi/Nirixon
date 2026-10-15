@@ -171,7 +171,11 @@ def _get_next_action_b(
 
     # Step 1 — Check stopping floor with Module B thresholds.
     # Domain floor is capped by how many domains the intake actually opened.
-    detected_n = len(session.detected_domains) if session.detected_domains else MIN_DOMAINS_COVERED_B
+    detected_n = (
+        len(session.detected_domains)
+        if session.detected_domains
+        else MIN_DOMAINS_COVERED_B
+    )
     domain_floor = min(MIN_DOMAINS_COVERED_B, max(1, detected_n))
     floor_met = can_stop_early(
         session,
@@ -205,7 +209,6 @@ def _build_final_result_b(
     Module B: no imputation — FinalResult carries only real answers.
     The feature vector for inference is assembled per-domain from answers.
     """
-    from data.generator.item_bank_b import MODULE_B_ITEM_BANK
 
     real_answers: dict[str, int] = dict(session.answers)
 

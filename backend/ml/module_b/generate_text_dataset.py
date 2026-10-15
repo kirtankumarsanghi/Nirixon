@@ -11,9 +11,11 @@ Design points (so the evaluation is honest):
   * Hard negatives: "X is fine" clauses where the domain label is ABSENT.
   * Vague texts with no label (the router must say "unclear" for them).
 """
+
 import argparse
 import csv
-import os, random
+import os
+import random
 import re
 import sys
 from collections import Counter
@@ -23,19 +25,34 @@ os.environ["PYTHONHASHSEED"] = str(SEED)
 random.seed(SEED)
 
 import numpy as np
+
 np.random.seed(SEED)
 
 sys.path.insert(0, os.path.dirname(__file__))
 from seeds_core import SEEDS
-from seeds_other import (OTHER, NEGATIVES, VAGUE, NOISE, INTROS, TIME_MODS, CONNECT)
+from seeds_other import CONNECT, INTROS, NEGATIVES, NOISE, OTHER, TIME_MODS, VAGUE
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data")
 
 LABELS = [
-    "attention_work", "listening_speaking", "reading", "writing", "numbers", "motor",
-    "social", "emotion_school", "vision_hearing", "global_asd", "safety",
-    "ctx_bullying", "ctx_school_refusal", "ctx_screen", "ctx_language", "ctx_pressure", "ctx_sleep",
+    "attention_work",
+    "listening_speaking",
+    "reading",
+    "writing",
+    "numbers",
+    "motor",
+    "social",
+    "emotion_school",
+    "vision_hearing",
+    "global_asd",
+    "safety",
+    "ctx_bullying",
+    "ctx_school_refusal",
+    "ctx_screen",
+    "ctx_language",
+    "ctx_pressure",
+    "ctx_sleep",
 ]
 
 # group name -> (attached labels, entries)
@@ -43,11 +60,23 @@ GROUPS = {d: ([d], e) for d, e in SEEDS.items()}
 GROUPS.update(OTHER)
 
 GROUP_WEIGHT = {
-    "attention_work": 1.4, "listening_speaking": 1.0, "reading": 1.1, "writing": 1.0,
-    "numbers": 1.0, "motor": 0.9, "social": 1.0, "emotion_school": 1.5,
-    "vision_hearing": 0.5, "global_asd": 0.55, "safety": 0.3,
-    "ctx_bullying": 0.35, "ctx_school_refusal": 0.4, "ctx_screen": 0.35,
-    "ctx_language": 0.35, "ctx_pressure": 0.35, "ctx_sleep": 0.3,
+    "attention_work": 1.4,
+    "listening_speaking": 1.0,
+    "reading": 1.1,
+    "writing": 1.0,
+    "numbers": 1.0,
+    "motor": 0.9,
+    "social": 1.0,
+    "emotion_school": 1.5,
+    "vision_hearing": 0.5,
+    "global_asd": 0.55,
+    "safety": 0.3,
+    "ctx_bullying": 0.35,
+    "ctx_school_refusal": 0.4,
+    "ctx_screen": 0.35,
+    "ctx_language": 0.35,
+    "ctx_pressure": 0.35,
+    "ctx_sleep": 0.3,
 }
 
 # Hinglish / Hindi clauses whose grammatical subject is NOT the child (e.g.
@@ -55,40 +84,107 @@ GROUP_WEIGHT = {
 # instead of "Mera beta <clause>". Keys: (group, index). English needs it only
 # for clauses that start with "I ".
 OWN_IDX = {
-    ("attention_work", 4), ("attention_work", 10), ("attention_work", 12), ("attention_work", 13),
-    ("listening_speaking", 4), ("reading", 13), ("writing", 0), ("writing", 13),
-    ("numbers", 4), ("numbers", 9), ("motor", 11),
-    ("social", 0), ("social", 1), ("social", 6), ("social", 12), ("social", 13),
-    ("vision_hearing", 9), ("safety", 2), ("safety", 5),
-    ("ctx_bullying", 0), ("ctx_bullying", 1), ("ctx_bullying", 3), ("ctx_bullying", 4), ("ctx_bullying", 5),
-    ("ctx_screen", 3), ("ctx_language", 0), ("ctx_language", 4),
-    ("ctx_pressure", 3), ("ctx_pressure", 5), ("ctx_sleep", 1), ("ctx_sleep", 3),
-    ("neg:writing", 0), ("neg:writing", 2), ("neg:reading", 2), ("neg:numbers", 2), ("neg:motor", 2),
-    ("neg:social", 0), ("neg:social", 2), ("neg:vision_hearing", 0), ("neg:vision_hearing", 1),
+    ("attention_work", 4),
+    ("attention_work", 10),
+    ("attention_work", 12),
+    ("attention_work", 13),
+    ("listening_speaking", 4),
+    ("reading", 13),
+    ("writing", 0),
+    ("writing", 13),
+    ("numbers", 4),
+    ("numbers", 9),
+    ("motor", 11),
+    ("social", 0),
+    ("social", 1),
+    ("social", 6),
+    ("social", 12),
+    ("social", 13),
+    ("vision_hearing", 9),
+    ("safety", 2),
+    ("safety", 5),
+    ("ctx_bullying", 0),
+    ("ctx_bullying", 1),
+    ("ctx_bullying", 3),
+    ("ctx_bullying", 4),
+    ("ctx_bullying", 5),
+    ("ctx_screen", 3),
+    ("ctx_language", 0),
+    ("ctx_language", 4),
+    ("ctx_pressure", 3),
+    ("ctx_pressure", 5),
+    ("ctx_sleep", 1),
+    ("ctx_sleep", 3),
+    ("neg:writing", 0),
+    ("neg:writing", 2),
+    ("neg:reading", 2),
+    ("neg:numbers", 2),
+    ("neg:motor", 2),
+    ("neg:social", 0),
+    ("neg:social", 2),
+    ("neg:vision_hearing", 0),
+    ("neg:vision_hearing", 1),
 }
 
 SUBJ = {
-    "en": {"m": ["My son", "My son", "My child", "Our son", "My boy"], "f": ["My daughter", "My daughter", "My child", "Our daughter", "My girl"]},
-    "hr": {"m": ["Mera beta", "Mera beta", "Mera bachcha", "Hamara beta"], "f": ["Meri beti", "Meri beti", "Meri bachchi", "Hamari beti"]},
-    "hi": {"m": ["मेरा बेटा", "मेरा बेटा", "मेरा बच्चा", "हमारा बेटा"], "f": ["मेरी बेटी", "मेरी बेटी", "मेरी बच्ची", "हमारी बेटी"]},
+    "en": {
+        "m": ["My son", "My son", "My child", "Our son", "My boy"],
+        "f": ["My daughter", "My daughter", "My child", "Our daughter", "My girl"],
+    },
+    "hr": {
+        "m": ["Mera beta", "Mera beta", "Mera bachcha", "Hamara beta"],
+        "f": ["Meri beti", "Meri beti", "Meri bachchi", "Hamari beti"],
+    },
+    "hi": {
+        "m": ["मेरा बेटा", "मेरा बेटा", "मेरा बच्चा", "हमारा बेटा"],
+        "f": ["मेरी बेटी", "मेरी बेटी", "मेरी बच्ची", "हमारी बेटी"],
+    },
 }
 TEACHER_SUBJ = {
-    "en": {"m": ["This student", "The child", "This boy"], "f": ["This student", "The child", "This girl"]},
+    "en": {
+        "m": ["This student", "The child", "This boy"],
+        "f": ["This student", "The child", "This girl"],
+    },
     "hr": {"m": ["Ye bachcha", "Ye student"], "f": ["Ye bachchi", "Ye student"]},
     "hi": {"m": ["ये बच्चा", "ये छात्र"], "f": ["ये बच्ची", "ये छात्रा"]},
 }
 TEACHER_INTRO = {
-    "en": ["Teacher's note: ", "Class observation: ", "In class, ", "As class teacher I have seen that "],
-    "hr": ["Teacher ka note: ", "Class mein dekha: ", "Class teacher ke roop mein maine dekha ki "],
+    "en": [
+        "Teacher's note: ",
+        "Class observation: ",
+        "In class, ",
+        "As class teacher I have seen that ",
+    ],
+    "hr": [
+        "Teacher ka note: ",
+        "Class mein dekha: ",
+        "Class teacher ke roop mein maine dekha ki ",
+    ],
     "hi": ["टीचर का नोट: ", "क्लास में देखा: ", "क्लास टीचर के रूप में मैंने देखा कि "],
 }
-FRAME_PROBLEM = {"en": "The problem is that ", "hr": "Dikkat ye hai ki ", "hi": "दिक्कत ये है कि "}
+FRAME_PROBLEM = {
+    "en": "The problem is that ",
+    "hr": "Dikkat ye hai ki ",
+    "hi": "दिक्कत ये है कि ",
+}
 # Negative ("this area is fine") clauses must never be framed as a problem.
 FRAME_NEG = {"en": "", "hr": "Waise ", "hi": "वैसे "}
 CLOSERS_VAGUE = {
-    "en": ["But I really don't know what the problem is.", "I just want to understand what is wrong.", "Please tell me what to do."],
-    "hr": ["Par samajh nahi aa raha asli problem kya hai.", "Bas ye jaanna hai ki dikkat kahan hai.", "Kya karna chahiye bataiye."],
-    "hi": ["पर समझ नहीं आ रहा असली समस्या क्या है।", "बस ये जानना है कि दिक्कत कहाँ है।", "क्या करना चाहिए बताइए।"],
+    "en": [
+        "But I really don't know what the problem is.",
+        "I just want to understand what is wrong.",
+        "Please tell me what to do.",
+    ],
+    "hr": [
+        "Par samajh nahi aa raha asli problem kya hai.",
+        "Bas ye jaanna hai ki dikkat kahan hai.",
+        "Kya karna chahiye bataiye.",
+    ],
+    "hi": [
+        "पर समझ नहीं आ रहा असली समस्या क्या है।",
+        "बस ये जानना है कि दिक्कत कहाँ है।",
+        "क्या करना चाहिए बताइए।",
+    ],
 }
 
 
@@ -96,9 +192,21 @@ def resolve(text, lang, g):
     """Resolve gender tokens."""
     if lang == "en":
         if g == "m":
-            text = text.replace("{He}", "He").replace("{he}", "he").replace("{his}", "his").replace("{him}", "him").replace("{himself}", "himself")
+            text = (
+                text.replace("{He}", "He")
+                .replace("{he}", "he")
+                .replace("{his}", "his")
+                .replace("{him}", "him")
+                .replace("{himself}", "himself")
+            )
         else:
-            text = text.replace("{He}", "She").replace("{he}", "she").replace("{his}", "her").replace("{him}", "her").replace("{himself}", "herself")
+            text = (
+                text.replace("{He}", "She")
+                .replace("{he}", "she")
+                .replace("{his}", "her")
+                .replace("{him}", "her")
+                .replace("{himself}", "herself")
+            )
         return text
     idx = 0 if g == "m" else 1
     return re.sub(r"\[([^\]|]+)\|([^\]]+)\]", lambda m: m.group(idx + 1), text)
@@ -109,7 +217,11 @@ def split_entries(rng, n):
     rng.shuffle(idx)
     n_test = max(1, round(n * 0.2))
     n_val = max(1, round(n * 0.15))
-    return {"test": set(idx[:n_test]), "val": set(idx[n_test:n_test + n_val]), "train": set(idx[n_test + n_val:])}
+    return {
+        "test": set(idx[:n_test]),
+        "val": set(idx[n_test : n_test + n_val]),
+        "train": set(idx[n_test + n_val :]),
+    }
 
 
 def pick_entries(entries, assign, split):
@@ -130,9 +242,23 @@ def age_phrase(rng, lang, g, age):
     cls = max(1, age - 5)
     he = "he" if g == "m" else "she"
     opts = {
-        "en": [f"{he.capitalize()} is {age} years old.", f"{he.capitalize()} is in class {cls}.", f"He is {age}." if g == "m" else f"She is {age}."],
-        "hr": [f"{age} saal ka hai." if g == "m" else f"{age} saal ki hai.", f"Class {cls} mein padhta hai." if g == "m" else f"Class {cls} mein padhti hai."],
-        "hi": [f"{age} साल का है।" if g == "m" else f"{age} साल की है।", f"क्लास {cls} में पढ़ता है।" if g == "m" else f"क्लास {cls} में पढ़ती है।"],
+        "en": [
+            f"{he.capitalize()} is {age} years old.",
+            f"{he.capitalize()} is in class {cls}.",
+            f"He is {age}." if g == "m" else f"She is {age}.",
+        ],
+        "hr": [
+            f"{age} saal ka hai." if g == "m" else f"{age} saal ki hai.",
+            (
+                f"Class {cls} mein padhta hai."
+                if g == "m"
+                else f"Class {cls} mein padhti hai."
+            ),
+        ],
+        "hi": [
+            f"{age} साल का है।" if g == "m" else f"{age} साल की है।",
+            f"क्लास {cls} में पढ़ता है।" if g == "m" else f"क्लास {cls} में पढ़ती है।",
+        ],
     }
     return rng.choice(opts[lang])
 
@@ -144,7 +270,11 @@ def clause_sentence(rng, lang, g, style, clause, first, own, neg=False):
         if clause.startswith("I "):
             return clause
         he = "he" if g == "m" else "she"
-        return f"{rng.choice(subj_pool)} {clause}" if first else f"{he.capitalize()} {clause}"
+        return (
+            f"{rng.choice(subj_pool)} {clause}"
+            if first
+            else f"{he.capitalize()} {clause}"
+        )
     if own:
         return (FRAME_NEG if neg else FRAME_PROBLEM)[lang] + clause
     if first:
@@ -162,7 +292,6 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
     style = "teacher" if rng.random() < 0.14 else "parent"
     r = rng.random()
     lang = "en" if r < 0.40 else "hr" if r < 0.76 else "hi" if r < 0.90 else "mixed"
-    langs_cycle = ["en", "hr"]
 
     labels, sources, clauses = set(), [], []  # clauses: (lang, text)
 
@@ -181,7 +310,14 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
         for d in ds:
             i = rng.choice(neg_pools[d])
             L = lang_for_clause()
-            clauses.append((L, NEGATIVES[d][i][{"en": 0, "hr": 1, "hi": 2}[L]], "neg", (f"neg:{d}", i) in OWN_IDX))
+            clauses.append(
+                (
+                    L,
+                    NEGATIVES[d][i][{"en": 0, "hr": 1, "hi": 2}[L]],
+                    "neg",
+                    (f"neg:{d}", i) in OWN_IDX,
+                )
+            )
             sources.append(f"neg:{d}:{i}")
     else:
         names = sorted(pools)
@@ -196,7 +332,9 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
             attached, entries = GROUPS[n]
             i = rng.choice(pools[n])
             L = lang_for_clause()
-            clauses.append((L, entries[i][{"en": 0, "hr": 1, "hi": 2}[L]], n, (n, i) in OWN_IDX))
+            clauses.append(
+                (L, entries[i][{"en": 0, "hr": 1, "hi": 2}[L]], n, (n, i) in OWN_IDX)
+            )
             labels.update(attached)
             sources.append(f"{n}:{i}")
         # hard negative: a different domain stated as fine
@@ -206,7 +344,15 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
                 d = rng.choice(cand)
                 i = rng.choice(neg_pools[d])
                 L = lang_for_clause()
-                clauses.insert(rng.randrange(len(clauses) + 1), (L, NEGATIVES[d][i][{"en": 0, "hr": 1, "hi": 2}[L]], "neg", (f"neg:{d}", i) in OWN_IDX))
+                clauses.insert(
+                    rng.randrange(len(clauses) + 1),
+                    (
+                        L,
+                        NEGATIVES[d][i][{"en": 0, "hr": 1, "hi": 2}[L]],
+                        "neg",
+                        (f"neg:{d}", i) in OWN_IDX,
+                    ),
+                )
                 sources.append(f"neg:{d}:{i}")
 
     # assemble
@@ -214,18 +360,20 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
     parts = []
     for j, (L, c, tag, own) in enumerate(clauses):
         if tag == "vague":
-            s = c if (c.endswith(".") or c.endswith("।")) else c + sentence_end(L)
+            s = c if (c.endswith((".", "।"))) else c + sentence_end(L)
             if style == "parent" and L == "en" and not s.startswith(("I ", "My ")):
                 s = s[0].upper() + s[1:]
             parts.append((L, s, True))
             continue
-        s = clause_sentence(rng, L, g, style, c, first=(j == 0), own=own, neg=(tag == "neg"))
+        s = clause_sentence(
+            rng, L, g, style, c, first=(j == 0), own=own, neg=(tag == "neg")
+        )
         s = s[0].upper() + s[1:] if L != "hi" else s
         parts.append((L, s, False))
 
     text = ""
     for j, (L, s, whole) in enumerate(parts):
-        end = "" if (s.endswith(".") or s.endswith("।")) else sentence_end(L)
+        end = "" if (s.endswith((".", "।"))) else sentence_end(L)
         if j == 0:
             text = s + end
         else:
@@ -238,13 +386,26 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
                     text = text.rstrip(".।") + conn + s[0].lower() + s[1:] + end
                 else:
                     text += conn.lstrip(". ,") if False else ""
-                    text += " " + (conn.strip().rstrip(",") + ", " if conn.strip() and not conn.strip().startswith(",") else "") + s + end
+                    text += (
+                        " "
+                        + (
+                            conn.strip().rstrip(",") + ", "
+                            if conn.strip() and not conn.strip().startswith(",")
+                            else ""
+                        )
+                        + s
+                        + end
+                    )
     text = re.sub(r"([.।])(\s*[.।])+", r"\1", text)
     # extras
     L0 = base_lang
     if style == "teacher":
         intro = rng.choice(TEACHER_INTRO[L0])
-        text = intro + (text[0].lower() + text[1:] if intro.endswith(("that ", "ki ", "कि ", ", ")) else text)
+        text = intro + (
+            text[0].lower() + text[1:]
+            if intro.endswith(("that ", "ki ", "कि ", ", "))
+            else text
+        )
     else:
         text = rng.choice(INTROS[L0]) + text
     if rng.random() < 0.35 and kind != "vague":
@@ -252,7 +413,15 @@ def compose_row(rng, split, pools, neg_pools, vague_pool, noise_pool, kind):
     if kind in ("vague", "neg_only"):
         text += " " + rng.choice(CLOSERS_VAGUE[L0])
     text = noisy(rng, text, L0)
-    return dict(text=text, lang=lang, style=style, gender=g, age=age, labels=sorted(labels), sources="|".join(sources))
+    return {
+        "text": text,
+        "lang": lang,
+        "style": style,
+        "gender": g,
+        "age": age,
+        "labels": sorted(labels),
+        "sources": "|".join(sources),
+    }
 
 
 def main():
@@ -269,7 +438,11 @@ def main():
     neg_assign = {}
     for d, ents in NEGATIVES.items():
         n = len(ents)
-        neg_assign[d] = {"train": list(range(max(1, n - 1))), "val": [n - 1], "test": [n - 1]}
+        neg_assign[d] = {
+            "train": list(range(max(1, n - 1))),
+            "val": [n - 1],
+            "test": [n - 1],
+        }
     v = list(range(len(VAGUE)))
     split_rng.shuffle(v)
     vague_assign = {"test": v[:3], "val": v[3:6], "train": v[6:]}
@@ -288,7 +461,9 @@ def main():
             tries += 1
             roll = rng.random()
             kind = "vague" if roll < 0.06 else "neg_only" if roll < 0.09 else "normal"
-            row = compose_row(rng, split, pools, neg_pools, vague_assign[split], noise_pool, kind)
+            row = compose_row(
+                rng, split, pools, neg_pools, vague_assign[split], noise_pool, kind
+            )
             if row["text"] in seen:
                 continue
             seen.add(row["text"])
@@ -300,13 +475,28 @@ def main():
     train_texts = {r["text"] for r in rows if r["split"] == "train"}
     rows = [r for r in rows if r["split"] == "train" or r["text"] not in train_texts]
 
-    cols = ["id", "split", "text", "lang", "style", "gender", "age", "labels"] + LABELS + ["is_unclear", "sources"]
-    with open(os.path.join(OUT, "parent_text_dataset.csv"), "w", newline="", encoding="utf-8") as f:
+    cols = (
+        ["id", "split", "text", "lang", "style", "gender", "age", "labels"]
+        + LABELS
+        + ["is_unclear", "sources"]
+    )
+    with open(
+        os.path.join(OUT, "parent_text_dataset.csv"), "w", newline="", encoding="utf-8"
+    ) as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         for i, r in enumerate(rows):
-            out = {"id": f"T{i:06d}", "split": r["split"], "text": r["text"], "lang": r["lang"], "style": r["style"],
-                   "gender": r["gender"], "age": r["age"], "labels": "|".join(r["labels"]), "sources": r["sources"]}
+            out = {
+                "id": f"T{i:06d}",
+                "split": r["split"],
+                "text": r["text"],
+                "lang": r["lang"],
+                "style": r["style"],
+                "gender": r["gender"],
+                "age": r["age"],
+                "labels": "|".join(r["labels"]),
+                "sources": r["sources"],
+            }
             for lab in LABELS:
                 out[lab] = 1 if lab in r["labels"] else 0
             out["is_unclear"] = 1 if not r["labels"] else 0
@@ -314,7 +504,9 @@ def main():
 
     print("rows:", len(rows), dict(Counter(r["split"] for r in rows)))
     print("lang:", dict(Counter(r["lang"] for r in rows)))
-    print("labels per row:", dict(sorted(Counter(len(r["labels"]) for r in rows).items())))
+    print(
+        "labels per row:", dict(sorted(Counter(len(r["labels"]) for r in rows).items()))
+    )
     cnt = Counter(l for r in rows for l in r["labels"])
     print("label counts:", {l: cnt[l] for l in LABELS})
 

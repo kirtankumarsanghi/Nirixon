@@ -22,7 +22,7 @@ import sys
 
 import numpy as np
 import pandas as pd
-from age_brackets import BRACKET_LABELS, map_to_bracket_label
+from age_brackets import BRACKET_LABELS
 
 CSV_PATH = "../processed/screening_data_items.csv"
 
@@ -47,7 +47,9 @@ CORRELATION_MAX_BASELINE = (
 
 # Refer rate spread across the 17 ASQ-3 brackets — tighter than the old
 # 1-year-bin threshold because within-bracket variation should be smaller.
-AGE_REFER_RATE_MAX_SPREAD = 0.10  # raised slightly from 0.08 to account for narrow brackets
+AGE_REFER_RATE_MAX_SPREAD = (
+    0.10  # raised slightly from 0.08 to account for narrow brackets
+)
 
 
 results = []  # (check_name, passed: bool, detail: str)
@@ -120,13 +122,15 @@ def main() -> int:
     )
     check(
         "age_bracket column present with all 17 ASQ-3 bracket labels",
-        "age_bracket" in df.columns and set(df["age_bracket"].unique()) == set(BRACKET_LABELS),
+        "age_bracket" in df.columns
+        and set(df["age_bracket"].unique()) == set(BRACKET_LABELS),
         f"Expected 17 unique bracket labels. Found: "
         f"{sorted(df['age_bracket'].unique()) if 'age_bracket' in df.columns else 'column missing'}",
     )
     check(
         "age_bracket_ordinal column is in 0-16 range",
-        "age_bracket_ordinal" in df.columns and df["age_bracket_ordinal"].between(0, 16).all(),
+        "age_bracket_ordinal" in df.columns
+        and df["age_bracket_ordinal"].between(0, 16).all(),
         "Checked age_bracket_ordinal is integer 0-16 for all rows.",
     )
 

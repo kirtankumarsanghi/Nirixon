@@ -27,6 +27,7 @@ Design choices, stated plainly:
 from __future__ import annotations
 
 import numpy as np
+
 try:
     from item_bank import DOMAINS
 except ImportError:
@@ -61,7 +62,7 @@ def sample_domain_latents(
     """
     Simulates an (n, 6) latent developmental profile using a continuous
     Multivariate Normal Gaussian Copula parameterized by CORR_MATRIX.
-    
+
     Zero-correlation invariance: Multilingual exposure (multilingual_home_flag)
     is intentionally excluded from the latent ability equations to ensure fairness.
     """
@@ -90,5 +91,7 @@ def apply_regression_event(
         return latents
 
     domains_to_hit = sampler.integers(0, N_DOMAINS, size=len(flagged_idx))
-    latents[flagged_idx, domains_to_hit] -= sampler.uniform(1.5, 2.5, size=len(flagged_idx))
+    latents[flagged_idx, domains_to_hit] -= sampler.uniform(
+        1.5, 2.5, size=len(flagged_idx)
+    )
     return latents

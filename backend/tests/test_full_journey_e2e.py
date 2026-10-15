@@ -8,10 +8,12 @@ Simulates the complete clinical journey from:
 6. Module B adaptive micro-testing
 7. Final comprehensive clinical diagnostic assessment
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -25,6 +27,7 @@ os.environ["SEED_USER_PASSWORD"] = "changeme"
 
 from app.auth import hash_password
 from app.config import get_settings
+from app.core.module_b.service import module_b_service
 from app.db.models import User
 from app.db.session import (
     Base,
@@ -36,12 +39,15 @@ from app.db.session import (
 from app.db.session_repo import InMemorySessionRepo, set_session_repo
 from app.main import create_app
 from app.ml.inference_service import inference_service
-from app.core.module_b.service import module_b_service
 
 ARTIFACTS = Path(__file__).resolve().parents[1] / "ml" / "artifacts"
 ROUTER_PATH = ARTIFACTS / "module_b_router" / "router_b.joblib"
-BANK_PATH = Path(__file__).resolve().parents[1] / "data" / "module_b" / "question_bank_b.csv"
-ACTS_PATH = Path(__file__).resolve().parents[1] / "data" / "module_b" / "activities_b.csv"
+BANK_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "module_b" / "question_bank_b.csv"
+)
+ACTS_PATH = (
+    Path(__file__).resolve().parents[1] / "data" / "module_b" / "activities_b.csv"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +75,9 @@ async def e2e_app(tmp_path):
 
     # Load ML artifacts for Module A & Module B
     inference_service.load(ARTIFACTS)
-    module_b_service.load(router_path=ROUTER_PATH, bank_path=BANK_PATH, acts_path=ACTS_PATH)
+    module_b_service.load(
+        router_path=ROUTER_PATH, bank_path=BANK_PATH, acts_path=ACTS_PATH
+    )
 
     session_factory = get_session_factory()
 
@@ -178,7 +186,10 @@ async def test_full_patient_screening_journey(e2e_app):
         print(f"Target Domains: {result_a['target_reflex_domains']}")
         print(f"Guards: {result_a['guard_flags']}")
 
-        assert result_a["triage_tier"] in ("Tier 2: Reflex-Branch", "Tier 3: Direct Referral")
+        assert result_a["triage_tier"] in (
+            "Tier 2: Reflex-Branch",
+            "Tier 3: Direct Referral",
+        )
         assert "guard_flags" in result_a
         assert result_a["guard_flags"]["acquiescence"] is False
         assert result_a["guard_flags"]["inconsistency"] is False
@@ -190,7 +201,9 @@ async def test_full_patient_screening_journey(e2e_app):
             f"/api/screen/{session_a_id}/reflex_branch",
             headers=headers,
         )
-        assert reflex_resp.status_code == 200, f"Reflex branching failed: {reflex_resp.text}"
+        assert (
+            reflex_resp.status_code == 200
+        ), f"Reflex branching failed: {reflex_resp.text}"
         reflex_data = reflex_resp.json()
         session_b_id = reflex_data["session_id"]
         assert reflex_data["type"] == "intake_required"
@@ -214,7 +227,10 @@ async def test_full_patient_screening_journey(e2e_app):
         print("\n--- Module B NLP Router Output ---")
         print(f"Detected Domains: {intake_data['detected_domains']}")
         print(f"Next Action: {intake_data['next_action']}")
-        assert "listening_speaking" in intake_data["detected_domains"] or len(intake_data["detected_domains"]) > 0
+        assert (
+            "listening_speaking" in intake_data["detected_domains"]
+            or len(intake_data["detected_domains"]) > 0
+        )
         assert intake_data["next_action"] == "question"
         curr_b_q = intake_data["action"]["question"]
 
@@ -236,7 +252,9 @@ async def test_full_patient_screening_journey(e2e_app):
                 headers=headers,
                 json={"item_id": curr_b_q["item_id"], "answer": b_ans},
             )
-            assert b_ans_resp.status_code == 200, f"Module B answer failed: {b_ans_resp.text}"
+            assert (
+                b_ans_resp.status_code == 200
+            ), f"Module B answer failed: {b_ans_resp.text}"
             b_data = b_ans_resp.json()
             if b_data["type"] == "complete":
                 module_b_complete = True

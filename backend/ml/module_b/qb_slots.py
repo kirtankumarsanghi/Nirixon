@@ -11,7 +11,11 @@ BANDS = ["5-7", "8-10", "11-12"]
 
 SLOTS = {
     "task": {
-        "5-7": ["colouring or a drawing activity", "a worksheet", "a simple written task"],
+        "5-7": [
+            "colouring or a drawing activity",
+            "a worksheet",
+            "a simple written task",
+        ],
         "8-10": ["homework", "a classwork exercise", "a school project"],
         "11-12": ["homework or revision", "an assignment", "exam preparation"],
     },
@@ -21,19 +25,51 @@ SLOTS = {
         "11-12": ["classwork", "a written test or assignment", "a group project"],
     },
     "read": {
-        "5-7": ["a simple picture book", "a short story in large print", "words on a chart or flash card"],
+        "5-7": [
+            "a simple picture book",
+            "a short story in large print",
+            "words on a chart or flash card",
+        ],
         "8-10": ["a textbook paragraph", "a short story", "a worksheet passage"],
-        "11-12": ["a textbook chapter", "a newspaper or magazine passage", "exam questions"],
+        "11-12": [
+            "a textbook chapter",
+            "a newspaper or magazine passage",
+            "exam questions",
+        ],
     },
     "write": {
-        "5-7": ["a short sentence", "letters and numbers", "a few words from the board"],
-        "8-10": ["a few sentences about a topic", "answers in a notebook", "notes from the board"],
-        "11-12": ["a paragraph or short essay", "answers in several lines", "notes during class"],
+        "5-7": [
+            "a short sentence",
+            "letters and numbers",
+            "a few words from the board",
+        ],
+        "8-10": [
+            "a few sentences about a topic",
+            "answers in a notebook",
+            "notes from the board",
+        ],
+        "11-12": [
+            "a paragraph or short essay",
+            "answers in several lines",
+            "notes during class",
+        ],
     },
     "math": {
-        "5-7": ["counting objects", "simple addition and subtraction", "comparing which group has more"],
-        "8-10": ["multiplication tables", "word problems", "carrying and borrowing in sums"],
-        "11-12": ["fractions and decimals", "multi-step problems", "percentages or measurements"],
+        "5-7": [
+            "counting objects",
+            "simple addition and subtraction",
+            "comparing which group has more",
+        ],
+        "8-10": [
+            "multiplication tables",
+            "word problems",
+            "carrying and borrowing in sums",
+        ],
+        "11-12": [
+            "fractions and decimals",
+            "multi-step problems",
+            "percentages or measurements",
+        ],
     },
     "game": {
         "5-7": ["a playground game", "a ball game", "a board or card game"],
@@ -47,32 +83,78 @@ SLOTS = {
     },
     "peer": {
         "5-7": ["other children in the neighbourhood", "classmates"],
-        "8-10": ["classmates", "children in the neighbourhood", "cousins of the same age"],
+        "8-10": [
+            "classmates",
+            "children in the neighbourhood",
+            "cousins of the same age",
+        ],
         "11-12": ["classmates", "friends", "children in the neighbourhood"],
     },
     "exam": {
-        "5-7": ["answering in front of the class", "a class activity with the teacher watching"],
-        "8-10": ["a class test", "reading aloud in class", "answering in front of the class"],
+        "5-7": [
+            "answering in front of the class",
+            "a class activity with the teacher watching",
+        ],
+        "8-10": [
+            "a class test",
+            "reading aloud in class",
+            "answering in front of the class",
+        ],
         "11-12": ["an exam", "a presentation", "a unit test"],
     },
     "speak": {
-        "5-7": ["telling news or a story", "answering the teacher's question", "asking for help"],
-        "8-10": ["explaining what happened", "describing a picture or an event", "giving a short talk"],
-        "11-12": ["explaining an idea", "telling a story in order", "giving a short presentation"],
+        "5-7": [
+            "telling news or a story",
+            "answering the teacher's question",
+            "asking for help",
+        ],
+        "8-10": [
+            "explaining what happened",
+            "describing a picture or an event",
+            "giving a short talk",
+        ],
+        "11-12": [
+            "explaining an idea",
+            "telling a story in order",
+            "giving a short presentation",
+        ],
     },
     "fine": {
-        "5-7": ["using scissors", "buttoning or zipping clothes", "holding a crayon or pencil"],
+        "5-7": [
+            "using scissors",
+            "buttoning or zipping clothes",
+            "holding a crayon or pencil",
+        ],
         "8-10": ["cutting along a line", "tying shoelaces", "using a ruler or compass"],
-        "11-12": ["drawing neat diagrams", "using geometry tools", "packing a bag neatly"],
+        "11-12": [
+            "drawing neat diagrams",
+            "using geometry tools",
+            "packing a bag neatly",
+        ],
     },
     "gross": {
-        "5-7": ["hopping or skipping", "catching a big ball", "climbing playground equipment"],
-        "8-10": ["catching and throwing a ball", "riding a bicycle", "skipping with a rope"],
-        "11-12": ["team sports", "running and changing direction", "cycling or swimming"],
+        "5-7": [
+            "hopping or skipping",
+            "catching a big ball",
+            "climbing playground equipment",
+        ],
+        "8-10": [
+            "catching and throwing a ball",
+            "riding a bicycle",
+            "skipping with a rope",
+        ],
+        "11-12": [
+            "team sports",
+            "running and changing direction",
+            "cycling or swimming",
+        ],
     },
     "place": {
         "5-7": ["going to school", "staying at school without a parent"],
-        "8-10": ["going to school", "staying at a relative's house or a friend's house"],
+        "8-10": [
+            "going to school",
+            "staying at a relative's house or a friend's house",
+        ],
         "11-12": ["going to school", "going to tuition or classes"],
     },
 }
