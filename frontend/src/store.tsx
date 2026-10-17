@@ -1,14 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  SEED_CHECKINS,
-  generateChildren,
-  type CheckIn,
-  type Child,
-  type Scores,
-} from "./lib/model";
+import type { CheckIn, Child, Scores } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
-import { api, setAuthToken } from "./api/client";
+import { api, referralApi, setAuthToken } from "./api/client";
+import { childRecordToChild, sessionToCheckIn } from "./lib/apiAdapters";
 
 /** Map a backend role string onto a design role id. Backend uses "internal"
  *  for clinicians; everything else passes through, unknown → "parent". */
@@ -46,6 +41,11 @@ interface AppCtx {
   patchChild: (id: string, patch: Partial<Child>) => void;
   resetChildren: () => void;
 
+  /** Backend data state for the current workspace. */
+  loading: boolean;
+  error: string | null;
+  reload: () => void;
+
   checkInTarget: string | null;
   setCheckInTarget: (id: string | null) => void;
   whatIfSeed: WhatIfSeed | null;
@@ -70,8 +70,11 @@ const toTop = () => window.scrollTo({ top: 0, behavior: "auto" });
 
 export function AppProvider({ children: kids }: { children: ReactNode }) {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
-  const [checkIns, setCheckIns] = useState<CheckIn[]>(SEED_CHECKINS);
-  const [children, setChildren] = useState<Child[]>(() => generateChildren());
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [checkInTarget, setCheckInTarget] = useState<string | null>(null);
   const [whatIfSeed, setWhatIfSeed] = useState<WhatIfSeed | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
@@ -127,6 +130,35 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       window.removeEventListener("hashchange", sync);
     };
   }, []);
+
+  // Load the real workspace data for the active role. Parents (and clinicians)
+  // get their completed screening history; frontline workers get their caseload.
+  const activeRole: Role | null = route.screen === "app" ? route.role : null;
+  useEffect(() => {
+    if (activeRole === null) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        if (activeRole === "parent" || activeRole === "clinician") {
+          const sessions = await api.getSessions();
+          if (!cancelled) setCheckIns(sessions.map(sessionToCheckIn));
+        }
+        if (activeRole === "chw" || activeRole === "supervisor" || activeRole === "clinician") {
+          const recs = await referralApi.getChildren({ limit: 500 });
+          if (!cancelled) setChildren(recs.map(childRecordToChild));
+        }
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRole, reloadKey]);
 
   const navigate = useCallback((wanted: Route, replace = false) => {
     const next = parseHash(toHash(wanted)); // normalise
@@ -186,7 +218,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       addCheckIn: (ci) => setCheckIns((p) => [ci, ...p]),
       children,
       patchChild: (id, patch) => setChildren((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c))),
-      resetChildren: () => setChildren(generateChildren()),
+      resetChildren: () => setReloadKey((k) => k + 1),
       checkInTarget,
       setCheckInTarget,
       whatIfSeed,
@@ -197,8 +229,11 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       showToast,
       menuOpen,
       setMenuOpen,
+      loading,
+      error,
+      reload: () => setReloadKey((k) => k + 1),
     };
-  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme]);
+  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }
