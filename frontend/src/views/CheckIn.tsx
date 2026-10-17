@@ -1,70 +1,102 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
-import { ANSWERS, MODULES, QUESTION_BANK, REGRESSION_Q, SCHOOL_ACTIVITIES, UI, domainScore, moduleForAge, type Lang, type Module } from "../lib/questions";
 import {
   DOMAINS,
-  DOMAIN_KEYS,
   TIER_META,
   ageBand,
   domainStatus,
   evaluate,
   type CheckIn as CheckInT,
-  type Domain,
   type Scores,
+  type Tier,
 } from "../lib/model";
 import { PHOTO } from "../photos";
 import { ROLES } from "../lib/roles";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
+import { api } from "../api/client";
+import type { ResultPayload, ScreenActionResponse } from "../api/types";
+import { scoresFromResult, irtFromResult } from "../lib/apiAdapters";
 
-type Val = 0 | 1 | 2;
-type Level = "B" | "A";
-interface Entry {
-  domain: Domain;
-  level: Level;
-  val: Val;
-}
+type DesignVal = 0 | 1 | 2;
+type Lang = "en" | "hi";
+type Module = "A" | "B";
 type Phase = "setup" | "quiz" | "result";
 
-function nextQuestion(log: Entry[]): { domain: Domain; level: Level } | null {
-  for (const d of DOMAIN_KEYS) {
-    const b = log.find((l) => l.domain === d && l.level === "B");
-    if (!b) return { domain: d, level: "B" };
-    if (b.val === 2) continue;
-    const a = log.find((l) => l.domain === d && l.level === "A");
-    if (!a) return { domain: d, level: "A" };
-  }
-  return null;
+interface BackendQuestion {
+  item_id: string;
+  question_text: string;
+  domain: string;
+  question_number: number;
+  question_cap: number;
+  response_type?: string;
+  scale_labels?: string | null;
 }
 
-function scoresFromLog(log: Entry[]) {
-  const scores = {} as Scores;
-  const state = {} as Record<Domain, "none" | "partial" | "done">;
-  for (const d of DOMAIN_KEYS) {
-    const b = log.find((l) => l.domain === d && l.level === "B");
-    const a = log.find((l) => l.domain === d && l.level === "A");
-    if (!b) {
-      scores[d] = 0;
-      state[d] = "none";
-    } else if (b.val === 2 || a) {
-      scores[d] = domainScore(b.val, a?.val);
-      state[d] = "done";
-    } else {
-      scores[d] = -0.9;
-      state[d] = "partial";
-    }
-  }
-  return { scores, state };
-}
+const modules: Record<Module, { label: string; age: string; min: number; max: number; subtitle: string; note: string }> = {
+  A: {
+    label: "Early years",
+    age: "1–59 months",
+    min: 1,
+    max: 59,
+    subtitle: "Six areas: movement, hands, talking, people, thinking and self-help.",
+    note: "A short adaptive set for the early years.",
+  },
+  B: {
+    label: "School age",
+    age: "60–144 months",
+    min: 60,
+    max: 144,
+    subtitle: "Eight areas: attention, language, reading, writing, numbers, motor, social and emotions.",
+    note: "A school-age adaptive set.",
+  },
+};
 
+const ANSWER_OPTIONS: { val: DesignVal; en: string; hi: string }[] = [
+  { val: 2, en: "Yes, does this consistently", hi: "हाँ, हमेशा करता/करती है" },
+  { val: 1, en: "Sometimes or with help", hi: "कभी-कभी या मदद से" },
+  { val: 0, en: "Not yet / significant difficulty", hi: "अभी नहीं / काफ़ी कठिनाई" },
+];
+
+const UI: Record<Lang, Record<string, string>> = {
+  en: { question: "Question", tag: "Developmental check", back: "Back", complete: "complete" },
+  hi: { question: "प्रश्न", tag: "विकासात्मक जाँच", back: "पीछे", complete: "पूर्ण" },
+};
+
+const REGRESSION_Q: Record<Lang, string> = {
+  en: "Has the child stopped doing something they used to do?",
+  hi: "क्या बच्चे ने कोई ऐसा काम करना बंद कर दिया जो पहले करता था?",
+};
+
+const MODULE_A_DOMAINS = ["gross", "fine", "comm", "social", "cog", "adaptive"];
+const MODULE_B_DOMAINS = ["attention", "listening_speaking", "reading", "writing", "numbers", "motor", "social", "emotion_conduct"];
+const DESIGN_OF: Record<string, string> = {
+  gross_motor: "gross",
+  fine_motor: "fine",
+  communication: "comm",
+  personal_social: "social",
+  cognitive: "cog",
+  self_help: "adaptive",
+};
+const designDomain = (k: string) => DESIGN_OF[k] ?? k;
+const moduleForAge = (m: number): Module => (m >= 60 ? "B" : "A");
 const barW = (z: number) => `${((Math.max(-3, Math.min(1, z)) + 3) / 4) * 100}%`;
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Connection problem — please try again.");
+
+/** Map the design's 3-option answer onto the backend's expected value. */
+function toBackendAnswer(responseType: string | undefined, val: DesignVal): number | string {
+  if (responseType === "likert5") return val === 2 ? 5 : val === 1 ? 3 : 1;
+  if (responseType === "yesno") return val === 2 ? "Yes" : val === 1 ? "Not sure" : "No";
+  if (responseType === "yes_no") return val === 0 ? 0 : 1;
+  return val; // frequency (0/1/2)
+}
 
 export function CheckIn() {
-  const { role, children, checkInTarget, setCheckInTarget, addCheckIn, patchChild, go } = useApp();
+  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast } = useApp();
   const assisting = role !== "parent";
   const initialChild = children.find((c) => c.id === checkInTarget);
   const initialAge = initialChild?.ageMonths ?? (assisting ? 30 : 39);
@@ -76,10 +108,16 @@ export function CheckIn() {
   const [name, setName] = useState(assisting ? "" : "Aarav");
   const [module, setModule] = useState<Module>(() => moduleForAge(initialAge));
   const [age, setAge] = useState(() => Math.max(1, Math.min(144, initialAge)));
-  const [log, setLog] = useState<Entry[]>([]);
   const [regression, setRegression] = useState(false);
-  const [picked, setPicked] = useState<Val | null>(null);
+  const [picked, setPicked] = useState<DesignVal | null>(null);
   const [result, setResult] = useState<CheckInT | null>(null);
+  const [backendResult, setBackendResult] = useState<ResultPayload | null>(null);
+
+  // Backend-driven flow
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [question, setQuestion] = useState<BackendQuestion | null>(null);
+  const [answers, setAnswers] = useState<Record<string, { sum: number; n: number }>>({});
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => () => setCheckInTarget(null), [setCheckInTarget]);
 
@@ -92,89 +130,222 @@ export function CheckIn() {
     [children]
   );
 
-  const q = nextQuestion(log);
-  const { scores: liveScores, state: liveState } = scoresFromLog(log);
-  const doneCount = DOMAIN_KEYS.filter((d) => liveState[d] === "done").length;
-  const partialCount = DOMAIN_KEYS.filter((d) => liveState[d] === "partial").length;
-  const pct = Math.round(((doneCount + partialCount * 0.5) / DOMAIN_KEYS.length) * 100);
-  const answeredAny = doneCount + partialCount > 0;
-  const liveEv = evaluate(liveScores, regression);
+  const expectedDomains = module === "A" ? MODULE_A_DOMAINS : MODULE_B_DOMAINS;
+  const previewScores = useMemo(() => {
+    const s: Scores = {};
+    for (const [dom, { sum, n }] of Object.entries(answers)) {
+      if (n > 0) s[dom] = -2.5 + (sum / n / 2) * 2.9;
+    }
+    return s;
+  }, [answers]);
+  const answeredAny = Object.keys(answers).length > 0;
+  const liveEv = evaluate(previewScores, regression);
   const liveMeta = TIER_META[liveEv.tier];
-  const remaining = DOMAIN_KEYS.length - doneCount;
-  const est = Math.min(12, Math.max(9, log.length + remaining));
-  const moduleMeta = MODULES[module];
+  const qNumber = question?.question_number ?? 1;
+  const qCap = question?.question_cap ?? 10;
+  const pct = Math.round(((qNumber - 1) / Math.max(1, qCap)) * 100);
+  const doneCount = Object.keys(answers).length;
+  const moduleMeta = modules[module];
 
-  const chooseModule = (next: Module) => {
-    setModule(next);
-    setAge((current) =>
-      current >= MODULES[next].min && current <= MODULES[next].max
-        ? current
-        : next === "A"
-          ? 36
-          : 96
-    );
-    if (targetChild && moduleForAge(targetChild.ageMonths) !== next) setTarget("");
+  const persistSession = (sid: string | null) => {
+    setSessionId(sid);
+    try {
+      if (sid) sessionStorage.setItem("nirixon_screen_session_id", sid);
+      else sessionStorage.removeItem("nirixon_screen_session_id");
+    } catch {
+      /* restricted storage */
+    }
   };
 
-  const begin = () => {
-    setLog([]);
-    setRegression(false);
+  const finalize = useCallback(
+    (rp: ResultPayload, sid: string, ageMonths: number) => {
+      const scores = scoresFromResult(rp);
+      const irt = irtFromResult(rp);
+      const child = targetChild ? targetChild.id : name.trim() || (assisting ? "Walk-in child" : "Aarav");
+      const tier = (rp.final_classification as Tier) ?? "Typical";
+      const ci: CheckInT = {
+        id: sid,
+        date: new Date().toISOString().slice(0, 10),
+        ageMonths,
+        child,
+        scores,
+        irt,
+        tier,
+        probs: {
+          typical: rp.probabilities?.Typical ?? 0,
+          monitor: rp.probabilities?.Monitor ?? 0,
+          refer: rp.probabilities?.Refer ?? 0,
+        },
+        regression: rp.safety_override_triggered,
+        source: "live",
+        module,
+      };
+      setResult(ci);
+      setBackendResult(rp);
+      setPhase("result");
+      persistSession(null);
+      if (targetChild) {
+        patchChild(targetChild.id, {
+          scores,
+          status: tier === "Typical" ? "ontrack" : tier === "Monitor" ? "watch" : "refer",
+          visits: targetChild.visits + 1,
+          lastVisitDays: 0,
+          handoff: tier === "Refer" ? "queued" : targetChild.handoff,
+        });
+      } else {
+        reload(); // refresh the real saved history
+      }
+      window.scrollTo({ top: 0 });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [targetChild, name, assisting, module, patchChild, reload]
+  );
+
+  const applyAction = useCallback(
+    async (res: ScreenActionResponse, ageMonths: number) => {
+      if (res.session_id) persistSession(res.session_id);
+      if (res.type === "question" && res.question) {
+        setQuestion(res.question as unknown as BackendQuestion);
+        setPhase("quiz");
+        return;
+      }
+      if (res.type === "complete" && res.result) {
+        finalize(res.result, res.session_id ?? sessionId ?? `live-${Date.now()}`, ageMonths);
+        return;
+      }
+      if (res.type === "intake_required" && res.session_id) {
+        // Module B needs a short intake before questions. The design has no
+        // intake screen, so send an empty intake and let the backend route on.
+        const ir = await api.submitIntake(res.session_id, { text: "", chips: [], setting: "both" });
+        if (ir.action) {
+          await applyAction(ir.action, ageMonths);
+          return;
+        }
+        if (ir.question) {
+          setQuestion(ir.question as unknown as BackendQuestion);
+          setPhase("quiz");
+          return;
+        }
+        showToast(ir.recall_message || "This check-in needs a short description before questions.");
+        return;
+      }
+      if (res.type === "safety_notice") {
+        showToast(res.safety_message || "A safety concern was flagged — please seek help.");
+        setPhase("setup");
+        return;
+      }
+      setPhase("setup");
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [finalize, sessionId, showToast]
+  );
+
+  const begin = async () => {
+    if (busy) return;
+    setBusy(true);
     setPicked(null);
     setResult(null);
-    setPhase("quiz");
-    window.scrollTo({ top: 0 });
-  };
-
-  const finish = (finalLog: Entry[]) => {
-    const { scores } = scoresFromLog(finalLog);
-    const ci: CheckInT = {
-      id: `live-${Date.now()}`,
-      date: new Date().toISOString().slice(0, 10),
-      ageMonths: age,
-      child: name.trim() || (assisting ? targetChild?.id ?? "Walk-in child" : "Aarav"),
-      scores,
-      regression,
-      source: "live",
-      module,
-    };
-    const ev = evaluate(scores, regression);
-    if (!assisting) addCheckIn(ci);
-    if (targetChild) {
-      patchChild(targetChild.id, {
-        scores,
-        regression,
-        status: ev.tier === "Typical" ? "ontrack" : ev.tier === "Monitor" ? "watch" : "refer",
-        visits: targetChild.visits + 1,
-        lastVisitDays: 0,
-        handoff: ev.tier === "Refer" ? "queued" : targetChild.handoff,
+    setBackendResult(null);
+    setAnswers({});
+    setQuestion(null);
+    try {
+      const res = await api.startScreen({
+        corrected_age_months: age,
+        question_cap: 10,
+        module,
+        consent_given: true,
+        child_ref: targetChild?.id ?? "",
+        child_name: !targetChild && name.trim() ? name.trim() : undefined,
       });
+      await applyAction(res, age);
+    } catch (e) {
+      showToast(errMsg(e));
+    } finally {
+      setBusy(false);
     }
-    setResult(ci);
-    setPhase("result");
-    window.scrollTo({ top: 0 });
   };
 
-  const answer = (val: Val) => {
-    if (picked !== null || !q) return;
+  const submit = async (val: DesignVal) => {
+    if (picked !== null || busy || !question || !sessionId) return;
     setPicked(val);
-    window.setTimeout(() => {
-      const nl = [...log, { domain: q.domain, level: q.level, val }];
-      setLog(nl);
+    setBusy(true);
+    const dom = designDomain(question.domain);
+    setAnswers((prev) => {
+      const cur = prev[dom] ?? { sum: 0, n: 0 };
+      return { ...prev, [dom]: { sum: cur.sum + val, n: cur.n + 1 } };
+    });
+    try {
+      const res = await api.submitAnswer(sessionId, {
+        item_id: question.item_id,
+        answer: toBackendAnswer(question.response_type, val) as unknown as number,
+        source: "recall",
+      });
       setPicked(null);
-      if (!nextQuestion(nl)) finish(nl);
-    }, 340);
+      await applyAction(res, age);
+    } catch (e) {
+      setAnswers((prev) => {
+        const cur = prev[dom];
+        if (!cur) return prev;
+        const next = { ...prev };
+        if (cur.n <= 1) delete next[dom];
+        else next[dom] = { sum: cur.sum - val, n: cur.n - 1 };
+        return next;
+      });
+      setPicked(null);
+      showToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
   };
+
+  // Resume an in-flight session on reload.
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = sessionStorage.getItem("nirixon_screen_session_id");
+    } catch {
+      saved = null;
+    }
+    if (!saved) return;
+    (async () => {
+      try {
+        const s = await api.getSession(saved);
+        if (s.completed && s.result) {
+          finalize(s.result, saved, Math.round(s.corrected_age_months));
+        } else if (s.next_question) {
+          setSessionId(saved);
+          setAge(Math.round(s.corrected_age_months));
+          setModule((s.module ?? moduleForAge(s.corrected_age_months)) as Module);
+          setQuestion(s.next_question as unknown as BackendQuestion);
+          setPhase("quiz");
+        }
+      } catch {
+        try {
+          sessionStorage.removeItem("nirixon_screen_session_id");
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (phase !== "quiz") return;
     const k = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
       const i = ["1", "2", "3"].indexOf(e.key);
-      if (i >= 0) answer(ANSWERS[i].val);
+      if (i >= 0) void submit(ANSWER_OPTIONS[i].val);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   });
+
+  const chooseModule = (next: Module) => {
+    setModule(next);
+    setAge((current) => (current >= modules[next].min && current <= modules[next].max ? current : next === "A" ? 36 : 96));
+    if (targetChild && moduleForAge(targetChild.ageMonths) !== next) setTarget("");
+  };
 
   /* ============================== SETUP ============================== */
   if (phase === "setup") {
@@ -198,7 +369,7 @@ export function CheckIn() {
               <span className="mb-3 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Choose age pathway</span>
               <div className="grid gap-3 sm:grid-cols-2">
                 {(["A", "B"] as Module[]).map((m) => {
-                  const cfg = MODULES[m];
+                  const cfg = modules[m];
                   const active = module === m;
                   const Icon = m === "A" ? Baby : GraduationCap;
                   return (
@@ -334,7 +505,7 @@ export function CheckIn() {
                 ))}
               </ul>
               <p className="mt-5 text-[12px] leading-relaxed text-paper/60">
-                {moduleMeta.note} This prototype loads a separate question bank for Module {module}.
+                {moduleMeta.note}
               </p>
             </div>
           </aside>
@@ -345,9 +516,21 @@ export function CheckIn() {
 
   /* ============================== RESULT ============================== */
   if (phase === "result" && result) {
-    const ev = evaluate(result.scores, result.regression);
-    const meta = TIER_META[ev.tier];
-    const lows = [...DOMAIN_KEYS].sort((a, b) => result.scores[a] - result.scores[b]).slice(0, ev.tier === "Typical" ? 1 : 2);
+    const base = evaluate(result.scores, result.regression);
+    const tier = result.tier ?? base.tier;
+    const meta = TIER_META[tier];
+    const safety = result.regression || base.safety;
+    const reason = backendResult?.summary || (backendResult?.caveats?.length ? backendResult.caveats.join(" ") : base.reason);
+    const lows = [...Object.keys(result.scores)].sort((a, b) => result.scores[a] - result.scores[b]).slice(0, tier === "Typical" ? 1 : 2);
+    const activityFor = (k: string) => {
+      const acts = (backendResult?.activities as Record<string, unknown> | undefined)?.[k];
+      if (Array.isArray(acts) && acts.length) {
+        const a = acts[0];
+        if (typeof a === "string") return a;
+        if (a && typeof a === "object" && "title" in a) return String((a as { title: unknown }).title);
+      }
+      return DOMAINS[k]?.activity ?? "";
+    };
     return (
       <Page>
         <section className="relative overflow-hidden rounded-[44px] bg-night text-paper">
@@ -363,40 +546,40 @@ export function CheckIn() {
                 <span className="font-mono text-[11px] tracking-[0.24em] text-paper/60 uppercase">Result tier</span>
               </div>
               <h1 className="nrx-pop mt-4 font-display text-[clamp(72px,10vw,150px)] leading-[0.86] uppercase" style={{ color: meta.hexLight }}>
-                {ev.tier}
+                {tier}
               </h1>
               <p className="mt-2 font-display text-[clamp(26px,3vw,44px)] leading-none text-peach uppercase">({meta.hint})</p>
               <p className="mt-6 max-w-[470px] text-[15px] leading-relaxed text-paper/75">{meta.summary}</p>
               <p className="mt-4 flex max-w-[470px] items-start gap-2.5 rounded-2xl bg-white/[0.06] p-4 text-[12.5px] leading-relaxed text-paper/80">
-                {ev.safety && <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[#ee6a4f]" />}
-                <span><b className="text-paper">Why: </b>{ev.reason}</span>
+                {safety && <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[#ee6a4f]" />}
+                <span><b className="text-paper">Why: </b>{reason}</span>
               </p>
               <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-[12px] font-semibold">
                 <Check className="size-4 text-[#8fbf5a]" />
                 {assisting
                   ? targetChild
-                    ? `${targetChild.id} updated in the Ward 12 caseload${ev.tier === "Refer" ? " · handoff queued" : ""}`
+                    ? `${targetChild.id} updated in the Ward 12 caseload${tier === "Refer" ? " · handoff queued" : ""}`
                     : "Walk-in result — not linked to a caseload record"
                   : `Saved to ${result.child}’s growth history`}
               </p>
             </div>
             <div>
-              <Radar scores={result.scores} tone={meta.hexLight} />
+              <Radar scores={result.scores} irt={result.irt} tone={meta.hexLight} />
             </div>
           </div>
         </section>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="02" tone="muted">{ev.tier === "Typical" ? "Keep this going" : "Try these first"}</Eyebrow>
+            <Eyebrow index="02" tone="muted">{tier === "Typical" ? "Keep this going" : "Try these first"}</Eyebrow>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {lows.map((k) => (
                 <div key={k} className="rounded-[26px] bg-rust p-6 text-white">
                   <Lightbulb className="size-6" />
                   <p className="mt-4 font-mono text-[10px] font-semibold tracking-[0.2em] uppercase opacity-80">
-                    {DOMAINS[k].label} · {domainStatus(result.scores[k]).label}
+                    {DOMAINS[k]?.label ?? k} · {domainStatus(result.scores[k]).label}
                   </p>
-                  <p className="mt-2 font-display text-[26px] leading-[1.05] uppercase">{module === "B" ? SCHOOL_ACTIVITIES[k] : DOMAINS[k].activity}</p>
+                  <p className="mt-2 font-display text-[26px] leading-[1.05] uppercase">{activityFor(k)}</p>
                 </div>
               ))}
             </div>
@@ -415,8 +598,8 @@ export function CheckIn() {
                   <Btn variant="light" onClick={() => go("share")}><Share2 className="size-4" /> Share</Btn>
                 </>
               )}
-              <Btn variant={ev.tier === "Refer" ? "rust" : "light"} onClick={() => go("help")}><MapPin className="size-4" /> Find help</Btn>
-              <Btn variant="soft" onClick={() => { setPhase("setup"); setResult(null); setTarget(""); window.scrollTo({ top: 0 }); }}>
+              <Btn variant={tier === "Refer" ? "rust" : "light"} onClick={() => go("help")}><MapPin className="size-4" /> Find help</Btn>
+              <Btn variant="soft" onClick={() => { setPhase("setup"); setResult(null); setBackendResult(null); setTarget(""); setQuestion(null); setAnswers({}); persistSession(null); window.scrollTo({ top: 0 }); }}>
                 <RotateCcw className="size-4" /> Another
               </Btn>
             </div>
@@ -428,7 +611,7 @@ export function CheckIn() {
 
   /* =============================== QUIZ =============================== */
   const ui = UI[lang];
-  const qText = q ? QUESTION_BANK[module][q.domain][q.level][lang] : "";
+  const qText = question?.question_text ?? "";
 
   return (
     <Page>
@@ -476,7 +659,7 @@ export function CheckIn() {
 
               <div className="mt-5 px-6">
                 <div className="flex items-center justify-between text-[12px] font-semibold">
-                  <span>{ui.question} {log.length + 1} {lang === "en" ? `of ~${est}` : `/ ~${est}`}</span>
+                  <span>{ui.question} {qNumber} {lang === "en" ? `of ~${qCap}` : `/ ~${qCap}`}</span>
                   <span className="font-mono text-[11px] text-muted">{pct}% {ui.complete}</span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-sand">
@@ -486,14 +669,15 @@ export function CheckIn() {
 
               <div className="mt-7 flex-1 px-6">
                 <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-rust uppercase">{ui.tag}</p>
-                <h2 key={log.length} className="nrx-rise mt-3 min-h-[96px] text-[20px] leading-snug font-bold">{qText}</h2>
+                <h2 key={qNumber} className="nrx-rise mt-3 min-h-[96px] text-[20px] leading-snug font-bold">{qText}</h2>
                 <div className="mt-5 space-y-2.5">
-                  {ANSWERS.map((a, i) => (
+                  {ANSWER_OPTIONS.map((a, i) => (
                     <button
                       key={a.val}
-                      onClick={() => answer(a.val)}
+                      onClick={() => void submit(a.val)}
+                      disabled={busy}
                       className={cn(
-                        "group flex w-full items-center gap-3.5 rounded-2xl border px-4 py-4 text-left text-[14.5px] font-semibold transition-all duration-200",
+                        "group flex w-full items-center gap-3.5 rounded-2xl border px-4 py-4 text-left text-[14.5px] font-semibold transition-all duration-200 disabled:opacity-60",
                         picked === a.val ? "scale-[0.98] border-ink bg-ink text-paper" : "border-line-2 bg-card-2 hover:border-ink/60"
                       )}
                     >
@@ -522,13 +706,12 @@ export function CheckIn() {
 
               <div className="flex items-center justify-between px-6 pt-4 pb-6">
                 <button
-                  onClick={() => log.length > 0 && picked === null && setLog(log.slice(0, -1))}
-                  disabled={log.length === 0}
+                  disabled
                   className="flex items-center gap-1.5 text-[13px] font-bold text-ink-2 disabled:opacity-30"
                 >
                   <ArrowLeft className="size-4" /> {ui.back}
                 </button>
-                <span className="font-mono text-[10px] text-muted">{doneCount}/6 areas</span>
+                <span className="font-mono text-[10px] text-muted">{doneCount}/{qCap} areas</span>
               </div>
             </div>
           </div>
@@ -553,22 +736,23 @@ export function CheckIn() {
             </div>
 
             <ul className="mt-9 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-              {DOMAIN_KEYS.map((k) => {
-                const st = liveState[k];
-                const s = domainStatus(liveScores[k]);
+              {expectedDomains.map((k) => {
+                const st = answers[k] ? "done" : "none";
+                const z = previewScores[k] ?? 0;
+                const s = domainStatus(z);
                 return (
                   <li key={k}>
                     <div className="mb-2 flex items-baseline justify-between text-[12.5px]">
-                      <span className={cn("font-semibold", st === "none" && "text-paper/40")}>{DOMAINS[k].label}</span>
+                      <span className={cn("font-semibold", st === "none" && "text-paper/40")}>{DOMAINS[k]?.label ?? k}</span>
                       <span className="font-mono text-[10.5px]" style={{ color: st === "none" ? "rgba(255,244,220,.3)" : s.hex === "#46692a" ? "#8fbf5a" : s.hex }}>
-                        {st === "none" ? "waiting" : st === "partial" ? "checking…" : s.label}
+                        {st === "none" ? "waiting" : s.label}
                       </span>
                     </div>
                     <div className={cn("h-2.5 overflow-hidden rounded-full", st === "none" ? "border border-dashed border-white/20" : "bg-white/10")}>
                       {st !== "none" && (
                         <div
-                          className={cn("h-full rounded-full transition-all duration-700 ease-out", st === "partial" && "opacity-60")}
-                          style={{ width: barW(liveScores[k]), background: s.hex === "#46692a" ? "#8fbf5a" : s.hex }}
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{ width: barW(z), background: s.hex === "#46692a" ? "#8fbf5a" : s.hex }}
                         />
                       )}
                     </div>
@@ -592,7 +776,7 @@ export function CheckIn() {
             </div>
           </div>
           <p className="mt-4 flex items-center gap-2 text-[12px] text-muted">
-            <ArrowRight className="size-3.5" /> This preview is indicative; the final tier is calculated when all areas are done.
+            <ArrowRight className="size-3.5" /> This preview is indicative; the final tier is calculated by the server when the check-in completes.
           </p>
         </div>
       </div>
