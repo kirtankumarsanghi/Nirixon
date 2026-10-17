@@ -49,6 +49,24 @@ class AnswerRequest(BaseModel):
     source: Literal["recall", "observed"] = "recall"
 
 
+class SessionSummary(BaseModel):
+    """One completed screening session for the caller's history (Home/Growth/Share)."""
+
+    id: str
+    status: str
+    module: Literal["A", "B"] = "A"
+    corrected_age_months: float | None = None
+    age_bracket: str = "Unknown"
+    completed_at: str | None = None
+    started_at: str | None = None
+    child_name: str | None = None
+    final_classification: str | None = None
+    probabilities: dict[str, float] = Field(default_factory=dict)
+    safety_override_triggered: bool = False
+    domain_classifications: dict[str, str] = Field(default_factory=dict)
+    domain_scores: dict[str, float] = Field(default_factory=dict)
+
+
 class ActivityPayload(BaseModel):
     title: str
     minutes: int | None = None
