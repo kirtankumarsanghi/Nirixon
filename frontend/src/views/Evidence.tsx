@@ -1,24 +1,54 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info, ShieldCheck } from "lucide-react";
 import { CountUp, Eyebrow, Page, Reveal } from "../components/ui";
+import { PageState } from "../components/PageState";
 import { PHOTO } from "../photos";
 import { cn } from "../utils/cn";
+import { evidenceApi, type EvidenceResponse } from "../api/client";
 
-const LABELS = ["Typical", "Monitor", "Refer"] as const;
-const MATRIX = [
-  [1142, 25, 3],
-  [23, 286, 10],
-  [3, 18, 90],
-];
-const ROW_TOTAL = MATRIX.map((r) => r.reduce((a, b) => a + b, 0));
+const FALLBACK_LABELS = ["Typical", "Monitor", "Refer"];
 
 export function Evidence() {
   const [pct, setPct] = useState(false);
   const [hot, setHot] = useState<[number, number] | null>(null);
+  const [data, setData] = useState<EvidenceResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    evidenceApi
+      .get()
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load evidence");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  if (error) return <PageState kind="error" message={error} onRetry={() => setReloadKey((k) => k + 1)} />;
+  if (!data) return <PageState kind="loading" />;
+
+  const ma = data.module_a;
+  const mb = data.module_b;
+  const LABELS = ma.confusion_matrix_labels?.length ? ma.confusion_matrix_labels : FALLBACK_LABELS;
+  const MATRIX = ma.confusion_matrix;
+  const ROW_TOTAL = MATRIX.map((r) => r.reduce((a, b) => a + b, 0));
+  const referIdx = Math.max(0, LABELS.indexOf("Refer"));
+  const typicalIdx = Math.max(0, LABELS.indexOf("Typical"));
+  const monitorIdx = Math.max(0, LABELS.indexOf("Monitor"));
+  const referRow = MATRIX[referIdx] ?? [];
+  const referTotal = ROW_TOTAL[referIdx] ?? 0;
+  const share = (v: number, total: number) => (total ? (v / total) * 100 : 0);
 
   const caption = hot
-    ? `Of ${ROW_TOTAL[hot[0]]} true ${LABELS[hot[0]]} cases, ${MATRIX[hot[0]][hot[1]]} (${((MATRIX[hot[0]][hot[1]] / ROW_TOTAL[hot[0]]) * 100).toFixed(1)}%) were classified ${LABELS[hot[1]]}.`
-    : "Typical: 1142/1170 · Monitor: 286/319 · Refer: 90/111. Hover any cell to read it in plain language.";
+    ? `Of ${ROW_TOTAL[hot[0]]} true ${LABELS[hot[0]]} cases, ${MATRIX[hot[0]][hot[1]]} (${share(MATRIX[hot[0]][hot[1]], ROW_TOTAL[hot[0]]).toFixed(1)}%) were classified ${LABELS[hot[1]]}.`
+    : `${LABELS.map((l, i) => `${l}: ${MATRIX[i]?.[i] ?? 0}/${ROW_TOTAL[i] ?? 0}`).join(" · ")}. Hover any cell to read it in plain language.`;
 
   return (
     <Page>
@@ -41,7 +71,8 @@ export function Evidence() {
         </span>
       </h1>
       <p className="mt-6 max-w-[620px] text-[15px] leading-relaxed text-ink-2">
-        Figures below are the reported results for the screening model on a synthetic held-out set (Module A, n = 1,600; Module B, n = 5,700). They are shown so reviewers can inspect them — not as evidence of real-world performance.
+        Figures below are the reported results for the screening model on a synthetic held-out set (Module A, n ={" "}
+        {ma.n_test.toLocaleString()}; Module B, n = {mb.n_test.toLocaleString()}). They are shown so reviewers can inspect them — not as evidence of real-world performance.
       </p>
 
       {/* primary safety metric */}
@@ -49,25 +80,25 @@ export function Evidence() {
         <section className="rounded-[44px] border border-rust/40 bg-brick-bg p-7 sm:p-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-[11px] font-semibold tracking-[0.22em] text-rust uppercase">Primary safety metric · Module A (ages 0–5)</p>
-            <span className="rounded-full border border-rust/50 px-4 py-1.5 font-mono text-[11px] font-semibold text-rust">Held-out n = 1600</span>
+            <span className="rounded-full border border-rust/50 px-4 py-1.5 font-mono text-[11px] font-semibold text-rust">Held-out n = {ma.n_test}</span>
           </div>
           <div className="mt-8 grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
               <p className="font-mono text-[12px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Refer recall</p>
               <p className="font-display text-[clamp(110px,16vw,230px)] leading-[0.85] text-rust">
-                <CountUp value={81.1} decimals={1} suffix="%" duration={1800} />
+                <CountUp value={ma.refer_recall * 100} decimals={1} suffix="%" duration={1800} />
               </p>
               <p className="mt-5 max-w-[420px] text-[16px] leading-relaxed text-ink-2">
                 High recall on the high-risk Refer cohort means children who need clinical evaluation are captured early.
               </p>
             </div>
             <div className="rounded-[32px] border border-line-2 bg-card/90 p-6 sm:p-8">
-              <p className="font-mono text-[11px] font-semibold tracking-[0.2em] uppercase">True Refer cohort breakdown (111 cases)</p>
+              <p className="font-mono text-[11px] font-semibold tracking-[0.2em] uppercase">True Refer cohort breakdown ({referTotal} cases)</p>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {[
-                  { n: 90, l: "Classified Refer", s: "81.1% captured", c: "text-moss", bg: "bg-moss-bg" },
-                  { n: 18, l: "Classified Monitor", s: "Triaged for watch", c: "text-amber", bg: "bg-amber-bg" },
-                  { n: 3, l: "Classified Typical", s: "Missed cases", c: "text-brick", bg: "bg-brick-bg" },
+                  { n: referRow[referIdx] ?? 0, l: "Classified Refer", s: `${share(referRow[referIdx] ?? 0, referTotal).toFixed(1)}% captured`, c: "text-moss", bg: "bg-moss-bg" },
+                  { n: referRow[monitorIdx] ?? 0, l: "Classified Monitor", s: "Triaged for watch", c: "text-amber", bg: "bg-amber-bg" },
+                  { n: referRow[typicalIdx] ?? 0, l: "Classified Typical", s: "Missed cases", c: "text-brick", bg: "bg-brick-bg" },
                 ].map((c) => (
                   <div key={c.l} className={cn("rounded-2xl p-4 text-center sm:p-5", c.bg)}>
                     <p className={cn("font-display text-[clamp(40px,4.4vw,64px)] leading-none", c.c)}>
@@ -79,7 +110,7 @@ export function Evidence() {
                 ))}
               </div>
               <p className="mt-5 text-[13px] leading-relaxed text-ink-2">
-                <b className="text-ink">Clinical triage safety:</b> of the 21 cases not flagged Refer on the first pass, 18 were triaged into <i>Monitor</i> for targeted follow-up. Only 3 true Refer cases were classified Typical.
+                <b className="text-ink">Clinical triage safety:</b> of the {referTotal - (referRow[referIdx] ?? 0)} cases not flagged Refer on the first pass, {referRow[monitorIdx] ?? 0} were triaged into <i>Monitor</i> for targeted follow-up. Only {referRow[typicalIdx] ?? 0} true Refer cases were classified Typical.
               </p>
             </div>
           </div>
@@ -89,10 +120,10 @@ export function Evidence() {
       {/* metric tiles */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { k: "Test accuracy", v: 94.9, d: 1, suf: "%", s: "Held-out accuracy across 3 tiers.", s2: "" },
-          { k: "Macro AUROC", v: 0.977, d: 3, suf: "", s: "Macro F1: 0.900", s2: "" },
-          { k: "Refer precision", v: 87.4, d: 1, suf: "%", s: "Refer specificity: 99.1%", s2: "" },
-          { k: "Inference latency (n=200)", v: 14.3, d: 1, suf: " ms", s: "p95: 27.0 ms with explanations", s2: "" },
+          { k: "Test accuracy", v: ma.accuracy * 100, d: 1, suf: "%", s: "Held-out accuracy across 3 tiers." },
+          { k: "Macro AUROC", v: ma.macro_auroc, d: 3, suf: "", s: `Macro F1: ${ma.macro_f1.toFixed(3)}` },
+          { k: "Refer precision", v: ma.refer_precision * 100, d: 1, suf: "%", s: `Refer specificity: ${(ma.refer_specificity * 100).toFixed(1)}%` },
+          { k: "Inference latency (n=200)", v: ma.latency_p50_ms, d: 1, suf: " ms", s: `p95: ${ma.latency_p95_ms.toFixed(1)} ms with explanations` },
         ].map((t, i) => (
           <Reveal key={t.k} delay={i * 70}>
             <div className="h-full rounded-[30px] border border-line-2 bg-card p-6 sm:p-7">
@@ -119,7 +150,7 @@ export function Evidence() {
               ))}
             </div>
           </div>
-          <p className="mt-2 font-mono text-[10.5px] text-muted">Rows: true cohort · Columns: predicted tier · n = 1600</p>
+          <p className="mt-2 font-mono text-[10.5px] text-muted">Rows: true cohort · Columns: predicted tier · n = {ma.n_test}</p>
 
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-left" onMouseLeave={() => setHot(null)}>
@@ -137,7 +168,7 @@ export function Evidence() {
                   <tr key={ri} className="border-t border-line-2">
                     <th className={cn("px-4 py-5 text-[16px] font-bold transition-colors", hot?.[0] === ri && "text-rust")}>{LABELS[ri]}</th>
                     {row.map((v, ci) => {
-                      const share = v / ROW_TOTAL[ri];
+                      const s = v / ROW_TOTAL[ri];
                       const diag = ri === ci;
                       const isHot = hot?.[0] === ri && hot?.[1] === ci;
                       return (
@@ -145,9 +176,9 @@ export function Evidence() {
                           key={ci}
                           onMouseEnter={() => setHot([ri, ci])}
                           className={cn("cursor-default px-4 py-5 text-center font-mono text-[17px] transition-all duration-200", isHot && "outline-2 -outline-offset-2 outline-ink")}
-                          style={{ background: `rgba(${diag ? "185,80,31" : "200,69,47"},${diag ? 0.08 + share * 0.3 : 0.05 + share * 1.2})` }}
+                          style={{ background: `rgba(${diag ? "185,80,31" : "200,69,47"},${diag ? 0.08 + s * 0.3 : 0.05 + s * 1.2})` }}
                         >
-                          <span className={cn(diag ? "font-bold text-ink" : "text-ink-2")}>{pct ? `${(share * 100).toFixed(1)}%` : v}</span>
+                          <span className={cn(diag ? "font-bold text-ink" : "text-ink-2")}>{pct ? `${(s * 100).toFixed(1)}%` : v}</span>
                         </td>
                       );
                     })}
@@ -167,9 +198,19 @@ export function Evidence() {
           <h2 className="font-display text-[clamp(30px,3.6vw,48px)] leading-none uppercase">Module B · NLP router & safety recall (ages 5–12)</h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
             {[
-              { k: "Safety recall (crisis phrases)", v: 100, d: 0, suf: "%", s: "Tested on 138 crisis phrases with zero misses.", c: "text-rust", b: "border-rust" },
-              { k: "Any-true-domain hit rate", v: 74.8, d: 1, suf: "%", s: "Evaluated across 5,700 held-out test scenarios.", c: "text-moss", b: "border-moss" },
-              { k: "Handwritten clinical notes", v: 76, d: 0, suf: " notes", s: "100% safety recall, 80.4% any-domain hit rate, 66.7% micro F1.", c: "text-sea", b: "border-sea" },
+              { k: "Safety recall (crisis phrases)", v: mb.safety_recall * 100, d: 0, suf: "%", s: `Tested on ${mb.n_safety} crisis phrases with zero misses.`, c: "text-rust", b: "border-rust" },
+              { k: "Any-true-domain hit rate", v: mb.any_true_domain_hit_rate * 100, d: 1, suf: "%", s: `Evaluated across ${mb.n_test.toLocaleString()} held-out test scenarios.`, c: "text-moss", b: "border-moss" },
+              {
+                k: "Handwritten clinical notes",
+                v: mb.handwritten_notes,
+                d: 0,
+                suf: " notes",
+                s: mb.handwritten_notes
+                  ? `${((mb.handwritten_any_domain_hit_rate ?? 0) * 100).toFixed(1)}% any-domain hit rate, ${((mb.handwritten_micro_f1 ?? 0) * 100).toFixed(1)}% micro F1.`
+                  : "Not available in the current artifact.",
+                c: "text-sea",
+                b: "border-sea",
+              },
             ].map((m) => (
               <div key={m.k} className={cn("border-l-[3px] pl-5", m.b)}>
                 <p className="font-mono text-[10.5px] font-semibold tracking-[0.18em] uppercase">{m.k}</p>
@@ -185,7 +226,7 @@ export function Evidence() {
               <ShieldCheck className="size-5 text-rust" /> Safety rule + ML classifier hybrid rationale
             </p>
             <p className="mt-3 text-[14px] leading-relaxed text-ink-2">
-              In router evaluations the ML classifier alone achieved only <b className="text-ink">12.3% safety recall</b> on crisis phrases. Combining deterministic rule scanning with multi-label logistic regression, the hybrid reaches <b className="text-ink">100% safety recall</b> while delivering 67.4% domain recall (F1 57.1%) and 8–20 adaptive items.
+              In router evaluations the ML classifier alone achieved only <b className="text-ink">{(mb.ml_only_safety_recall * 100).toFixed(1)}% safety recall</b> on crisis phrases. Combining deterministic rule scanning with multi-label logistic regression, the hybrid reaches <b className="text-ink">{(mb.safety_recall * 100).toFixed(0)}% safety recall</b> while delivering {(mb.domain_micro_recall * 100).toFixed(1)}% domain recall (F1 {(mb.domain_micro_f1 * 100).toFixed(1)}%) and 8–20 adaptive items.
             </p>
           </div>
         </section>
@@ -199,8 +240,8 @@ export function Evidence() {
           </h2>
           <div className="mt-8 grid gap-8 md:grid-cols-3">
             {[
-              ["1. Synthetic evaluation data", "All metrics were computed on synthetic clinical datasets (held-out n=1600 for Module A, n=5700 for Module B). Real-world prospective validation is pending institutional IRB review."],
-              ["2. Moderate NLP domain precision", "Module B domain precision is moderate (49.6% micro-precision). The model intentionally trades precision for higher sensitivity (67.4% recall) to avoid missing subtle parent-reported concerns."],
+              ["1. Synthetic evaluation data", `All metrics were computed on synthetic clinical datasets (held-out n=${ma.n_test} for Module A, n=${mb.n_test} for Module B). Real-world prospective validation is pending institutional IRB review.`],
+              ["2. Moderate NLP domain precision", `Module B domain precision is moderate (${(mb.domain_micro_precision * 100).toFixed(1)}% micro-precision). The model intentionally trades precision for higher sensitivity (${(mb.domain_micro_recall * 100).toFixed(1)}% recall) to avoid missing subtle parent-reported concerns.`],
               ["3. Screening aid, not diagnosis", "Nirixon provides triage suggestions to guide caregivers and community health workers. It does not replace comprehensive clinical diagnosis by a registered developmental paediatrician."],
             ].map(([h, p]) => (
               <div key={h}>
