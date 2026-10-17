@@ -47,6 +47,10 @@ export interface CheckInSnapshot {
   domains: DomainSnapshot[];
   domain_classifications?: Record<string, "Typical" | "Monitor" | "Refer">;
   clinician: ClinicianSnapshot;
+  touch_telemetry?: import("../api/types").TouchTaskMetric[];
+  touch_telemetry_notice?: string | null;
+  observed_answers?: Record<string, number>;
+  answer_sources?: Record<string, "recall" | "observed">;
 }
 
 export interface SaveCheckInInput {
@@ -102,6 +106,10 @@ export function buildSnapshot(input: SaveCheckInInput): CheckInSnapshot {
       shap_top_features: [...result.shap_top_features],
       model_name: result.model_name ?? null,
     },
+    touch_telemetry: result.touch_telemetry,
+    touch_telemetry_notice: result.touch_telemetry_notice,
+    observed_answers: result.observed_answers,
+    answer_sources: result.answer_sources,
   };
 }
 

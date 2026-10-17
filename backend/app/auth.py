@@ -9,10 +9,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,17 +20,21 @@ from app.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
     # bcrypt backend rejects >72 bytes; keep explicit for clear errors
-    return pwd_context.hash(password[:72])
+    pwd_bytes = password[:72].encode("utf-8")
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain[:72], hashed)
+    try:
+        return bcrypt.checkpw(plain[:72].encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def create_access_token(
@@ -81,6 +85,18 @@ async def require_parent(user: Annotated[User, Depends(get_current_user)]) -> Us
 
 
 async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if user.role != "internal":
+    if user.role not in ("internal", "clinician"):
         raise HTTPException(status_code=403, detail="Internal role required")
+    return user
+
+
+async def require_worker(user: Annotated[User, Depends(get_current_user)]) -> User:
+    if user.role not in ("chw", "supervisor", "internal"):
+        raise HTTPException(status_code=403, detail="Community Health Worker or Supervisor role required")
+    return user
+
+
+async def require_supervisor(user: Annotated[User, Depends(get_current_user)]) -> User:
+    if user.role not in ("supervisor", "internal"):
+        raise HTTPException(status_code=403, detail="Supervisor role required")
     return user

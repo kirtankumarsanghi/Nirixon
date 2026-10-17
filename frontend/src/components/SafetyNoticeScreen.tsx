@@ -1,4 +1,6 @@
+import { Phone } from "lucide-react";
 import { t } from "../i18n";
+import { VERIFIED_HELPLINES } from "../landing/helplines";
 
 interface Props {
   /** Safety helpline text from the backend (safety_message). */
@@ -11,10 +13,13 @@ interface Props {
  * returns action type `safety_notice`.
  *
  * Displays safety_message prominently with tap-to-call links for
- * Kiran 1800-599-0019 and CHILDLINE 1098.
+ * Kiran and CHILDLINE from the centralized verified helplines config.
  * A secondary "Continue to the questions" button.
  */
 export function SafetyNoticeScreen({ message, onContinue }: Props) {
+  const kiran = VERIFIED_HELPLINES.kiran;
+  const childline = VERIFIED_HELPLINES.childline;
+
   return (
     <section
       className="safety-notice"
@@ -43,18 +48,18 @@ export function SafetyNoticeScreen({ message, onContinue }: Props) {
         <ul className="safety-notice__list">
           <li>
             <a
-              href="tel:18005990019"
+              href={kiran.tel}
               className="safety-notice__link"
               aria-label={t(
                 "moduleb.safety.kiran.label",
-                "Call Kiran helpline 1800 599 0019",
+                `Call Kiran helpline ${kiran.number}`,
               )}
             >
               <span className="safety-notice__icon" aria-hidden="true">
-                📞
+                <Phone size={18} />
               </span>
               <span>
-                <strong>Kiran</strong> — 1800-599-0019
+                <strong>Kiran</strong> — {kiran.number}
                 <br />
                 <span className="safety-notice__meta">
                   {t("moduleb.safety.kiran.meta", "Free, 24/7, confidential")}
@@ -64,18 +69,18 @@ export function SafetyNoticeScreen({ message, onContinue }: Props) {
           </li>
           <li>
             <a
-              href="tel:1098"
+              href={childline.tel}
               className="safety-notice__link"
               aria-label={t(
                 "moduleb.safety.childline.label",
-                "Call CHILDLINE 1098",
+                `Call CHILDLINE ${childline.number}`,
               )}
             >
               <span className="safety-notice__icon" aria-hidden="true">
-                📞
+                <Phone size={18} />
               </span>
               <span>
-                <strong>CHILDLINE</strong> — 1098
+                <strong>CHILDLINE</strong> — {childline.number}
                 <br />
                 <span className="safety-notice__meta">
                   {t("moduleb.safety.childline.meta", "Free, for children and families")}
@@ -102,13 +107,15 @@ export function SafetyNoticeScreen({ message, onContinue }: Props) {
  * after dismissing the safety notice.
  */
 export function SafetyPersistentLink() {
+  const kiran = VERIFIED_HELPLINES.kiran;
   return (
     <div className="safety-persistent" role="complementary" aria-label="Safety support">
       <a
-        href="tel:18005990019"
+        href={kiran.tel}
         className="safety-persistent__link"
       >
-        📞 {t("moduleb.safety.persistent", "Talk to someone now")}
+        <Phone size={14} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.35rem" }} aria-hidden="true" />
+        {t("moduleb.safety.persistent", "Talk to someone now")}
       </a>
     </div>
   );

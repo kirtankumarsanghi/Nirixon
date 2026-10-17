@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -69,6 +69,10 @@ from app.schemas.screen import (
     WorkerContactRequest,
     WorkerContactResponse,
     WorkerSuggestion,
+)
+from app.schemas.touch import (
+    TouchTelemetryResponse,
+    TouchTelemetrySubmission,
 )
 
 logger = logging.getLogger(__name__)
@@ -150,6 +154,11 @@ def _result_payload_from_prediction(
     target_reflex_domains: list[str] | None = None,
     guard_flags: dict[str, bool] | None = None,
     guard_advisories: list[str] | None = None,
+    latency_ms: float | None = None,
+    observed_answers: dict[str, int] | None = None,
+    answer_sources: dict[str, str] | None = None,
+    touch_telemetry: list[dict[str, Any]] | None = None,
+    touch_telemetry_notice: str = "Exploratory, not used in the result.",
 ) -> ResultPayload:
     return ResultPayload(
         final_classification=pred.final_classification,
@@ -172,6 +181,11 @@ def _result_payload_from_prediction(
         target_reflex_domains=target_reflex_domains or [],
         guard_flags=guard_flags or {},
         guard_advisories=guard_advisories or [],
+        latency_ms=latency_ms,
+        observed_answers=observed_answers or {},
+        answer_sources=answer_sources or {},
+        touch_telemetry=touch_telemetry or [],
+        touch_telemetry_notice=touch_telemetry_notice,
     )
 
 
@@ -556,6 +570,9 @@ async def _run_completion(
         target_reflex_domains=target_reflex_domains,
         guard_flags=guard_flags,
         guard_advisories=guard_advisories,
+        observed_answers=core.observed_answers,
+        answer_sources=core.answer_sources,
+        touch_telemetry=core.touch_telemetry,
     )
     flagged_a = [dom for dom, score in domain_scores.items() if score > 0.3]
     suggested_a = await get_suggested_workers(
@@ -577,6 +594,23 @@ async def _run_completion(
     res.location_state = db_row.location_state
     res.location_address = db_row.location_address
     return res
+
+
+@router.get("/touch-config")
+async def get_touch_config():
+    """Return provisional normative reference ranges for touch micro-tasks."""
+    from app.core.touch_config import PROVISIONAL_TOUCH_CONFIG
+
+    return PROVISIONAL_TOUCH_CONFIG
+
+
+@router.get("/live-tasks/{bracket}")
+async def get_live_tasks_for_bracket_endpoint(bracket: str):
+    """Retrieve live observational task definitions for an age bracket."""
+    from app.core.live_elicitation import get_tasks_for_bracket
+
+    tasks = get_tasks_for_bracket(bracket)
+    return [t.to_dict() for t in tasks]
 
 
 @router.post("/start", response_model=ScreenActionResponse)
@@ -789,12 +823,13 @@ async def submit_answer(
             if isinstance(val, int)
             else (1 if val == "Yes" else (0 if val == "No" else 2))
         )
-        core.answers[body.item_id] = resp_num
+        core.record_answer(body.item_id, resp_num, source=body.source)
         db.add(
             Answer(
                 session_id=session_id,
                 item_id=body.item_id,
                 response_value=resp_num,
+                source=body.source,
             )
         )
 
@@ -848,7 +883,7 @@ async def submit_answer(
                 raise HTTPException(
                     status_code=422, detail="Milestone answer must be 0, 1, or 2"
                 )
-            core.answers[body.item_id] = body.answer
+            core.record_answer(body.item_id, body.answer, source=body.source)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -857,6 +892,7 @@ async def submit_answer(
             session_id=session_id,
             item_id=body.item_id,
             response_value=body.answer,
+            source=body.source,
         )
     )
     db_row.state_json = core.to_dict()
@@ -958,6 +994,10 @@ async def get_result(
         location_state=db_row.location_state,
         location_address=db_row.location_address,
         suggested_workers=[WorkerSuggestion(**w) for w in workers],
+        observed_answers=(db_row.state_json or {}).get("observed_answers", {}),
+        answer_sources=(db_row.state_json or {}).get("answer_sources", {}),
+        touch_telemetry=(db_row.state_json or {}).get("touch_telemetry", []),
+        touch_telemetry_notice="Exploratory, not used in the result.",
     )
 
 
@@ -1915,4 +1955,145 @@ async def submit_teacher_assessment(
         concordance_classification=concordance,
         caveats=caveats,
         summary=summary,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Module A — Live Elicitation & Touch Micro-Tasks (Session-bound)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{session_id}/live-tasks")
+async def get_session_live_tasks(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Retrieve live observational tasks applicable to the current screening session."""
+    db_row = await _load_owned_session(db, session_id, user.id)
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    from app.core.live_elicitation import get_tasks_for_bracket
+
+    all_tasks = get_tasks_for_bracket(core.age_bracket)
+    tasks_with_status = []
+    for t in all_tasks:
+        td = t.to_dict()
+        td["already_answered"] = core.item_already_answered(t.milestone_item_id)
+        td["current_source"] = core.answer_sources.get(t.milestone_item_id)
+        td["current_value"] = core.answers.get(t.milestone_item_id)
+        tasks_with_status.append(td)
+
+    return {
+        "session_id": session_id,
+        "age_bracket": core.age_bracket,
+        "corrected_age_months": core.corrected_age_months,
+        "tasks": tasks_with_status,
+    }
+
+
+@router.post("/{session_id}/touch-telemetry", response_model=TouchTelemetryResponse)
+async def submit_touch_telemetry(
+    session_id: str,
+    body: TouchTelemetrySubmission,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Ingest exploratory touch micro-task telemetry (24+ months).
+
+    EXPLORATORY GUARANTEE:
+    - Scalar metrics only (reaction time, accuracy %, jitter px). No images/video.
+    - Stored for clinician review with reference ranges marked provisional.
+    - NEVER fed into the screening model or safety floor rule.
+    """
+    db_row = await _load_owned_session(db, session_id, user.id)
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    if core.corrected_age_months < 24.0:
+        raise HTTPException(
+            status_code=400,
+            detail="Touch micro-tasks are exploratory and available only for children 24 months and older.",
+        )
+
+    from app.core.touch_config import (
+        PROVISIONAL_TOUCH_CONFIG,
+        compare_touch_metric_to_reference,
+    )
+
+    comparisons = []
+    for task in body.tasks:
+        task_dict = task.model_dump()
+        core.touch_telemetry.append(task_dict)
+        rt_comp = compare_touch_metric_to_reference(
+            task.task_type,
+            "reaction_time_ms",
+            task.reaction_time_ms,
+            core.corrected_age_months,
+        )
+        comparisons.append(
+            {
+                "task_type": task.task_type,
+                "metric": "reaction_time_ms",
+                "value": task.reaction_time_ms,
+                "comparison": rt_comp,
+            }
+        )
+        if task.path_accuracy_pct is not None:
+            acc_comp = compare_touch_metric_to_reference(
+                task.task_type,
+                "accuracy_pct",
+                task.path_accuracy_pct,
+                core.corrected_age_months,
+            )
+            comparisons.append(
+                {
+                    "task_type": task.task_type,
+                    "metric": "accuracy_pct",
+                    "value": task.path_accuracy_pct,
+                    "comparison": acc_comp,
+                }
+            )
+        if task.jitter_px is not None:
+            jit_comp = compare_touch_metric_to_reference(
+                task.task_type,
+                "jitter_px",
+                task.jitter_px,
+                core.corrected_age_months,
+            )
+            comparisons.append(
+                {
+                    "task_type": task.task_type,
+                    "metric": "jitter_px",
+                    "value": task.jitter_px,
+                    "comparison": jit_comp,
+                }
+            )
+
+    db_row.state_json = core.to_dict()
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            action="screen.touch_telemetry",
+            target_id=db_row.id,
+            detail=f"metrics_count={len(body.tasks)} exploratory=true",
+        )
+    )
+    await db.flush()
+    repo.save(session_id, core)
+
+    return TouchTelemetryResponse(
+        status="received",
+        message=f"Recorded {len(body.tasks)} touch micro-task telemetry metrics.",
+        recorded_metrics_count=len(body.tasks),
+        exploratory_notice="Exploratory, not used in the result.",
+        comparisons=comparisons,
+        provisional_config_version=str(
+            PROVISIONAL_TOUCH_CONFIG.get("version", "provisional")
+        ),
     )

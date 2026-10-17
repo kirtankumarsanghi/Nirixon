@@ -35,23 +35,29 @@ class Settings(BaseSettings):
     )
 
     # JWT
-    jwt_secret: str = Field(default="dev-only-change-me", alias="JWT_SECRET")
+    jwt_secret: str = Field(
+        default="dev-only-change-me-nirixon-jwt-secret-key-32b", alias="JWT_SECRET"
+    )
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = Field(default=60 * 24, alias="JWT_EXPIRE_MINUTES")
 
     # CORS — comma-separated origins; never use "*" in production
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173",
+        default="http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175",
         alias="CORS_ORIGINS",
     )
 
-    # Session repository: "memory" (InMemorySessionRepo) | "redis" (not yet)
-    # IMPORTANT: InMemorySessionRepo is single-process / single-worker only.
-    # Multi-worker or multi-instance deploys MUST wait for RedisSessionRepo.
+    # Session repository: "memory" (InMemorySessionRepo) | "redis" (RedisSessionRepo)
     session_repo_backend: str = Field(default="memory", alias="SESSION_REPO_BACKEND")
 
-    # Redis (reserved for RedisSessionRepo — not implemented in Stage 4)
+    # Redis connection URL (e.g., "redis://localhost:6379/0" or "redis://redis:6379/0")
     redis_url: str | None = Field(default=None, alias="REDIS_URL")
+    session_redis_prefix: str = Field(
+        default="nirixon:session:", alias="SESSION_REDIS_PREFIX"
+    )
+    session_ttl_seconds: int = Field(
+        default=86400, alias="SESSION_TTL_SECONDS"
+    )
 
     # ML artifacts
     ml_artifacts_dir: str = Field(
@@ -81,6 +87,9 @@ class Settings(BaseSettings):
     # Seed user for local/dev login (no registration flow yet)
     seed_user_email: str = Field(default="parent@example.com", alias="SEED_USER_EMAIL")
     seed_user_password: str = Field(default="changeme", alias="SEED_USER_PASSWORD")
+
+    # Growth sync tracking (opt-in; can be disabled entirely by configuration)
+    growth_sync_enabled: bool = Field(default=True, alias="GROWTH_SYNC_ENABLED")
 
     @property
     def cors_origin_list(self) -> list[str]:

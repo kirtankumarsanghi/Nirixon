@@ -1,0 +1,111 @@
+{
+  "_COMMENT": "SAMPLE DATA FILE for Nirixon 'Find Nearest Help'. To import your verified centres, place your data at backend/data/help_centres.json or edit this file directly.",
+  "_INSTRUCTIONS": "Each record requires: name, address, district, state, pin (6 digits), latitude, longitude, phone, type ('DEIC' | 'RBSK team' | 'district hospital' | 'rehabilitation' | 'school resource' | 'other'), source_url (required - never show without source), last_verified_date (YYYY-MM-DD).",
+  "is_sample": true,
+  "centres": [
+    {
+      "name": "District Early Intervention Centre (DEIC), Safdarjung Hospital",
+      "address": "Ring Road, Opposite AIIMS, Safdarjung Enclave",
+      "district": "South Delhi",
+      "state": "Delhi",
+      "pin": "110029",
+      "latitude": 28.5684,
+      "longitude": 77.2062,
+      "phone": "+91-11-26165060",
+      "type": "DEIC",
+      "source_url": "https://delhihealth.gov.in/deic-safdarjung",
+      "last_verified_date": "2026-03-15"
+    },
+    {
+      "name": "Aruna Asaf Ali District Hospital & Pediatric Rehabilitation",
+      "address": "5 Rajpur Road, Civil Lines",
+      "district": "Central Delhi",
+      "state": "Delhi",
+      "pin": "110054",
+      "latitude": 28.6738,
+      "longitude": 77.2215,
+      "phone": "+91-11-23965532",
+      "type": "district hospital",
+      "source_url": "https://delhihealth.gov.in/aaah",
+      "last_verified_date": "2026-02-28"
+    },
+    {
+      "name": "RBSK Mobile Child Health Screening Team — Unit 1",
+      "address": "Lady Hardinge Medical College Campus, Connaught Place",
+      "district": "New Delhi",
+      "state": "Delhi",
+      "pin": "110001",
+      "latitude": 28.6315,
+      "longitude": 77.2167,
+      "phone": "+91-11-23363366",
+      "type": "RBSK team",
+      "source_url": "https://rbsk.gov.in/delhi-teams",
+      "last_verified_date": "2026-03-01"
+    },
+    {
+      "name": "Delhi Inclusive Education & School Resource Centre",
+      "address": "Directorate of Education, Old Secretariat / CP Cell",
+      "district": "New Delhi",
+      "state": "Delhi",
+      "pin": "110001",
+      "latitude": 28.6328,
+      "longitude": 77.2195,
+      "phone": "+91-11-23812836",
+      "type": "school resource",
+      "source_url": "https://edudel.nic.in/inclusive-education",
+      "last_verified_date": "2026-03-10"
+    },
+    {
+      "name": "KEM Hospital District Early Intervention Centre (DEIC)",
+      "address": "Acharya Donde Marg, Parel",
+      "district": "Mumbai",
+      "state": "Maharashtra",
+      "pin": "400012",
+      "latitude": 19.0024,
+      "longitude": 72.8427,
+      "phone": "+91-22-24107000",
+      "type": "DEIC",
+      "source_url": "https://kem.edu/deic-services",
+      "last_verified_date": "2026-03-20"
+    },
+    {
+      "name": "Indira Gandhi Institute of Child Health DEIC",
+      "address": "South Hospital Complex, Dharmaram College Post",
+      "district": "Bengaluru Urban",
+      "state": "Karnataka",
+      "pin": "560029",
+      "latitude": 12.9345,
+      "longitude": 77.5998,
+      "phone": "+91-80-26566624",
+      "type": "DEIC",
+      "source_url": "https://igich.karnataka.gov.in/deic",
+      "last_verified_date": "2026-03-12"
+    },
+    {
+      "name": "JK Lon Mother and Child Hospital DEIC",
+      "address": "SMS Medical College Campus, JLN Marg",
+      "district": "Jaipur",
+      "state": "Rajasthan",
+      "pin": "302004",
+      "latitude": 26.8928,
+      "longitude": 75.8152,
+      "phone": "+91-141-2560291",
+      "type": "DEIC",
+      "source_url": "https://rajasthanhealth.gov.in/jklon-deic",
+      "last_verified_date": "2026-03-18"
+    },
+    {
+      "name": "King George's Medical University Child Rehabilitation Centre",
+      "address": "Shah Mina Road, Chowk",
+      "district": "Lucknow",
+      "state": "Uttar Pradesh",
+      "pin": "226003",
+      "latitude": 26.8708,
+      "longitude": 80.9150,
+      "phone": "+91-522-2257450",
+      "type": "rehabilitation",
+      "source_url": "https://kgmu.org/rehabilitation",
+      "last_verified_date": "2026-02-25"
+    }
+  ]
+}

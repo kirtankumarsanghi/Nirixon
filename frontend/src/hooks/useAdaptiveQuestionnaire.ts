@@ -66,7 +66,7 @@ export interface AdaptiveQuestionnaireState {
     location_address?: string;
   }) => Promise<{ type: string } | undefined>;
   advanceAfterIntake: (detectedDomains: string[], intakeAction?: ScreenActionResponse | null) => Promise<void>;
-  submitAnswer: (answer: number) => Promise<void>;
+  submitAnswer: (answer: number, source?: "recall" | "observed") => Promise<void>;
   submitRecall: (selectedDomains: string[]) => Promise<void>;
   dismissSafety: () => void;
   reset: () => void;
@@ -359,19 +359,21 @@ export function useAdaptiveQuestionnaire(): AdaptiveQuestionnaireState {
     [],
   );
 
-  const submitAnswer = useCallback(async (answer: number) => {
-    const sid = sessionIdRef.current;
-    const q = questionRef.current;
-    if (!sid || !q) return;
-    setSubmitting(true);
-    setError(null);
-    const itemId = q.item_id;
-    const domain = q.domain;
-    try {
-      const action = await api.submitAnswer(sid, {
-        item_id: itemId,
-        answer,
-      });
+  const submitAnswer = useCallback(
+    async (answer: number, source: "recall" | "observed" = "recall") => {
+      const sid = sessionIdRef.current;
+      const q = questionRef.current;
+      if (!sid || !q) return;
+      setSubmitting(true);
+      setError(null);
+      const itemId = q.item_id;
+      const domain = q.domain;
+      try {
+        const action = await api.submitAnswer(sid, {
+          item_id: itemId,
+          answer,
+          source,
+        });
       const nextAnswers = { ...answersRef.current, [itemId]: answer };
       const nextCovered = new Set(coveredRef.current);
       if (isKnownDomain(domain, moduleRef.current)) {

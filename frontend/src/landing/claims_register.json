@@ -29,7 +29,7 @@
     "module_a_macro_auroc": {
       "value": 0.977,
       "label": "Macro AUROC",
-      "display": "0.978",
+      "display": "0.977",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
       "sample_size": 1600
@@ -53,7 +53,7 @@
     "module_a_refer_specificity": {
       "value": 99.1,
       "label": "Refer Specificity",
-      "display": "99.3%",
+      "display": "99.1%",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
       "sample_size": 1600
@@ -201,12 +201,12 @@
     },
     "module_b_safety_hybrid_proof": {
       "rules_only_safety_recall": 100.0,
-      "rules_only_domain_recall": 32.6,
+      "rules_only_domain_recall": 33.1,
       "classifier_only_safety_recall": 12.3,
       "hybrid_safety_recall": 100.0,
       "hybrid_domain_recall": 67.4,
       "label": "Safety Recall: Rules vs ML vs Hybrid Blend",
-      "display": "Rules 100% (domain recall 32.6%) | ML Classifier 12.3% | Hybrid Blend 100% (domain recall 67.4%)",
+      "display": "Rules 100% (domain recall 33.1%) | ML Classifier 12.3% | Hybrid Blend 100% (domain recall 67.4%)",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700

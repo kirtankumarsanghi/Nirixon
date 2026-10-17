@@ -100,6 +100,7 @@ export function FreeTextIntake({ sessionId, onComplete, onRuleOut }: Props) {
 
   return (
     <section className="intake" aria-labelledby="intake-title">
+      <p className="eyebrow">School-age intake</p>
       <h1 id="intake-title" className="display">
         What have you noticed?
       </h1>

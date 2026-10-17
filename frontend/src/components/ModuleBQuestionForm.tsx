@@ -6,6 +6,7 @@ import {
   MODULE_B_DOMAINS,
 } from "../lib/domainConcern";
 import { t } from "../i18n";
+import { AudioNarrationBar } from "./AudioNarrationBar";
 
 interface LikertOption {
   value: number;
@@ -103,6 +104,10 @@ export function ModuleBQuestionForm({
       {guide ? (
         <p className="question__domain-help">{guide.whatItMeans}</p>
       ) : null}
+      <AudioNarrationBar
+        itemId={question.item_id}
+        questionText={question.question_text}
+      />
       <h2
         id={groupId}
         className="display question__prompt"

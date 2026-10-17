@@ -109,6 +109,8 @@ async def init_db() -> None:
                 ("location_city", "VARCHAR(128)"),
                 ("location_state", "VARCHAR(128)"),
                 ("location_address", "VARCHAR(255)"),
+                ("idempotency_key", "VARCHAR(64)"),
+                ("child_record_id", "VARCHAR(36)"),
             ]
             for col_name, col_type in new_cols:
                 if columns and col_name not in columns:
@@ -117,6 +119,35 @@ async def init_db() -> None:
                             f"ALTER TABLE screening_sessions ADD COLUMN {col_name} {col_type}"
                         )
                     )
+
+            # Check referrals table columns
+            res_ref = await conn.execute(text("PRAGMA table_info(referrals)"))
+            ref_columns = {row[1] for row in res_ref.fetchall()}
+            ref_cols = [
+                ("idempotency_key", "VARCHAR(64)"),
+                ("domains_of_concern", "JSON"),
+                ("safety_rule_trigger", "VARCHAR(255)"),
+                ("outcome_notes", "TEXT"),
+                ("sent_at", "DATETIME"),
+                ("seen_at", "DATETIME"),
+                ("outcome_recorded_at", "DATETIME"),
+                ("closed_at", "DATETIME"),
+            ]
+            for col_name, col_type in ref_cols:
+                if ref_columns and col_name not in ref_columns:
+                    await conn.execute(
+                        text(
+                            f"ALTER TABLE referrals ADD COLUMN {col_name} {col_type}"
+                        )
+                    )
+
+            # Check answers table columns
+            res_ans = await conn.execute(text("PRAGMA table_info(answers)"))
+            ans_columns = {row[1] for row in res_ans.fetchall()}
+            if ans_columns and "source" not in ans_columns:
+                await conn.execute(
+                    text("ALTER TABLE answers ADD COLUMN source VARCHAR(16) DEFAULT 'recall'")
+                )
 
     # Seed community healthcare workers
     factory = get_session_factory()

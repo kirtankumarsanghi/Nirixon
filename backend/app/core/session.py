@@ -49,6 +49,13 @@ class ScreeningSession:
     # item_id -> 0/1/2 — REAL caregiver answers only, never imputed values
     answers: dict[str, int] = field(default_factory=dict)
 
+    # Source tracking: item_id -> "recall" | "observed"
+    answer_sources: dict[str, str] = field(default_factory=dict)
+    # Answers obtained via direct live elicitation observation
+    observed_answers: dict[str, int] = field(default_factory=dict)
+    # Answers obtained via retrospective recall questionnaire
+    recall_answers: dict[str, int] = field(default_factory=dict)
+
     # tracks which mandatory items are done; keys are always MANDATORY_IDS
     mandatory_answered: dict[str, int] = field(default_factory=dict)
 
@@ -61,11 +68,15 @@ class ScreeningSession:
     # Stored as item_id -> 0/1/2, NEVER merged into `answers`.
     teacher_answers: dict[str, int] = field(default_factory=dict)
 
-    # Module B: numeric-only micro-task telemetry.
-    # Keys are task identifiers (e.g. "go_no_go", "reading_fluency");
-    # values are scalar metrics (reaction_time_ms, accuracy_ratio, etc.).
-    # No audio/video — scalar numerics only.
+    # Module B & exploratory numeric micro-task telemetry.
     microtask_telemetry: dict[str, Any] = field(default_factory=dict)
+
+    # Exploratory touch micro-task telemetry (>= 24 months, not used in result)
+    touch_telemetry: list[dict[str, Any]] = field(default_factory=list)
+
+    # Joint family respondent answers (secondary caregivers, up to 3)
+    joint_respondent_answers: list[dict[str, Any]] = field(default_factory=list)
+    joint_concordance: dict[str, Any] | None = None
 
     # Module B: pending item ID last presented to user for validation
     pending_item_id: str | None = None
@@ -125,6 +136,20 @@ class ScreeningSession:
     def item_already_answered(self, item_id: str) -> bool:
         return item_id in self.answers or item_id in self.mandatory_answered
 
+    def record_answer(self, item_id: str, value: int, source: str = "recall") -> None:
+        """Record an answer from either retrospective recall or live observation.
+
+        Both sources feed `answers[item_id]` so the adaptive tree and model
+        receive the milestone answer identically, while provenance is stored
+        separately in `answer_sources`, `observed_answers`, and `recall_answers`.
+        """
+        self.answers[item_id] = value
+        self.answer_sources[item_id] = source
+        if source == "observed":
+            self.observed_answers[item_id] = value
+        else:
+            self.recall_answers[item_id] = value
+
     # ------------------------------------------------------------------
     # Serialization — Stage 4 MUST persist these dicts to Redis/DB so
     # sessions survive across HTTP requests, worker restarts, and scale-out.
@@ -142,10 +167,18 @@ class ScreeningSession:
             "model_name": self.model_name,
             "module": self.module,
             "answers": self.answers.copy(),
+            "answer_sources": self.answer_sources.copy(),
+            "observed_answers": self.observed_answers.copy(),
+            "recall_answers": self.recall_answers.copy(),
             "mandatory_answered": self.mandatory_answered.copy(),
             "detected_domains": list(self.detected_domains),
             "teacher_answers": self.teacher_answers.copy(),
             "microtask_telemetry": dict(self.microtask_telemetry),
+            "touch_telemetry": [dict(t) for t in self.touch_telemetry],
+            "joint_respondent_answers": [dict(j) for j in self.joint_respondent_answers],
+            "joint_concordance": (
+                dict(self.joint_concordance) if self.joint_concordance else None
+            ),
             "child_name": self.child_name,
             "parent_name": self.parent_name,
             "parent_phone": self.parent_phone,
@@ -178,10 +211,16 @@ class ScreeningSession:
             model_name=data.get("model_name"),
             module=data.get("module", "A"),
             answers=data.get("answers", {}).copy(),
+            answer_sources=data.get("answer_sources", {}).copy(),
+            observed_answers=data.get("observed_answers", {}).copy(),
+            recall_answers=data.get("recall_answers", {}).copy(),
             mandatory_answered=data.get("mandatory_answered", {}).copy(),
             detected_domains=list(data.get("detected_domains", [])),
             teacher_answers=data.get("teacher_answers", {}).copy(),
             microtask_telemetry=dict(data.get("microtask_telemetry", {})),
+            touch_telemetry=list(data.get("touch_telemetry", [])),
+            joint_respondent_answers=list(data.get("joint_respondent_answers", [])),
+            joint_concordance=data.get("joint_concordance"),
             child_name=data.get("child_name"),
             parent_name=data.get("parent_name"),
             parent_phone=data.get("parent_phone"),

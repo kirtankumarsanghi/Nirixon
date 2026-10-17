@@ -13,6 +13,10 @@ class SandboxSimulateRequest(BaseModel):
         default_factory=dict,
         description="Optional overrides for answers (item_id -> response_value)",
     )
+    domain_scores: dict[str, float] = Field(
+        default_factory=dict,
+        description="Optional domain score/proficiency overrides (domain name -> 0 to 100 or 0.0 to 1.0)",
+    )
     corrected_age_months: float | None = Field(
         None, description="Optional age override"
     )
