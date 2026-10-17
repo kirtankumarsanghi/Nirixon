@@ -58,7 +58,50 @@ from app.db.models import (
     User,
     Worker,
 )
+from app.core.triage_guard import ITEM_METADATA
 from app.db.session import get_db
+
+
+def _module_a_domain_scores(answers: dict[str, Any]) -> dict[str, float]:
+    """Normalized per-domain mean in [0,1] (answer / 2) from Module A answers."""
+    totals: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    for item_id, ans in answers.items():
+        meta = ITEM_METADATA.get(item_id)
+        if not meta:
+            continue
+        dom = meta["domain"]
+        totals[dom] = totals.get(dom, 0.0) + float(ans)
+        counts[dom] = counts.get(dom, 0) + 1
+    return {d: totals[d] / (2.0 * counts[d]) for d in totals if counts.get(d, 0) > 0}
+
+
+async def _attach_latest_domain_scores(db: AsyncSession, children: list[ChildRecord]) -> None:
+    """Attach each child's latest completed Module A per-domain scores (else {})."""
+    ids = [c.id for c in children]
+    if not ids:
+        return
+    stmt = (
+        select(ScreeningSession)
+        .where(
+            ScreeningSession.child_record_id.in_(ids),
+            ScreeningSession.status == "completed",
+        )
+        .order_by(ScreeningSession.completed_at.desc())
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    latest: dict[str, dict[str, float]] = {}
+    for row in rows:
+        cid = row.child_record_id
+        if not cid or cid in latest:
+            continue
+        if row.module == "A":
+            answers = row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+            latest[cid] = _module_a_domain_scores(answers)
+        else:
+            latest[cid] = {}
+    for child in children:
+        setattr(child, "domain_scores", latest.get(child.id, {}))
 from app.schemas.referral import (
     ChildContactResponse,
     ChildRecordCreate,
@@ -399,7 +442,9 @@ async def list_children(
         .offset(offset)
     )
     res = await db.execute(stmt)
-    return list(res.scalars().all())
+    rows = list(res.scalars().all())
+    await _attach_latest_domain_scores(db, rows)
+    return rows
 
 
 @router.get(
@@ -429,6 +474,7 @@ async def get_child_record(
         raise HTTPException(status_code=404, detail="Child record not found")
 
     check_worker_area_access(worker, child)
+    await _attach_latest_domain_scores(db, [child])
     return child
 
 

@@ -92,6 +92,9 @@ class ChildRecordResponse(BaseModel):
     follow_up_due_at: datetime | None = None
     contact_count: int = 0
     domains_flagged: list[str] = Field(default_factory=list)
+    # Latest completed Module A session's normalized per-domain scores [0,1].
+    # Empty when the child has no Module A screening (e.g. Module B or none).
+    domain_scores: dict[str, float] = Field(default_factory=dict)
     safety_rule_triggered: str | None = None
     is_overdue: bool = False
     created_at: datetime
