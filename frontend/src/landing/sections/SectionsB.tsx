@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, CheckCircle2, ShieldCheck, AlertTriangle } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 import { PHOTOS } from "../data";
 import { LogoLockup } from "../components/system";
 import { EASE, Kicker, MaskedHeadline, RevealImage, RingText } from "../components/editorial";
@@ -38,7 +38,7 @@ const FAQS = [
   },
   {
     q: "What about my child’s data and privacy?",
-    a: "No raw text is stored. Only a one-way cryptographic SHA-256 hash of the intake description is recorded in the server database. In the browser, only an ephemeral session ID is stored in sessionStorage during the check and cleared once completed; no personal identifying information or responses are stored in browser localStorage. Designed in alignment with DPDPA 2023 principles and ICMR ethical guidelines.",
+    a: "Default stays 100% on-device: screening results and timeline remain local to your browser unless you explicitly opt into cross-visit sync. When opted into synced growth tracking, the server stores ONLY a random pseudonymous child ID, birth month/year, visit date, domain scores, and triage tier. No names, phone numbers, addresses, or free-text notes are ever stored. You can export or permanently delete your child's server data with one tap at any time. Designed in alignment with DPDPA 2023 principles and ICMR ethical guidelines.",
   },
 ];
 

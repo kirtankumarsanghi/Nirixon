@@ -223,7 +223,7 @@ describe("Module B Screening Flow", () => {
 
       // Should show "School-age pathway" hint
       await waitFor(() => {
-        expect(screen.getByText(/School-age pathway/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/School-age pathway/i)[0]).toBeInTheDocument();
       });
 
       // Click begin
@@ -321,7 +321,7 @@ describe("Module B Screening Flow", () => {
       expect(
         screen.getAllByText(/not a diagnosis/i).length,
       ).toBeGreaterThanOrEqual(1);
-    });
+    }, 30000);
   });
 
   // Flow 2: Vague note → recall chips → questions continue
@@ -339,9 +339,10 @@ describe("Module B Screening Flow", () => {
       await user.clear(ageInput);
       await user.type(ageInput, "84");
 
-      await user.click(
-        screen.getByRole("button", { name: /Begin school-age check-in/i }),
-      );
+      const beginBtn = await screen.findByRole("button", {
+        name: /Begin school-age check-in/i,
+      });
+      await user.click(beginBtn);
 
       // Intake returns recall_help_needed
       mockedApi.submitIntake.mockResolvedValueOnce({

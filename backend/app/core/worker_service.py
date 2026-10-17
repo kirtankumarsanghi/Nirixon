@@ -23,6 +23,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.help_service import HELPLINE_NUMBERS
 from app.db.models import CommunityWorker
 
 logger = logging.getLogger(__name__)
@@ -403,7 +404,7 @@ def _synthesize_dynamic_local_workers(
                     "name": f"Child Guidance & Psychology Clinic — {clean_city}",
                     "role": "Child Psychologist / Counselor",
                     "facility_name": f"District Health Mission, {clean_city}",
-                    "phone": "14416 (Tele-MANAS) / 104",
+                    "phone": f"{HELPLINE_NUMBERS['tele_manas']} (Tele-MANAS) / {HELPLINE_NUMBERS['nhm']}",
                     "whatsapp": None,
                     "email": None,
                     "city": clean_city,
@@ -424,7 +425,7 @@ def _synthesize_dynamic_local_workers(
                 "name": f"Local ASHA Facilitator — {clean_city}",
                 "role": "ASHA Community Coordinator",
                 "facility_name": f"Block Primary Health Centre (PHC), {clean_city}",
-                "phone": "104",
+                "phone": HELPLINE_NUMBERS["nhm"],
                 "whatsapp": None,
                 "email": None,
                 "city": clean_city,
@@ -446,7 +447,7 @@ def _synthesize_dynamic_local_workers(
                 "name": f"ASHA Community Health Worker — {clean_city}",
                 "role": "ASHA Worker",
                 "facility_name": f"Local Ward / Village Health Sub-centre, {clean_city}",
-                "phone": "104 (Health Helpline)",
+                "phone": f"{HELPLINE_NUMBERS['nhm']} (Health Helpline)",
                 "whatsapp": None,
                 "email": None,
                 "city": clean_city,
@@ -465,7 +466,7 @@ def _synthesize_dynamic_local_workers(
                 "name": f"RBSK Mobile Health Team — {clean_city}",
                 "role": "RBSK Medical Officer",
                 "facility_name": f"Primary Health Centre (PHC), {clean_city}",
-                "phone": "104",
+                "phone": HELPLINE_NUMBERS["nhm"],
                 "whatsapp": None,
                 "email": None,
                 "city": clean_city,
@@ -484,7 +485,7 @@ def _synthesize_dynamic_local_workers(
                 "name": f"Anganwadi Centre (ICDS) — {clean_city}",
                 "role": "Anganwadi Worker / ICDS",
                 "facility_name": f"Ministry of Women & Child Development Hub, {clean_city}",
-                "phone": "104",
+                "phone": HELPLINE_NUMBERS["nhm"],
                 "whatsapp": None,
                 "email": None,
                 "city": clean_city,

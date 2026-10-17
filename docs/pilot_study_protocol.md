@@ -85,9 +85,14 @@ Nirixon Triage Output    Blinded Pediatrician Evaluation
 
 ## 6. Data Governance, Privacy & Security
 
-1. **De-Identification:** All screening records are pseudonymized using random cryptographic UUIDs (`child_ref`).
+1. **De-Identification:** All screening records are pseudonymized using random cryptographic UUIDs (`child_ref` / `pseudonymous_id`).
 2. **Local Processing:** Raw responses and free-text inputs remain in encrypted client-side session memory until submission.
-3. **Regulatory Compliance:** Compliant with Indian Digital Personal Data Protection Act (DPDPA 2023), HIPAA, and ICMR Ethical Guidelines for Biomedical Research Involving Children.
+3. **Community Health Worker (ASHA / Anganwadi / ANM) Referral Subsystem:**
+   - **Opt-in with Consent Recorded:** All community referral coordination requires verified caregiver opt-in consent with immutable UTC timestamps.
+   - **Area Isolation:** Frontline workers see only children within their assigned village/ward; cross-area access is strictly blocked (HTTP 403).
+   - **Minimal Referral Summary:** Printable PDFs and shareable referral summaries contain exclusively the minimum necessary clinical indicators: age bracket, triage tier, domains of concern, and safety rule trigger. Zero personal names or contact details.
+   - **Right to Erasure:** Caregivers can revoke consent or permanently delete child records and referral history at any time.
+4. **Regulatory Compliance:** Compliant with Indian Digital Personal Data Protection Act (DPDPA 2023), HIPAA, and ICMR Ethical Guidelines for Biomedical Research Involving Children.
 
 ---
 

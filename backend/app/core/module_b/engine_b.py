@@ -103,9 +103,20 @@ SAFETY_QUEUE: dict[str, str] = {
     "em_hopeless": "sf_selfharm_talk",
     "em_self_hurt": "sf_selfharm_act",
 }
+
+def _get_helpline_text(key: str) -> str:
+    try:
+        from app.core.help_service import OFFICIAL_HELPLINES
+        for h in OFFICIAL_HELPLINES:
+            if key in h.name.lower():
+                return f"{h.name}: {h.number} ({h.available})"
+    except Exception:
+        pass
+    return key
+
 HELP: dict[str, str] = {
-    "kiran": "Kiran Mental Health Helpline: 1800-599-0019 (free, 24x7, government)",
-    "childline": "CHILDLINE: 1098 (free child helpline in India) - please verify the current number before launch",
+    "kiran": _get_helpline_text("kiran"),
+    "childline": _get_helpline_text("childline"),
 }
 
 

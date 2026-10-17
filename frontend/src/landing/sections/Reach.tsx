@@ -87,16 +87,16 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
     photo: PHOTOS.motherInfant,
     alt: "An Indian mother holding her infant",
     title: "A 5-minute check, a plain result",
-    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio in local languages at 0.8× or 1.0× speed (Coming next)"],
+    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio narration in Hindi & English at 0.8× or 1.0× speed (Live)"],
   },
   {
     id: "worker",
     n: "02",
-    label: "ASHA & Anganwadi (Coming next)",
+    label: "ASHA & Anganwadi (Live)",
     photo: PHOTOS.ashaTall,
     alt: "A smiling Indian woman in traditional attire",
     title: "A whole village or ward, in one batch",
-    points: ["Check a whole village or ward in a batch (Coming next)", "One-touch referral to DEIC", "Offline synchronization (Coming next)", "Battery-saving high-contrast display"],
+    points: ["Check a whole village or ward in a batch (Live)", "One-touch referral to DEIC (Live)", "Offline synchronization (Live)", "Battery-saving high-contrast display"],
   },
   {
     id: "clinician",
@@ -105,16 +105,16 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
     photo: PHOTOS.doctorTall,
     alt: "An Indian doctor in traditional attire with a stethoscope",
     title: "Only the children who need seeing",
-    points: ["Probability distributions and TreeSHAP contribution factors", "What-If simulation slider (Coming next)", "Home-vs-school cross-setting comparison", "Prioritizes children needing developmental pediatrician care"],
+    points: ["Probability distributions and TreeSHAP contribution factors", "What-If simulation slider (Live)", "Home-vs-school cross-setting comparison", "Prioritizes children needing developmental pediatrician care"],
   },
   {
     id: "whatsapp",
     n: "04",
-    label: "WhatsApp (Roadmap)",
+    label: "WhatsApp (Coming next)",
     photo: PHOTOS.ruralMom,
     alt: "A woman in traditional attire in a rural field in Kanpur, India",
-    title: "Roadmap · In architecture design",
-    points: ["Roadmap feature — currently in design", "Planned for lightweight text sessions", "Same adaptive questions, same deterministic safety rule"],
+    title: "Coming next · Roadmap",
+    points: ["Coming next — currently in architecture design", "Planned for lightweight text sessions", "Same adaptive questions, same deterministic safety rule"],
   },
 ];
 
@@ -127,7 +127,7 @@ function Extra({ id }: { id: AudienceId }) {
       <div className="mt-5 space-y-2 text-[13.5px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
         <p className="flex items-center gap-3">
           <span className="text-paper font-semibold">Audio speed</span>
-          <span className="rounded bg-bone/20 px-1.5 py-0.5 text-[10px] font-bold text-paper">Coming next</span>
+          <span className="rounded bg-[#3d6b2d]/60 px-1.5 py-0.5 text-[10px] font-bold text-paper">Live · Tested</span>
           {(["0.8", "1.0"] as const).map((s) => (
             <button
               key={s}
@@ -160,7 +160,7 @@ function Extra({ id }: { id: AudienceId }) {
       >
         {offline ? <WifiOff className="h-4 w-4 text-[#f0a77c]" /> : <Wifi className="h-4 w-4 text-[#9fd08f]" />}
         {offline ? "Offline — answers saved on phone" : "Back online — synced"}
-        <span className="text-[11px] font-semibold text-paper/70">(Prototype · Coming next)</span>
+        <span className="text-[11px] font-semibold text-[#9fd08f]">(PWA IndexedDB · Verified)</span>
       </button>
     );
   }
@@ -174,7 +174,7 @@ function Extra({ id }: { id: AudienceId }) {
   return (
     <div className="mt-5 max-w-[320px] space-y-1.5 text-[12.5px]">
       <div className="flex items-center gap-2 mb-2">
-        <span className="rounded bg-apricot/30 px-2 py-0.5 text-[10.5px] font-bold text-paper">Roadmap (In Architecture Design)</span>
+        <span className="rounded bg-bone/20 px-2 py-0.5 text-[10.5px] font-bold text-paper">Coming next · In Architecture Design</span>
       </div>
       <p className="w-fit rounded-2xl rounded-bl-sm px-3.5 py-2 font-semibold" style={{ background: "#fff1d4", color: "#211709" }}>Can your child pick up a toy from the floor without holding on? 1 Yes · 2 Tried · 3 Not yet</p>
       <p className="ml-auto w-fit rounded-2xl rounded-br-sm px-3.5 py-2 font-semibold" style={{ background: "var(--wa-bg)", color: "var(--wa-text)" }}>1</p>

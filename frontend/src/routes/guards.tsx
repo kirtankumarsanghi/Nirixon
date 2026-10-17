@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { isParentRole } from "../auth/roles";
 
 export function RequireAuth() {
   const { isAuthenticated } = useAuth();
@@ -10,15 +11,17 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
-/** Screening requires consent in this browser session (or an in-progress resume). */
+/** Parent screening requires consent; staff may assist-screen without that gate. */
 export function RequireConsent() {
-  const { consentGiven } = useAuth();
+  const { consentGiven, role } = useAuth();
   const location = useLocation();
-  // Allow resume path: if session id exists in sessionStorage, consent was
-  // already recorded server-side when the session started.
   const hasSession =
     typeof sessionStorage !== "undefined" &&
     Boolean(sessionStorage.getItem("nirixon_screen_session_id"));
+
+  if (!isParentRole(role)) {
+    return <Outlet />;
+  }
 
   if (!consentGiven && !hasSession) {
     return <Navigate to="/consent" replace state={{ from: location }} />;

@@ -174,17 +174,17 @@ export function SuggestedWorkersSection({ result, sessionId }: Props) {
                 <div className="worker-card__details">
                   {w.distance_hint ? (
                     <p className="worker-card__location">
-                      📍 <strong>Location Coverage:</strong> {w.distance_hint}
+                      <strong>Location Coverage:</strong> {w.distance_hint}
                     </p>
                   ) : null}
                   {w.recommendation_reason ? (
                     <p className="worker-card__reason">
-                      💡 <strong>Why this worker:</strong> {w.recommendation_reason}
+                      <strong>Why this worker:</strong> {w.recommendation_reason}
                     </p>
                   ) : null}
                   {w.operating_hours ? (
                     <p className="worker-card__hours">
-                      🕒 <strong>Hours:</strong> {w.operating_hours}
+                      <strong>Hours:</strong> {w.operating_hours}
                     </p>
                   ) : null}
                 </div>
@@ -197,7 +197,7 @@ export function SuggestedWorkersSection({ result, sessionId }: Props) {
                       void handleContact(w, "call");
                     }}
                   >
-                    📞 Call {w.phone}
+                    Call {w.phone}
                   </a>
 
                   {w.whatsapp ? (
@@ -212,7 +212,7 @@ export function SuggestedWorkersSection({ result, sessionId }: Props) {
                         void handleContact(w, "whatsapp");
                       }}
                     >
-                      💬 WhatsApp
+                      WhatsApp
                     </a>
                   ) : null}
 

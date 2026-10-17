@@ -2,6 +2,7 @@ import type { ResultPayload, ActivityPayload } from "../api/types";
 import { DOMAIN_LABELS, MODULE_B_DOMAINS } from "../lib/domainConcern";
 import { ScreeningDisclaimer } from "./ScreeningDisclaimer";
 import { t } from "../i18n";
+import { VERIFIED_HELPLINES } from "../landing/helplines";
 
 interface Props {
   result: ResultPayload;
@@ -97,13 +98,13 @@ export function ModuleBResultView({
           </h2>
           <ul className="safety-notice__list">
             <li>
-              <a href="tel:18005990019" className="safety-notice__link">
-                <strong>Kiran</strong> — 1800-599-0019 ({t("moduleb.safety.kiran.meta", "Free, 24/7, confidential")})
+              <a href={VERIFIED_HELPLINES.kiran.tel} className="safety-notice__link">
+                <strong>Kiran</strong> — {VERIFIED_HELPLINES.kiran.number} ({t("moduleb.safety.kiran.meta", "Free, 24/7, confidential")})
               </a>
             </li>
             <li>
-              <a href="tel:1098" className="safety-notice__link">
-                <strong>CHILDLINE</strong> — 1098 ({t("moduleb.safety.childline.meta", "Free, for children and families")})
+              <a href={VERIFIED_HELPLINES.childline.tel} className="safety-notice__link">
+                <strong>CHILDLINE</strong> — {VERIFIED_HELPLINES.childline.number} ({t("moduleb.safety.childline.meta", "Free, for children and families")})
               </a>
             </li>
           </ul>
@@ -246,8 +247,8 @@ export function ModuleBResultView({
           </p>
         ) : null}
         <div className="safety-persistent" role="complementary">
-          <a href="tel:18005990019" className="safety-persistent__link">
-            📞 {t("moduleb.safety.persistent", "Talk to someone now")}
+          <a href={VERIFIED_HELPLINES.kiran.tel} className="safety-persistent__link">
+            {t("moduleb.safety.persistent", "Talk to someone now")}
           </a>
         </div>
       </section>

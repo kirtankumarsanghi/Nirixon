@@ -1,41 +1,40 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-
-const NAV = [
-  { to: "/screen", label: "Screening" },
-  { to: "/growth", label: "Growth" },
-  { to: "/share", label: "Sharing" },
-  { to: "/sandbox", label: "Clinician" },
-] as const;
+import {
+  defaultAuthenticatedPath,
+  navItemsForRole,
+  roleLabel,
+} from "../auth/roles";
 
 export function NavBar() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, role } = useAuth();
+  const location = useLocation();
+  const onScreen = location.pathname.startsWith("/screen");
+  const items = navItemsForRole(role);
+  const home = defaultAuthenticatedPath(role);
 
   return (
     <header className="nav">
       <div className="nav__inner">
-        <Link to={isAuthenticated ? "/screen" : "/login"} className="nav__brand">
+        <Link to={isAuthenticated ? home : "/"} className="nav__brand">
           Nirixon
         </Link>
         <nav className="nav__links" aria-label="Primary">
           {isAuthenticated ? (
             <>
-              {NAV.map((item) => (
+              {role ? (
+                <span className="nav__role" title={`Signed in as ${role}`}>
+                  {roleLabel(role)}
+                </span>
+              ) : null}
+              {items.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
                     isActive ? "nav__link nav__link--active" : "nav__link"
                   }
-                  title={
-                    item.to === "/growth"
-                      ? "Growth trends"
-                      : item.to === "/share"
-                        ? "Family sharing"
-                        : item.to === "/sandbox"
-                          ? "Clinician tools"
-                          : undefined
-                  }
+                  title={item.title}
                 >
                   {item.label}
                 </NavLink>
@@ -49,14 +48,24 @@ export function NavBar() {
               </button>
             </>
           ) : (
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                isActive ? "nav__link nav__link--active" : "nav__link"
-              }
-            >
-              Sign in
-            </NavLink>
+            <>
+              <NavLink
+                to="/login"
+                className={({ isActive }) =>
+                  isActive ? "nav__link nav__link--active" : "nav__link"
+                }
+              >
+                Sign in
+              </NavLink>
+              {!onScreen ? (
+                <Link to="/login" className="nav__cta">
+                  Start check-in
+                  <span className="nav__cta-arrow" aria-hidden>
+                    →
+                  </span>
+                </Link>
+              ) : null}
+            </>
           )}
         </nav>
       </div>

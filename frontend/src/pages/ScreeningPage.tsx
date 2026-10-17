@@ -1,7 +1,14 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { Users, Baby, GraduationCap } from "lucide-react";
 import { ApiError } from "../api/client";
 import type { ResultPayload, TeacherAnswerResponse } from "../api/types";
+import { useAuth } from "../auth/AuthContext";
+import {
+  defaultAuthenticatedPath,
+  isParentRole,
+  roleLabel,
+} from "../auth/roles";
 import { useAdaptiveQuestionnaire } from "../hooks/useAdaptiveQuestionnaire";
 import { useToast } from "../toast/Toast";
 import { QuestionnaireForm } from "../components/QuestionnaireForm";
@@ -68,11 +75,14 @@ function mergeTeacherIntoResult(
 }
 
 export function ScreeningPage() {
+  const [searchParams] = useSearchParams();
   const q = useAdaptiveQuestionnaire();
   const { push } = useToast();
+  const { role } = useAuth();
+  const staffAssist = !isParentRole(role);
 
-  const [ageMonths, setAgeMonths] = useState("24");
-  const [childRef, setChildRef] = useState("");
+  const [ageMonths, setAgeMonths] = useState(() => searchParams.get("age") || searchParams.get("age_months") || "24");
+  const [childRef, setChildRef] = useState(() => searchParams.get("child_ref") || searchParams.get("child_id") || "");
   const [childName, setChildName] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -182,9 +192,12 @@ export function ScreeningPage() {
     }
   }
 
-  async function onAnswer(value: number) {
+  async function onAnswer(
+    value: number,
+    source: "recall" | "observed" = "recall",
+  ) {
     try {
-      await q.submitAnswer(value);
+      await q.submitAnswer(value, source);
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -420,6 +433,7 @@ export function ScreeningPage() {
             question={q.question}
             disabled={q.submitting}
             onAnswer={onAnswer}
+            sessionId={q.sessionId}
           />
         )}
       </div>
@@ -461,31 +475,89 @@ export function ScreeningPage() {
   // --- IDLE phase (start form) ---
   return (
     <section className="screening-start" aria-labelledby="start-title">
-      <h1 id="start-title" className="display">
-        {t("screen.start.title", "Start a check-in")}
-      </h1>
-      <p className="lede">
-        {isModuleB
-          ? t(
-              "screen.start.moduleb",
-              "For school-age children (5–12 years / 60–144 months) we start with a brief open-ended description, then ask follow-up questions about functioning at home and school.",
-            )
-          : t(
-              "screen.start.modulea",
-              "We'll ask a short adaptive set of questions. Progress is by domain coverage, not a fixed question count — the list can shorten as you go.",
-            )}
-      </p>
+      {staffAssist ? (
+        <div className="role-banner" role="note">
+          <div className="role-banner__icon" aria-hidden>
+            <Users size={20} />
+          </div>
+          <div>
+            <p className="eyebrow">Assisting as {roleLabel(role)}</p>
+            <p className="role-banner__text">
+              This is the family check-in form. Your usual workspace is{" "}
+              <Link to={defaultAuthenticatedPath(role)}>
+                {defaultAuthenticatedPath(role) === "/referrals"
+                  ? "Referrals"
+                  : "Clinician tools"}
+              </Link>
+              . Use this only when helping a caregiver complete a session.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="screening-start__hero">
+        <p className="eyebrow">
+          {isModuleB ? "School-age pathway · 5–12 years" : "Early years pathway · under 5"}
+        </p>
+        <h1 id="start-title" className="display">
+          {staffAssist ? "Help a family check in" : "Start a check-in"}
+        </h1>
+        <p className="lede">
+          {isModuleB
+            ? "We begin with a short open description, then ask follow-ups about home and school."
+            : "A short adaptive set of questions by developmental domain — the list can shorten as you go."}
+        </p>
+      </div>
+
+      <div className="pathway-cards" role="group" aria-label="Age pathway">
+        <button
+          type="button"
+          className={`pathway-card${!isModuleB ? " pathway-card--active" : ""}`}
+          onClick={() => setAgeMonths("24")}
+        >
+          <span className="pathway-card__icon" aria-hidden>
+            <Baby size={24} />
+          </span>
+          <strong>Early years</strong>
+          <span>1–59 months · Module A</span>
+        </button>
+        <button
+          type="button"
+          className={`pathway-card${isModuleB ? " pathway-card--active" : ""}`}
+          onClick={() => setAgeMonths("72")}
+        >
+          <span className="pathway-card__icon" aria-hidden>
+            <GraduationCap size={24} />
+          </span>
+          <strong>School age</strong>
+          <span>60–144 months · Module B</span>
+        </button>
+      </div>
+
       {q.error ? (
         <p className="form-error" role="alert" aria-live="assertive">
           {q.error}
         </p>
       ) : null}
+
       <form className="screening-start__form intake-profile-form" onSubmit={onStart}>
         <div className="intake-section">
-          <h2 className="intake-section__title">1. Child Information</h2>
+          <div className="intake-section__head">
+            <span className="intake-section__step" aria-hidden>
+              1
+            </span>
+            <div>
+              <h2 className="intake-section__title">
+                About the child
+              </h2>
+              <p className="intake-section__sub">
+                Age chooses the pathway. Name is optional for this session.
+              </p>
+            </div>
+          </div>
           <div className="intake-section__grid">
             <label className="field">
-              <span>Child&apos;s Full Name</span>
+              <span>Child&apos;s full name</span>
               <input
                 type="text"
                 value={childName}
@@ -496,7 +568,7 @@ export function ScreeningPage() {
             </label>
 
             <label className="field">
-              <span>{t("screen.field.age", "Child\u0027s corrected age (months)")}</span>
+              <span>{t("screen.field.age", "Corrected age (months)")}</span>
               <input
                 type="number"
                 min={1}
@@ -512,9 +584,7 @@ export function ScreeningPage() {
                   {ageBracketLabel && !isModuleB
                     ? ` · ASQ-3 bracket: ${ageBracketLabel}`
                     : null}
-                  {isModuleB
-                    ? ` · ${t("screen.field.moduleb", "School-age pathway (Module B)")}`
-                    : null}
+                  {isModuleB ? " · School-age pathway (Module B)" : null}
                 </span>
               ) : null}
             </label>
@@ -522,10 +592,22 @@ export function ScreeningPage() {
         </div>
 
         <div className="intake-section">
-          <h2 className="intake-section__title">2. Parent / Caregiver Giving the Test</h2>
+          <div className="intake-section__head">
+            <span className="intake-section__step" aria-hidden>
+              2
+            </span>
+            <div>
+              <h2 className="intake-section__title">
+                Caregiver answering today
+              </h2>
+              <p className="intake-section__sub">
+                Who is filling this check-in, and how we can reach them if needed.
+              </p>
+            </div>
+          </div>
           <div className="intake-section__grid">
             <label className="field">
-              <span>Parent / Caregiver Name</span>
+              <span>Caregiver name</span>
               <input
                 type="text"
                 value={parentName}
@@ -536,7 +618,7 @@ export function ScreeningPage() {
             </label>
 
             <label className="field">
-              <span>Relationship to Child</span>
+              <span>Relationship to child</span>
               <select
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
@@ -546,42 +628,58 @@ export function ScreeningPage() {
                 <option value="Father">Father</option>
                 <option value="Guardian">Guardian</option>
                 <option value="Grandparent">Grandparent</option>
-                <option value="Anganwadi / Health Worker">Anganwadi / Health Worker</option>
+                <option value="Anganwadi / Health Worker">
+                  Anganwadi / Health Worker
+                </option>
                 <option value="Teacher">Teacher / Mentor</option>
               </select>
             </label>
 
             <label className="field intake-section__full">
-              <span>Parent&apos;s Contact Phone Number</span>
+              <span>Contact phone</span>
               <input
                 type="tel"
                 value={parentPhone}
-                onChange={(e) => setParentPhone(e.target.value.replace(/[^\d+ ]/g, ""))}
+                onChange={(e) =>
+                  setParentPhone(e.target.value.replace(/[^\d+ ]/g, ""))
+                }
                 placeholder="e.g. 9876543210 (10 digits)"
                 autoComplete="tel"
               />
               <span className="field__hint">
-                Used to suggest and connect with nearby community workers (ASHA/Anganwadi/DEIC) based on the summary.
+                Helps suggest nearby ASHA / Anganwadi / DEIC contacts after results.
               </span>
             </label>
           </div>
         </div>
 
         <div className="intake-section">
-          <div className="intake-section__header-row">
-            <h2 className="intake-section__title">3. Your Location (For Local Healthcare Worker Matching)</h2>
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm intake-gps-btn"
-              onClick={handleAutoDetectLocation}
-              disabled={isLocating}
-            >
-              📍 {isLocating ? "Detecting…" : "Auto-detect location"}
-            </button>
+          <div className="intake-section__head">
+            <span className="intake-section__step" aria-hidden>
+              3
+            </span>
+            <div className="intake-section__head-main">
+              <div>
+                <h2 className="intake-section__title">
+                  Location for local matching
+                </h2>
+                <p className="intake-section__sub">
+                  Used only to suggest nearby public health resources.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm intake-gps-btn"
+                onClick={handleAutoDetectLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? "Detecting…" : "Auto-detect"}
+              </button>
+            </div>
           </div>
           <div className="intake-section__grid">
             <label className="field">
-              <span>6-Digit Pincode</span>
+              <span>6-digit pincode</span>
               <input
                 type="text"
                 maxLength={6}
@@ -589,18 +687,16 @@ export function ScreeningPage() {
                 onChange={(e) => handlePincodeChange(e.target.value)}
                 placeholder="e.g. 110016"
               />
-              <span className="field__hint">
-                Auto-fills city & state for quick worker discovery
-              </span>
+              <span className="field__hint">Often auto-fills city & state</span>
             </label>
 
             <label className="field">
-              <span>City / District</span>
+              <span>City / district</span>
               <input
                 type="text"
                 value={locationCity}
                 onChange={(e) => setLocationCity(e.target.value)}
-                placeholder="e.g. New Delhi / South Delhi"
+                placeholder="e.g. New Delhi"
               />
             </label>
 
@@ -610,49 +706,66 @@ export function ScreeningPage() {
                 type="text"
                 value={locationState}
                 onChange={(e) => setLocationState(e.target.value)}
-                placeholder="e.g. Delhi, Maharashtra, Karnataka"
+                placeholder="e.g. Delhi"
               />
             </label>
 
             <label className="field">
-              <span>Address / Locality (Optional)</span>
+              <span>Locality (optional)</span>
               <input
                 type="text"
                 value={locationAddress}
                 onChange={(e) => setLocationAddress(e.target.value)}
-                placeholder="e.g. Green Park Main, Ward 14"
+                placeholder="e.g. Green Park, Ward 14"
               />
             </label>
           </div>
         </div>
 
-        <label className="field field--optional">
-          <span>Optional Session Label</span>
-          <input
-            type="text"
-            value={childRef}
-            onChange={(e) => setChildRef(e.target.value)}
-            placeholder="e.g. initials or nickname for this session"
-            autoComplete="off"
-          />
-        </label>
+        <div className="intake-section intake-section--soft">
+          <div className="intake-section__head">
+            <span className="intake-section__step" aria-hidden>
+              ·
+            </span>
+            <div>
+              <h2 className="intake-section__title">
+                Optional session label
+              </h2>
+              <p className="intake-section__sub">
+                Initials or nickname for this device history only.
+              </p>
+            </div>
+          </div>
+          <label className="field field--optional">
+            <span className="visually-hidden">Optional session label</span>
+            <input
+              type="text"
+              value={childRef}
+              onChange={(e) => setChildRef(e.target.value)}
+              placeholder="e.g. A.S. · home visit"
+              autoComplete="off"
+            />
+          </label>
+        </div>
 
         <div className="intake-consent-box">
           <p className="intake-consent-box__text">
-            🔒 <strong>Health Data Privacy:</strong> All entered information is strictly stored under your authenticated parent account, used solely for clinical developmental triage and connecting with verified public health resources (ASHA, Anganwadi, DEIC).
+            <strong>Privacy:</strong> Information stays under this signed-in
+            account for triage and optional public-health matching (ASHA,
+            Anganwadi, DEIC). It is not a diagnosis.
           </p>
         </div>
 
         <button
           type="submit"
-          className="btn btn--primary btn--lg"
+          className="btn btn--primary btn--lg btn--block"
           disabled={starting}
         >
           {starting
             ? t("screen.start.starting", "Starting…")
             : isModuleB
-              ? t("screen.start.begin.moduleb", "Begin School-Age Check-in")
-              : "Begin Developmental Check-in"}
+              ? "Begin school-age check-in"
+              : "Begin developmental check-in"}
         </button>
       </form>
     </section>

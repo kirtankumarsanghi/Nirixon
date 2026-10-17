@@ -46,6 +46,7 @@ class AnswerRequest(BaseModel):
     answer: Any
     track: str | None = None
     engine_session: str | None = None
+    source: Literal["recall", "observed"] = "recall"
 
 
 class ActivityPayload(BaseModel):
@@ -173,6 +174,13 @@ class ResultPayload(BaseModel):
     location_address: str | None = None
     # Suggested Early Intervention & Community Health Workers
     suggested_workers: list[WorkerSuggestion] = Field(default_factory=list)
+    # Model inference latency in milliseconds
+    latency_ms: float | None = None
+    # Live Observation & Exploratory Touch Telemetry
+    observed_answers: dict[str, int] = Field(default_factory=dict)
+    answer_sources: dict[str, str] = Field(default_factory=dict)
+    touch_telemetry: list[dict[str, Any]] = Field(default_factory=list)
+    touch_telemetry_notice: str = "Exploratory, not used in the result."
 
 
 class ScreenActionResponse(BaseModel):
