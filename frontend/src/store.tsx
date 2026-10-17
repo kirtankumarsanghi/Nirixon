@@ -16,7 +16,7 @@ export interface WhatIfSeed {
 }
 
 interface AppCtx {
-  screen: "login" | "app";
+  screen: "landing" | "login" | "app";
   role: Role;
   view: View;
   login: (role: Role, view?: View) => void;
@@ -151,7 +151,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       role,
       view,
       login: (r, v) => navigate({ screen: "app", role: r, view: v ?? ROLES[r].home }),
-      logout: () => navigate({ screen: "login" }),
+      logout: () => navigate({ screen: "landing" }),
       go: (v) => navigate({ screen: "app", role, view: v }),
       switchRole: (r) => navigate({ screen: "app", role: r, view: ROLES[r].home }),
       back: () => {

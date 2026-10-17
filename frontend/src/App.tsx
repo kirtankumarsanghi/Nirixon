@@ -9,6 +9,7 @@ import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
 import { AppProvider, useApp } from "./store";
 import { cn } from "./utils/cn";
 import { Login } from "./views/Login";
+import { LandingPage } from "./landing";
 import { Home } from "./views/Home";
 import { CheckIn } from "./views/CheckIn";
 import { Growth } from "./views/Growth";
@@ -176,8 +177,10 @@ function Workspace() {
 function Shell() {
   const { screen } = useApp();
   useEffect(() => {
-    if (screen === "login") document.title = "Nirixon — Developmental Screening";
+    if (screen === "landing") document.title = "Nirixon — Developmental Screening";
+    else if (screen === "login") document.title = "Sign in — Nirixon";
   }, [screen]);
+  if (screen === "landing") return <LandingPage />;
   return screen === "login" ? <Login /> : <Workspace />;
 }
 
