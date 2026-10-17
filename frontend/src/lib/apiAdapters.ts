@@ -25,7 +25,8 @@ export function score01ToZ(score: number): number {
 }
 
 export function toScores(domainScores: Record<string, number> | null | undefined): Scores {
-  const out: Scores = { gross: 0, fine: 0, comm: 0, social: 0, cog: 0, adaptive: 0 };
+  // Only the domains actually present are included — never padded to six.
+  const out: Scores = {};
   if (!domainScores) return out;
   for (const [key, val] of Object.entries(domainScores)) {
     const dom = DOMAIN_MAP[key];
@@ -41,12 +42,19 @@ export function toTier(classification: string | null | undefined): Tier {
 /** Backend completed session → the design's CheckIn shape. */
 export function sessionToCheckIn(s: SessionSummary): CheckIn {
   const date = (s.completed_at ?? s.started_at ?? "").slice(0, 10);
+  const probs = {
+    typical: s.probabilities?.Typical ?? 0,
+    monitor: s.probabilities?.Monitor ?? 0,
+    refer: s.probabilities?.Refer ?? 0,
+  };
   return {
     id: s.id,
     date,
     ageMonths: Math.round(s.corrected_age_months ?? 0),
     child: s.child_name ?? "Child",
     scores: toScores(s.domain_scores),
+    tier: toTier(s.final_classification),
+    probs,
     regression: Boolean(s.safety_override_triggered),
     source: "live",
     module: s.module,

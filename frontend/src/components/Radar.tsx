@@ -1,28 +1,38 @@
-import { DOMAIN_KEYS, DOMAINS, type Domain, type Scores } from "../lib/model";
+import { DOMAINS, domainKeys, type Scores } from "../lib/model";
 
 const W = 480;
 const H = 440;
 const C = { x: 240, y: 220 };
 const R = 132;
 
-const ang = (i: number) => ((-90 + i * 60) * Math.PI) / 180;
 const rad = (z: number) => ((Math.max(-3, Math.min(1, z)) + 3) / 4) * R;
-const pt = (i: number, r: number) => [C.x + r * Math.cos(ang(i)), C.y + r * Math.sin(ang(i))] as const;
-const poly = (r: (i: number) => number) =>
-  DOMAIN_KEYS.map((_, i) => pt(i, r(i)).map((n) => n.toFixed(1)).join(",")).join(" ");
 
 interface Props {
   scores: Scores;
   prev?: Scores;
-  selected?: Domain;
-  onSelect?: (d: Domain) => void;
+  /** Per-domain IRT theta (Module B). Shown as a secondary label when present. */
+  irt?: Record<string, number>;
+  selected?: string;
+  onSelect?: (d: string) => void;
   tone: string;
 }
 
-/** Hexagonal radar of the six areas with the −1 and −2 SD guide rings. Built for dark backgrounds. */
-export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
+/**
+ * Radar with one axis per domain present in the data (six for Module A, eight
+ * for Module B) and the −1 / −2 SD guide rings. Domain count is never padded.
+ */
+export function Radar({ scores, prev, irt, selected, onSelect, tone }: Props) {
+  const keys = domainKeys(scores);
+  const n = keys.length;
+  if (n < 3) return null; // a radar polygon needs at least three axes
+
+  const ang = (i: number) => ((-90 + (i * 360) / n) * Math.PI) / 180;
+  const pt = (i: number, r: number) => [C.x + r * Math.cos(ang(i)), C.y + r * Math.sin(ang(i))] as const;
+  const poly = (r: (i: number) => number) =>
+    keys.map((_, i) => pt(i, r(i)).map((v) => v.toFixed(1)).join(",")).join(" ");
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Radar chart of the six developmental areas">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Radar chart of ${n} developmental areas`}>
       {[
         { z: 1, c: "rgba(255,244,220,.10)", d: undefined },
         { z: 0, c: "rgba(255,244,220,.28)", d: undefined },
@@ -31,7 +41,7 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
       ].map((g) => (
         <polygon key={g.z} points={poly(() => rad(g.z))} fill="none" stroke={g.c} strokeWidth={1.2} strokeDasharray={g.d} />
       ))}
-      {DOMAIN_KEYS.map((_, i) => {
+      {keys.map((_, i) => {
         const [x, y] = pt(i, R);
         return <line key={i} x1={C.x} y1={C.y} x2={x} y2={y} stroke="rgba(255,244,220,.12)" />;
       })}
@@ -47,7 +57,7 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
 
       {prev && (
         <polygon
-          points={poly((i) => rad(prev[DOMAIN_KEYS[i]]))}
+          points={poly((i) => rad(prev[keys[i]] ?? 0))}
           fill="none"
           stroke="rgba(255,244,220,.55)"
           strokeWidth={1.5}
@@ -55,10 +65,10 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
         />
       )}
       <polygon
-        key={DOMAIN_KEYS.map((k) => scores[k]).join("|")}
+        key={keys.map((k) => scores[k]).join("|")}
         className="nrx-pop"
         style={{ transformOrigin: `${C.x}px ${C.y}px` }}
-        points={poly((i) => rad(scores[DOMAIN_KEYS[i]]))}
+        points={poly((i) => rad(scores[keys[i]]))}
         fill={tone}
         fillOpacity={0.26}
         stroke={tone}
@@ -66,7 +76,7 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
         strokeLinejoin="round"
       />
 
-      {DOMAIN_KEYS.map((k, i) => {
+      {keys.map((k, i) => {
         const [x, y] = pt(i, rad(scores[k]));
         const sel = selected === k;
         return (
@@ -81,7 +91,7 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
                 fill="transparent"
                 tabIndex={0}
                 role="button"
-                aria-label={DOMAINS[k].label}
+                aria-label={DOMAINS[k]?.label ?? k}
                 className="cursor-pointer outline-none"
                 onMouseEnter={() => onSelect(k)}
                 onFocus={() => onSelect(k)}
@@ -92,27 +102,35 @@ export function Radar({ scores, prev, selected, onSelect, tone }: Props) {
         );
       })}
 
-      {DOMAIN_KEYS.map((k, i) => {
+      {keys.map((k, i) => {
         const [x, y] = pt(i, R + 30);
         const c = Math.cos(ang(i));
         const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle";
         const sel = selected === k;
+        const theta = irt?.[k];
+        const dx = anchor === "start" ? 6 : anchor === "end" ? -6 : 0;
         return (
-          <text
-            key={k}
-            x={x + (anchor === "start" ? 6 : anchor === "end" ? -6 : 0)}
-            y={y + 4}
-            textAnchor={anchor}
-            fontSize="11"
-            fontFamily="JetBrains Mono, monospace"
-            fontWeight={sel ? 700 : 500}
-            letterSpacing="1.4"
-            fill={sel ? "#ea8f63" : "rgba(255,244,220,.78)"}
-            className="cursor-pointer select-none"
-            onClick={() => onSelect?.(k)}
-          >
-            {DOMAINS[k].label.toUpperCase()}
-          </text>
+          <g key={k}>
+            <text
+              x={x + dx}
+              y={y + 4}
+              textAnchor={anchor}
+              fontSize="11"
+              fontFamily="JetBrains Mono, monospace"
+              fontWeight={sel ? 700 : 500}
+              letterSpacing="1.4"
+              fill={sel ? "#ea8f63" : "rgba(255,244,220,.78)"}
+              className="cursor-pointer select-none"
+              onClick={() => onSelect?.(k)}
+            >
+              {(DOMAINS[k]?.label ?? k).toUpperCase()}
+            </text>
+            {typeof theta === "number" && (
+              <text x={x + dx} y={y + 16} textAnchor={anchor} fontSize="9" fontFamily="JetBrains Mono, monospace" fill="rgba(255,244,220,.5)" letterSpacing="0.5">
+                θ {theta.toFixed(1)}
+              </text>
+            )}
+          </g>
         );
       })}
     </svg>
