@@ -8,6 +8,7 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
 import { AppProvider, useApp } from "./store";
 import { cn } from "./utils/cn";
+import { PageState } from "./components/PageState";
 import { Login } from "./views/Login";
 import { LandingPage } from "./landing";
 import { Home } from "./views/Home";
@@ -24,7 +25,23 @@ import { ParentWhatIf } from "./views/ParentWhatIf";
 import { Evidence } from "./views/Evidence";
 
 function Screen({ view }: { view: View }) {
-  const { role } = useApp();
+  const { role, loading, error, reload, checkIns, children } = useApp();
+
+  // Data-driven views show a matching loading / error / empty state until the
+  // backend data for the role is ready (prevents rendering on empty lists).
+  const needsCheckIns =
+    ["home", "growth", "share", "clinical"].includes(view) ||
+    (view === "whatif" && role === "parent");
+  const needsChildren = ["caseload", "referrals", "cases"].includes(view);
+  if (needsCheckIns || needsChildren) {
+    if (loading) return <PageState kind="loading" />;
+    if (error) return <PageState kind="error" message={error} onRetry={reload} />;
+    if (needsCheckIns && checkIns.length === 0)
+      return <PageState kind="empty" message="No check-ins yet. Run a check-in to see results on this screen." />;
+    if (needsChildren && children.length === 0)
+      return <PageState kind="empty" message="No children in this caseload yet." />;
+  }
+
   switch (view) {
     case "home":
       return <Home />;

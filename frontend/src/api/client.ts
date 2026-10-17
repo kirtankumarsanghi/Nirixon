@@ -217,6 +217,11 @@ export const api = {
     return request<ResultPayload>(`/api/screen/${sessionId}/result`);
   },
 
+  /** The caller's own completed screening sessions (history for Home/Growth/Share). */
+  getSessions(limit = 50): Promise<SessionSummary[]> {
+    return request<SessionSummary[]>(`/api/screen/sessions?limit=${limit}`);
+  },
+
   /** Module B: submit free-text observation for NLP domain routing. */
   submitIntake(sessionId: string, body: IntakeRequest): Promise<IntakeResponse> {
     return request<IntakeResponse>(`/api/screen/${sessionId}/intake`, {
@@ -540,6 +545,22 @@ export const shareApi = {
     return request<AudioCoverageReport>("/api/audio/report");
   },
 };
+
+export interface SessionSummary {
+  id: string;
+  status: string;
+  module: "A" | "B";
+  corrected_age_months: number | null;
+  age_bracket: string;
+  completed_at: string | null;
+  started_at: string | null;
+  child_name: string | null;
+  final_classification: string | null;
+  probabilities: Record<string, number>;
+  safety_override_triggered: boolean;
+  domain_classifications: Record<string, string>;
+  domain_scores: Record<string, number>;
+}
 
 export interface GrowthVisit {
   id: string;
