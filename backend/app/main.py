@@ -25,6 +25,7 @@ from app.ml.inference_service import inference_service, inference_service_b
 from app.routers import (
     audio,
     auth,
+    evidence,
     growth,
     help,
     predict,
@@ -280,6 +281,7 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     app.include_router(help.router)
     app.include_router(referrals.router)
     app.include_router(audio.router)
+    app.include_router(evidence.router)
 
     static_audio_dir = Path(__file__).resolve().parent.parent / "static" / "audio"
     if static_audio_dir.exists():
