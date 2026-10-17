@@ -134,6 +134,10 @@ class ResultPayload(BaseModel):
     imputed_count: int | None = None
     # Module B: per-domain classification; empty for Module A
     domain_classifications: dict[str, str] = {}
+    # Module A: normalized per-domain score in [0,1] (mean answer / 2). Real,
+    # computed from the session's answers; empty for Module B (which carries
+    # per-domain IRT theta in domain_details instead).
+    domain_scores: dict[str, float] = Field(default_factory=dict)
     # Module B: parent-vs-teacher cross-context consistency score in [0,1]
     consistency_score: float | None = None
     # Module B: which domains have a meaningful divergence between raters

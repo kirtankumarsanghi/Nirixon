@@ -139,6 +139,24 @@ def _question_payload(q: NextQuestion) -> QuestionPayload:
     )
 
 
+def _module_a_domain_scores(real_answers: dict[str, Any]) -> dict[str, float]:
+    """Normalized per-domain mean in [0,1] (answer / 2) from real answers.
+
+    Mirrors the completion-path computation so GET /result and GET /{id} return
+    the same per-domain scores used at triage time. Module A only.
+    """
+    totals: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    for item_id, ans in real_answers.items():
+        meta = ITEM_METADATA.get(item_id)
+        if not meta:
+            continue
+        dom = meta["domain"]
+        totals[dom] = totals.get(dom, 0.0) + float(ans)
+        counts[dom] = counts.get(dom, 0) + 1
+    return {d: totals[d] / (2.0 * counts[d]) for d in totals if counts.get(d, 0) > 0}
+
+
 def _result_payload_from_prediction(
     pred,
     *,
@@ -148,6 +166,7 @@ def _result_payload_from_prediction(
     real_answer_count: int | None = None,
     imputed_count: int | None = None,
     domain_classifications: dict[str, str] | None = None,
+    domain_scores: dict[str, float] | None = None,
     module: str = "A",
     triage_tier: str | None = None,
     reflex_branch_recommended: bool = False,
@@ -175,6 +194,7 @@ def _result_payload_from_prediction(
         real_answer_count=real_answer_count,
         imputed_count=imputed_count,
         domain_classifications=domain_classifications or {},
+        domain_scores=domain_scores or {},
         module=module,  # type: ignore[arg-type]
         triage_tier=triage_tier,
         reflex_branch_recommended=reflex_branch_recommended,
@@ -564,6 +584,7 @@ async def _run_completion(
         real_answer_count=len(final.real_answers),
         imputed_count=len(final.imputed_answers),
         domain_classifications=domain_cls,
+        domain_scores=domain_scores if core.module == "A" else {},
         module=core.module,
         triage_tier=triage_tier,
         reflex_branch_recommended=reflex_rec,
@@ -983,6 +1004,11 @@ async def get_result(
         stopping_reason=rr.stopping_reason,
         caveats=list(rr.caveats or []),
         domain_classifications=getattr(rr, "domain_classifications", None) or {},
+        domain_scores=(
+            _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
+            if db_row.module == "A"
+            else {}
+        ),
         module=db_row.module,  # type: ignore[arg-type]
         triage_tier=triage_tier,
         child_name=db_row.child_name,
@@ -1029,6 +1055,11 @@ async def get_session(
             stopping_reason=rr.stopping_reason,
             caveats=list(rr.caveats or []),
             domain_classifications=getattr(rr, "domain_classifications", None) or {},
+            domain_scores=(
+                _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
+                if db_row.module == "A"
+                else {}
+            ),
             consistency_score=getattr(rr, "consistency_score", None),
             consistency_flags=dict(telemetry.get("consistency_flags") or {}),
             module=core.module if core else "A",  # type: ignore[arg-type]
