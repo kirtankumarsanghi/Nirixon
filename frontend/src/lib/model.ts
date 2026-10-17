@@ -1,15 +1,27 @@
 /* ------------------------------------------------------------------ */
-/*  Nirixon — scoring model, check-in history and sample caseload      */
-/*  Everything here is synthetic demo data.                            */
+/*  Nirixon — domain model, tier metadata and presentation helpers     */
 /* ------------------------------------------------------------------ */
 
-export type Domain = "gross" | "fine" | "comm" | "social" | "cog" | "adaptive";
-export type Scores = Record<Domain, number>;
 export type Tier = "Typical" | "Monitor" | "Refer";
 
-export const DOMAIN_KEYS: Domain[] = ["gross", "fine", "comm", "social", "cog", "adaptive"];
+/** A per-domain score map. Keys are the domains actually present in the data:
+ *  six for Module A, eight for Module B. Never padded to a fixed count. */
+export type Scores = Record<string, number>;
 
-export const DOMAINS: Record<Domain, { label: string; plain: string; blurb: string; activity: string; color: string }> = {
+/** Domain id (an opaque string — one of the keys in DOMAIN_META). */
+export type Domain = string;
+
+export interface DomainMeta {
+  label: string;
+  plain: string;
+  blurb: string;
+  activity: string;
+  color: string;
+}
+
+/** Presentation metadata for every domain across both modules. */
+export const DOMAINS: Record<string, DomainMeta> = {
+  // Module A — early years (0–60 months), six ASQ-style areas.
   gross: {
     label: "Gross motor",
     plain: "Big movements",
@@ -52,6 +64,56 @@ export const DOMAINS: Record<Domain, { label: string; plain: string; blurb: stri
     activity: "Let them pour water between cups and practise taking off their own shoes.",
     color: "#92650f",
   },
+  // Module B — school age (60–144 months), eight areas.
+  attention: {
+    label: "Attention",
+    plain: "Focus & attention",
+    blurb: "Sustaining attention, following instructions and finishing tasks.",
+    activity: "Play a short turn-taking game and build up the time before a break.",
+    color: "#2a6a85",
+  },
+  listening_speaking: {
+    label: "Listening & speaking",
+    plain: "Listening & speaking",
+    blurb: "Understanding spoken language and expressing ideas clearly.",
+    activity: "Read a story aloud and ask “what happens next?”",
+    color: "#6e4c78",
+  },
+  reading: {
+    label: "Reading",
+    plain: "Reading",
+    blurb: "Recognising letters and words, and reading age-appropriate text.",
+    activity: "Label everyday objects and read them together around the house.",
+    color: "#46692a",
+  },
+  writing: {
+    label: "Writing",
+    plain: "Writing",
+    blurb: "Letter formation, spelling and putting sentences on paper.",
+    activity: "Practise drawing patterns and writing the child's name each day.",
+    color: "#92650f",
+  },
+  numbers: {
+    label: "Numbers",
+    plain: "Numbers & maths",
+    blurb: "Counting, comparing quantities and simple arithmetic.",
+    activity: "Count steps, spoons and coins together; compare which pile is bigger.",
+    color: "#a4441a",
+  },
+  motor: {
+    label: "Motor skills",
+    plain: "Motor skills",
+    blurb: "Coordinated movement, balance and hand control.",
+    activity: "Practise ball games, hopping and cutting shapes with safety scissors.",
+    color: "#c8452f",
+  },
+  emotion_conduct: {
+    label: "Emotion & conduct",
+    plain: "Emotions & behaviour",
+    blurb: "Regulating feelings, getting along and following routines.",
+    activity: "Name feelings during the day and agree one calm-down routine together.",
+    color: "#9a6aa6",
+  },
 };
 
 export const TIER_META: Record<
@@ -67,7 +129,7 @@ export const TIER_META: Record<
     hex: "#46692a",
     hexLight: "#8fbf5a",
     glow: "rgba(143,191,90,0.45)",
-    summary: "Skills look in line with age across all six areas. Keep playing, talking and exploring together.",
+    summary: "Skills look in line with age across the checked areas. Keep playing, talking and exploring together.",
     next: "Check in again in about 3 months, or sooner if something changes.",
   },
   Monitor: {
@@ -96,38 +158,50 @@ export const TIER_META: Record<
   },
 };
 
-/* ------------------------------ scoring ------------------------------ */
+/** The domains present in a score map, in insertion order. */
+export function domainKeys(scores: Scores | undefined | null): string[] {
+  return scores ? Object.keys(scores) : [];
+}
 
-const sig = (x: number) => 1 / (1 + Math.exp(-x));
-const r1 = (x: number) => Math.round(x * 10) / 10;
+/** Module A's six domains — the default axis set for surfaces that predate
+ *  per-module axes (e.g. a brand-new, unspecified check-in). */
+export const DOMAIN_KEYS: string[] = ["gross", "fine", "comm", "social", "cog", "adaptive"];
+
+/* ------------------------------ display ------------------------------ */
+
+const _sig = (x: number) => 1 / (1 + Math.exp(-x));
 
 export interface Evaluation {
   tier: Tier;
   probs: { typical: number; monitor: number; refer: number };
   min: number;
-  lowest: Domain;
+  lowest: string;
   mean: number;
   safety: boolean;
   reason: string;
 }
 
+/**
+ * Display-only tier derivation from a score map. This is NOT the clinical
+ * model — the backend owns the authoritative classification (surfaced on
+ * CheckIn.tier). Kept so per-domain visualisations have a band to colour by.
+ */
 export function evaluate(scores: Scores, regression = false): Evaluation {
-  const vals = DOMAIN_KEYS.map((k) => scores[k]);
-  const min = Math.min(...vals);
-  const lowest = DOMAIN_KEYS[vals.indexOf(min)];
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const keys = domainKeys(scores);
+  const vals = keys.map((k) => scores[k]);
+  const min = vals.length ? Math.min(...vals) : 0;
+  const lowest = keys[vals.indexOf(min)] ?? "gross";
+  const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
 
-  const pR = sig((-1.9 - min) * 3);
-  const pT = sig((min + 1.1) * 3.2) * (1 - pR);
+  const pR = _sig((-1.9 - min) * 3);
+  const pT = _sig((min + 1.1) * 3.2) * (1 - pR);
   const pM = Math.max(0, 1 - pR - pT);
-  const sum = pR + pT + pM;
+  const sum = pR + pT + pM || 1;
   let probs = { typical: pT / sum, monitor: pM / sum, refer: pR / sum };
 
-  const byScore = min < -2;
-  const safety = regression || byScore;
+  const safety = regression || min < -2;
   let tier: Tier;
   let reason: string;
-
   if (safety) {
     tier = "Refer";
     const refer = Math.max(probs.refer, 0.92);
@@ -136,7 +210,7 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
     probs = { refer, typical: (rest * probs.typical) / o, monitor: (rest * probs.monitor) / o };
     reason = regression
       ? "A lost skill was reported. The safety rule refers directly and skips the model."
-      : `${DOMAINS[lowest].label} is at ${min.toFixed(1)} SD — below the −2.0 safety line. The model is skipped.`;
+      : `${DOMAINS[lowest]?.label ?? lowest} is at ${min.toFixed(1)} SD — below the −2.0 safety line.`;
   } else {
     tier =
       probs.typical >= probs.monitor && probs.typical >= probs.refer
@@ -148,10 +222,28 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
       tier === "Typical"
         ? "Every area sits inside the expected range."
         : tier === "Monitor"
-          ? `${DOMAINS[lowest].label} is close to the line (${min.toFixed(1)} SD). Worth a closer look.`
+          ? `${DOMAINS[lowest]?.label ?? lowest} is close to the line (${min.toFixed(1)} SD).`
           : "The model leans towards referral based on the pattern of scores.";
   }
   return { tier, probs, min, lowest, mean, safety, reason };
+}
+
+export function buildSummary(ci: CheckIn): string {
+  const ev = evaluate(ci.scores, ci.regression);
+  const keys = domainKeys(ci.scores);
+  return [
+    "Nirixon developmental check-in summary",
+    `Child: ${ci.child} · ${ci.ageMonths} months · Module ${ci.module ?? (ci.ageMonths >= 60 ? "B" : "A")}`,
+    `Date: ${fmtDate(ci.date, true)}`,
+    `Overall: ${ev.tier} (${TIER_META[ev.tier].hint})`,
+    "",
+    "Areas in this check-in:",
+    ...keys.map((k) => `• ${DOMAINS[k]?.label ?? k}: ${domainStatus(ci.scores[k]).label}`),
+    "",
+    TIER_META[ev.tier].next,
+    "",
+    "This is a screening summary for discussion — not a medical diagnosis.",
+  ].join("\n");
 }
 
 /** `hex` is for fills and dots on dark surfaces; `ink` is theme-aware text for light or card surfaces. */
@@ -169,69 +261,30 @@ export interface CheckIn {
   ageMonths: number;
   child: string;
   scores: Scores;
+  /** Per-domain IRT theta (Module B only; omitted for Module A). */
+  irt?: Record<string, number>;
+  tier?: Tier;
+  /** Backend probability of each class, when available. */
+  probs?: { typical: number; monitor: number; refer: number };
   regression: boolean;
   source: "seed" | "live";
   module?: "A" | "B";
 }
-
-export const SEED_CHECKINS: CheckIn[] = [
-  {
-    id: "ci-oct",
-    date: "2026-10-16",
-    ageMonths: 36,
-    child: "Aarav",
-    regression: false,
-    source: "seed",
-    module: "A",
-    scores: { gross: 0.3, fine: -0.4, comm: -0.7, social: -0.2, cog: -0.1, adaptive: -0.3 },
-  },
-  {
-    id: "ci-jul",
-    date: "2026-07-18",
-    ageMonths: 30,
-    child: "Aarav",
-    regression: false,
-    source: "seed",
-    module: "A",
-    scores: { gross: 0.0, fine: -0.9, comm: -1.3, social: -0.5, cog: -0.4, adaptive: -0.8 },
-  },
-  {
-    id: "ci-apr",
-    date: "2026-04-14",
-    ageMonths: 24,
-    child: "Aarav",
-    regression: false,
-    source: "seed",
-    module: "A",
-    scores: { gross: -0.4, fine: -1.3, comm: -2.2, social: -0.9, cog: -0.7, adaptive: -1.2 },
-  },
-];
 
 export function fmtDate(iso: string, long = false) {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("en-IN", long ? { day: "numeric", month: "long", year: "numeric" } : { day: "numeric", month: "short" });
 }
 
-export function developmentalAge(ci: CheckIn) {
-  const mean = DOMAIN_KEYS.reduce((a, k) => a + ci.scores[k], 0) / DOMAIN_KEYS.length;
-  return ci.ageMonths * (1 + mean * 0.08);
+/** Mean of the checked areas (used only for the growth/pace display). */
+export function meanScore(scores: Scores): number {
+  const keys = domainKeys(scores);
+  if (keys.length === 0) return 0;
+  return keys.reduce((a, k) => a + scores[k], 0) / keys.length;
 }
 
-export function buildSummary(ci: CheckIn): string {
-  const ev = evaluate(ci.scores, ci.regression);
-  return [
-    "Nirixon developmental check-in summary",
-    `Child: ${ci.child} · ${ci.ageMonths} months · Module ${ci.module ?? (ci.ageMonths >= 60 ? "B" : "A")}`,
-    `Date: ${fmtDate(ci.date, true)}`,
-    `Overall: ${ev.tier} (${TIER_META[ev.tier].hint})`,
-    "",
-    "Areas in this check-in:",
-    ...DOMAIN_KEYS.map((k) => `• ${DOMAINS[k].label}: ${domainStatus(ci.scores[k]).label}`),
-    "",
-    TIER_META[ev.tier].next,
-    "",
-    "This is a screening summary for discussion — not a medical diagnosis.",
-  ].join("\n");
+export function developmentalAge(ci: CheckIn) {
+  return ci.ageMonths * (1 + meanScore(ci.scores) * 0.08);
 }
 
 /* ----------------------------- caseload ------------------------------ */
@@ -277,68 +330,3 @@ export const STATUS_META: Record<ChildStatus, { label: string; long: string; hex
   overdue: { label: "Overdue", long: "Home visit due", hex: "#9a6aa6", soft: "bg-lilac-bg", text: "text-lilac" },
   unscreened: { label: "Unscreened", long: "Needs first check", hex: "#cdb98c", soft: "bg-sand", text: "text-ink-2" },
 };
-
-function mulberry32(a: number) {
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function genScores(kind: "ontrack" | "watch" | "refer", rand: () => number): Scores {
-  const lo = (a: number, b: number) => r1(a + rand() * (b - a));
-  const s = {} as Scores;
-  DOMAIN_KEYS.forEach((k) => (s[k] = lo(-0.7, 0.9)));
-  const pick = () => DOMAIN_KEYS[Math.floor(rand() * DOMAIN_KEYS.length)];
-  if (kind === "watch") s[pick()] = lo(-1.9, -1.2);
-  if (kind === "refer") {
-    const a = pick();
-    s[a] = lo(-2.9, -2.1);
-    const b = pick();
-    if (b !== a) s[b] = lo(-1.8, -1.1);
-  }
-  return s;
-}
-
-export function generateChildren(): Child[] {
-  const rand = mulberry32(20261016);
-  const quota: [ChildStatus, number][] = [
-    ["ontrack", 80],
-    ["watch", 45],
-    ["refer", 30],
-    ["overdue", 25],
-    ["unscreened", 20],
-  ];
-  const pool: ChildStatus[] = quota.flatMap(([s, n]) => Array<ChildStatus>(n).fill(s));
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.map((status, i) => {
-    const sector = (["A", "B", "C", "D"] as const)[Math.floor(i / 50)];
-    let regression = false;
-    let scores: Scores | undefined;
-    if (status === "ontrack") scores = genScores("ontrack", rand);
-    else if (status === "watch") scores = genScores("watch", rand);
-    else if (status === "refer") {
-      if (rand() < 0.2) {
-        regression = true;
-        scores = genScores("watch", rand);
-      } else scores = genScores("refer", rand);
-    } else if (status === "overdue") scores = genScores(rand() < 0.5 ? "ontrack" : "watch", rand);
-    return {
-      id: `child-seed-ward12-${String(i + 1).padStart(3, "0")}`,
-      sector,
-      ageMonths: 1 + Math.floor(rand() * 144),
-      status,
-      scores,
-      regression,
-      visits: status === "unscreened" ? 0 : 1 + Math.floor(rand() * 4),
-      lastVisitDays: status === "unscreened" ? null : status === "overdue" ? 35 + Math.floor(rand() * 60) : 2 + Math.floor(rand() * 28),
-      handoff: "none",
-    };
-  });
-}
