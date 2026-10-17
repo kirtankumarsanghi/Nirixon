@@ -59,6 +59,7 @@ from app.schemas.screen import (
     ResultPayload,
     ScreenActionResponse,
     SessionStateResponse,
+    SessionSummary,
     ShapFeature,
     StartScreenRequest,
     TeacherAnswerRequest,
@@ -1025,6 +1026,57 @@ async def get_result(
         touch_telemetry=(db_row.state_json or {}).get("touch_telemetry", []),
         touch_telemetry_notice="Exploratory, not used in the result.",
     )
+
+
+@router.get("/sessions", response_model=list[SessionSummary])
+async def list_sessions(
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+):
+    """List the caller's own completed screening sessions, newest first.
+
+    Powers the parent history (Home / Growth / Share). Scoped to the caller so
+    other parents' sessions are never returned. Returns the authoritative
+    classification plus the real per-domain scores for Module A.
+    """
+    stmt = (
+        select(DbSession)
+        .options(selectinload(DbSession.risk_result))
+        .where(
+            DbSession.parent_user_id == user.id,
+            DbSession.status == "completed",
+        )
+        .order_by(DbSession.completed_at.desc())
+        .limit(max(1, min(limit, 200)))
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+
+    summaries: list[SessionSummary] = []
+    for row in rows:
+        rr = row.risk_result
+        answers = row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+        scores = _module_a_domain_scores(answers) if row.module == "A" else {}
+        summaries.append(
+            SessionSummary(
+                id=row.id,
+                status=row.status,
+                module=row.module,
+                corrected_age_months=row.corrected_age_months,
+                age_bracket=row.age_bracket or "Unknown",
+                completed_at=row.completed_at.isoformat() if row.completed_at else None,
+                started_at=row.started_at.isoformat() if row.started_at else None,
+                child_name=row.child_name,
+                final_classification=rr.final_classification if rr else None,
+                probabilities=dict(rr.probabilities or {}) if rr else {},
+                safety_override_triggered=bool(rr.safety_override_triggered) if rr else False,
+                domain_classifications=(
+                    dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
+                ),
+                domain_scores=scores,
+            )
+        )
+    return summaries
 
 
 @router.get("/{session_id}", response_model=SessionStateResponse)
