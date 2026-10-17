@@ -1,5 +1,5 @@
 import type { CheckIn, Child, ChildStatus, Domain, Scores, Tier } from "./model";
-import type { ChildRecord } from "../api/types";
+import type { ChildRecord, ResultPayload } from "../api/types";
 import type { SessionSummary } from "../api/client";
 
 /** Backend domain id → design domain key. Module A ids are remapped to the
@@ -72,6 +72,36 @@ export function irtFromSession(s: SessionSummary): Record<string, number> | unde
   const out: Record<string, number> = {};
   for (const [key, d] of Object.entries(details)) {
     const theta = d?.irt_theta;
+    if (typeof theta === "number") out[designDomain(key)] = theta;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+const thetaOf = (d: unknown): number | undefined =>
+  typeof (d as { irt_theta?: unknown })?.irt_theta === "number"
+    ? ((d as { irt_theta: number }).irt_theta)
+    : undefined;
+
+/** Per-domain score map from a completed ResultPayload (Module A domain_scores
+ *  or Module B per-domain IRT theta). Domains present are never padded. */
+export function scoresFromResult(r: ResultPayload): Scores {
+  const details = r.domain_details ?? {};
+  if (Object.keys(details).length) {
+    const out: Scores = {};
+    for (const [key, d] of Object.entries(details)) {
+      const theta = thetaOf(d);
+      if (typeof theta === "number") out[designDomain(key)] = clampZ(theta);
+    }
+    if (Object.keys(out).length) return out;
+  }
+  return toScores(r.domain_scores);
+}
+
+export function irtFromResult(r: ResultPayload): Record<string, number> | undefined {
+  const details = r.domain_details ?? {};
+  const out: Record<string, number> = {};
+  for (const [key, d] of Object.entries(details)) {
+    const theta = thetaOf(d);
     if (typeof theta === "number") out[designDomain(key)] = theta;
   }
   return Object.keys(out).length ? out : undefined;
