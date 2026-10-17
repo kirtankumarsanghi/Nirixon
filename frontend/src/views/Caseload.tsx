@@ -17,7 +17,7 @@ function statusFromScores(c: Child): ChildStatus {
 }
 
 export function Caseload() {
-  const { role, children, patchChild, resetChildren, setCheckInTarget, go, showToast } = useApp();
+  const { role, children, referChild, contactChild, outcomeChild, resetChildren, setCheckInTarget, go, showToast } = useApp();
   const user = ROLES[role].user;
   const isSup = role === "supervisor";
 
@@ -66,11 +66,11 @@ export function Caseload() {
     go("checkin");
   };
   const refer = (c: Child) => {
-    patchChild(c.id, { status: "refer", handoff: "queued", visits: c.visits + 1, lastVisitDays: 0 });
+    void referChild(c.id, { status: "refer", handoff: "queued", visits: c.visits + 1, lastVisitDays: 0 });
     showToast(`${c.id.replace("child-seed-", "")} referred · handoff queued`);
   };
   const contacted = (c: Child) => {
-    patchChild(c.id, {
+    void contactChild(c.id, {
       visits: c.visits + 1,
       lastVisitDays: 0,
       status: c.status === "overdue" ? statusFromScores(c) : c.status,
@@ -78,7 +78,7 @@ export function Caseload() {
     showToast(`${c.id.replace("child-seed-", "")} marked as contacted`);
   };
   const outcome = (c: Child) => {
-    patchChild(c.id, {
+    void outcomeChild(c.id, {
       visits: c.visits + 1,
       lastVisitDays: 0,
       handoff: c.handoff === "queued" ? "done" : c.handoff,

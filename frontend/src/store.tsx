@@ -40,6 +40,10 @@ interface AppCtx {
   children: Child[];
   patchChild: (id: string, patch: Partial<Child>) => void;
   resetChildren: () => void;
+  /** Persisted caseload mutations — optimistic, rollback + toast on failure. */
+  referChild: (id: string, patch: Partial<Child>) => Promise<void>;
+  contactChild: (id: string, patch: Partial<Child>) => Promise<void>;
+  outcomeChild: (id: string, patch: Partial<Child>, notes?: string) => Promise<void>;
 
   /** Backend data state for the current workspace. */
   loading: boolean;
@@ -195,6 +199,46 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     [navigate],
   );
 
+  /** Apply an optimistic caseload change, persist it, and roll back on failure. */
+  const mutateChild = useCallback(
+    async (id: string, optimistic: Partial<Child>, call: () => Promise<unknown>, failMsg: string) => {
+      const snapshot = children.find((c) => c.id === id);
+      setChildren((prev) => prev.map((c) => (c.id === id ? { ...c, ...optimistic } : c)));
+      try {
+        await call();
+      } catch {
+        if (snapshot) setChildren((prev) => prev.map((c) => (c.id === id ? snapshot : c)));
+        showToast(failMsg);
+      }
+    },
+    [children, showToast],
+  );
+
+  const referChild = useCallback(
+    (id: string, patch: Partial<Child>) =>
+      mutateChild(id, patch, () => referralApi.oneTouchReferral(id), "Referral failed — change reverted."),
+    [mutateChild],
+  );
+  const contactChild = useCallback(
+    (id: string, patch: Partial<Child>) =>
+      mutateChild(id, patch, () => referralApi.markContacted(id), "Could not record contact — change reverted."),
+    [mutateChild],
+  );
+  const outcomeChild = useCallback(
+    (id: string, patch: Partial<Child>, notes?: string) =>
+      mutateChild(
+        id,
+        patch,
+        () =>
+          referralApi.recordChildOutcome(id, {
+            outcome_notes: notes ?? "Outcome recorded from caseload",
+            close_referral: true,
+          }),
+        "Could not record outcome — change reverted.",
+      ),
+    [mutateChild],
+  );
+
   const value = useMemo<AppCtx>(() => {
     const role: Role = route.screen === "app" ? route.role : "parent";
     const view: View = route.screen === "app" ? route.view : "home";
@@ -219,6 +263,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       children,
       patchChild: (id, patch) => setChildren((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c))),
       resetChildren: () => setReloadKey((k) => k + 1),
+      referChild,
+      contactChild,
+      outcomeChild,
       checkInTarget,
       setCheckInTarget,
       whatIfSeed,
@@ -233,7 +280,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       error,
       reload: () => setReloadKey((k) => k + 1),
     };
-  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error]);
+  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error, referChild, contactChild, outcomeChild]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }

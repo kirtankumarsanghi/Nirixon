@@ -15,7 +15,7 @@ function stageOf(child: Child): Exclude<Stage, "all"> {
 }
 
 export function Referrals() {
-  const { role, children, patchChild, setCheckInTarget, go, showToast } = useApp();
+  const { role, children, referChild, contactChild, outcomeChild, setCheckInTarget, go, showToast } = useApp();
   const isSupervisor = role === "supervisor";
   const [stage, setStage] = useState<Stage>("all");
   const [sector, setSector] = useState<"all" | Sector>("all");
@@ -54,15 +54,15 @@ export function Referrals() {
     go("checkin");
   };
   const send = (child: Child) => {
-    patchChild(child.id, { status: "refer", handoff: "queued", visits: child.visits + 1, lastVisitDays: 0 });
+    void referChild(child.id, { status: "refer", handoff: "queued", visits: child.visits + 1, lastVisitDays: 0 });
     showToast(`${child.id.replace("child-seed-", "")} sent to the clinician queue`);
   };
   const confirm = (child: Child) => {
-    patchChild(child.id, { handoff: "done", visits: child.visits + 1, lastVisitDays: 0 });
+    void outcomeChild(child.id, { handoff: "done", visits: child.visits + 1, lastVisitDays: 0 });
     showToast(`${child.id.replace("child-seed-", "")} handoff confirmed`);
   };
   const contacted = (child: Child) => {
-    patchChild(child.id, { visits: child.visits + 1, lastVisitDays: 0 });
+    void contactChild(child.id, { visits: child.visits + 1, lastVisitDays: 0 });
     showToast(`${child.id.replace("child-seed-", "")} caregiver contacted`);
   };
 
