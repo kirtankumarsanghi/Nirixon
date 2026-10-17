@@ -40,7 +40,7 @@ function CircleBadge() {
 }
 
 export function Login() {
-  const { login, theme, toggleTheme } = useApp();
+  const { login, signIn, theme, toggleTheme } = useApp();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -102,16 +102,16 @@ export function Login() {
     typeEmail();
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const r = ROLE_ORDER.find((x) => ROLES[x].email === email.trim().toLowerCase());
-    if (!r || pw !== "changeme") {
-      setError("Use one of the demo accounts — tap a role below to fill it in. Password: changeme");
-      return;
-    }
     setError("");
     setBusy(true);
-    window.setTimeout(() => login(r), 750);
+    try {
+      await signIn(email.trim().toLowerCase(), pw);
+    } catch (err) {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
+    }
   };
 
   const ready = email.length > 0 && pw.length > 0;

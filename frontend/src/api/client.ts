@@ -541,4 +541,100 @@ export const shareApi = {
   },
 };
 
+export interface GrowthVisit {
+  id: string;
+  child_id: string;
+  age_bracket: string;
+  birth_year_month: string | null;
+  chronological_age_months: number;
+  developmental_age_months: number;
+  visit_date: string;
+  domain_scores: Record<string, number>;
+  tier: string;
+  created_at: string;
+}
+
+export interface GrowthAnalysis {
+  child_id: string;
+  total_visits: number;
+  is_plateau_detected: boolean;
+  plateau_summary: string;
+  sync_enabled: boolean;
+  trajectory: { chronological_age: number; developmental_age: number; visit_date: string; tier: string }[];
+  intervals: {
+    visit_index: number;
+    prev_chronological_age: number;
+    curr_chronological_age: number;
+    chronological_gain: number;
+    developmental_gain: number;
+    gain_ratio: number | null;
+    is_plateau: boolean;
+    message: string;
+  }[];
+}
+
+export const growthApi = {
+  getStatus(): Promise<{ sync_enabled: boolean; privacy_model: string }> {
+    return request<{ sync_enabled: boolean; privacy_model: string }>("/api/growth/status");
+  },
+  getVisits(childId: string): Promise<GrowthVisit[]> {
+    return request<GrowthVisit[]>(`/api/growth/visits/${encodeURIComponent(childId)}`);
+  },
+  getAnalysis(childId: string): Promise<GrowthAnalysis> {
+    return request<GrowthAnalysis>(`/api/growth/analysis/${encodeURIComponent(childId)}`);
+  },
+};
+
+export interface EvidenceClassMetrics {
+  precision: number;
+  recall: number;
+  f1: number;
+  support: number;
+}
+
+export interface EvidenceResponse {
+  generated_at: string;
+  disclaimer: string;
+  module_a: {
+    model_name: string;
+    n_test: number;
+    confusion_matrix: number[][];
+    confusion_matrix_labels: string[];
+    macro_f1: number;
+    macro_auroc: number;
+    macro_auprc: number;
+    accuracy: number;
+    refer_recall: number;
+    refer_precision: number;
+    refer_specificity: number;
+    monitor_recall: number;
+    typical_recall: number;
+    class_metrics: Record<string, EvidenceClassMetrics>;
+    latency_p50_ms: number;
+    latency_p95_ms: number;
+    latency_p99_ms: number;
+  };
+  module_b: {
+    n_test: number;
+    safety_recall: number;
+    safety_precision: number;
+    n_safety: number;
+    any_true_domain_hit_rate: number;
+    domain_micro_precision: number;
+    domain_micro_recall: number;
+    domain_micro_f1: number;
+    ml_only_safety_recall: number;
+    handwritten_notes: number;
+    handwritten_any_domain_hit_rate: number | null;
+    handwritten_micro_f1: number | null;
+  };
+  dataset_note: string;
+}
+
+export const evidenceApi = {
+  get(): Promise<EvidenceResponse> {
+    return request<EvidenceResponse>("/api/evidence");
+  },
+};
+
 

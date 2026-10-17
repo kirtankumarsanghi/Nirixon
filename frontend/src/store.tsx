@@ -8,6 +8,14 @@ import {
 } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
+import { api, setAuthToken } from "./api/client";
+
+/** Map a backend role string onto a design role id. Backend uses "internal"
+ *  for clinicians; everything else passes through, unknown → "parent". */
+function mapBackendRole(role: string): Role {
+  const mapped = role === "internal" ? "clinician" : role;
+  return (ROLES as Record<string, unknown>)[mapped] ? (mapped as Role) : "parent";
+}
 
 export interface WhatIfSeed {
   scores: Scores;
@@ -20,6 +28,8 @@ interface AppCtx {
   role: Role;
   view: View;
   login: (role: Role, view?: View) => void;
+  /** Authenticate against the backend and enter the workspace. */
+  signIn: (email: string, password: string) => Promise<void>;
   logout: () => void;
   go: (view: View) => void;
   switchRole: (role: Role) => void;
@@ -143,6 +153,16 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     timer.current = window.setTimeout(() => setToast(null), 2600);
   }, []);
 
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const res = await api.login({ email, password });
+      setAuthToken(res.access_token);
+      const role = mapBackendRole(res.role);
+      navigate({ screen: "app", role, view: ROLES[role].home });
+    },
+    [navigate],
+  );
+
   const value = useMemo<AppCtx>(() => {
     const role: Role = route.screen === "app" ? route.role : "parent";
     const view: View = route.screen === "app" ? route.view : "home";
@@ -151,6 +171,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       role,
       view,
       login: (r, v) => navigate({ screen: "app", role: r, view: v ?? ROLES[r].home }),
+      signIn,
       logout: () => navigate({ screen: "landing" }),
       go: (v) => navigate({ screen: "app", role, view: v }),
       switchRole: (r) => navigate({ screen: "app", role: r, view: ROLES[r].home }),
@@ -177,7 +198,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       menuOpen,
       setMenuOpen,
     };
-  }, [route, navigate, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme]);
+  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }
