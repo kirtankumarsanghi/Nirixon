@@ -65,6 +65,8 @@ class SessionSummary(BaseModel):
     safety_override_triggered: bool = False
     domain_classifications: dict[str, str] = Field(default_factory=dict)
     domain_scores: dict[str, float] = Field(default_factory=dict)
+    # Module B: per-domain details (state, score, irt_theta) keyed by domain.
+    domain_details: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class ActivityPayload(BaseModel):

@@ -3,13 +3,12 @@ import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
 import {
   DOMAINS,
-  DOMAIN_KEYS,
+  domainKeys,
   TIER_META,
   developmentalAge,
   domainStatus,
   evaluate,
   fmtDate,
-  type Domain,
 } from "../lib/model";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -28,10 +27,11 @@ export function Growth() {
   const xs = ordered.map((_, i) => (n === 1 ? PAD.l + PW / 2 : PAD.l + (i * PW) / (n - 1)));
   const slot = n === 1 ? PW : PW / (n - 1);
 
-  const [on, setOn] = useState<Record<Domain, boolean>>({ gross: true, fine: true, comm: true, social: true, cog: true, adaptive: true });
+  const [on, setOn] = useState<Record<string, boolean>>({});
   const [hover, setHover] = useState<number | null>(null);
 
   const latest = checkIns[0];
+  const keys = domainKeys(latest?.scores ?? {});
   const prev = checkIns[1];
   const dev = developmentalAge(latest);
   const pace = prev ? (dev - developmentalAge(prev)) / (latest.ageMonths - prev.ageMonths || 1) : null;
@@ -72,18 +72,18 @@ export function Growth() {
       <Reveal className="mt-4">
         <div className="rounded-[36px] border border-line-2 bg-card p-5 sm:p-8">
           <div className="mb-5 flex flex-wrap items-center gap-2">
-            {DOMAIN_KEYS.map((k) => (
+            {keys.map((k) => (
               <button
                 key={k}
-                onClick={() => setOn((p) => ({ ...p, [k]: !p[k] }))}
-                aria-pressed={on[k]}
+                onClick={() => setOn((p) => ({ ...p, [k]: p[k] === false }))}
+                aria-pressed={on[k] !== false}
                 className={cn(
                   "flex items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-semibold transition-all",
-                  on[k] ? "border-ink/80 bg-card-2" : "border-line-2 text-muted opacity-60"
+                  on[k] !== false ? "border-ink/80 bg-card-2" : "border-line-2 text-muted opacity-60"
                 )}
               >
-                <span className="size-2.5 rounded-full" style={{ background: DOMAINS[k].color }} />
-                {DOMAINS[k].label}
+                <span className="size-2.5 rounded-full" style={{ background: DOMAINS[k]?.color }} />
+                {DOMAINS[k]?.label ?? k}
               </button>
             ))}
           </div>
@@ -108,7 +108,7 @@ export function Growth() {
 
               {hover !== null && <line x1={xs[hover]} x2={xs[hover]} y1={PAD.t} y2={H - PAD.b} stroke="var(--chart-ink)" strokeWidth={1.2} />}
 
-              {DOMAIN_KEYS.filter((k) => on[k]).map((k) => (
+              {keys.filter((k) => on[k] !== false).map((k) => (
                 <g key={k}>
                   <polyline
                     pathLength={1}
@@ -116,13 +116,13 @@ export function Growth() {
                     style={{ ["--len" as string]: 1 }}
                     points={ordered.map((c, i) => `${xs[i]},${yz(c.scores[k])}`).join(" ")}
                     fill="none"
-                    stroke={DOMAINS[k].color}
+                    stroke={DOMAINS[k]?.color}
                     strokeWidth={3}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
                   {ordered.map((c, i) => (
-                    <circle key={c.id} cx={xs[i]} cy={yz(c.scores[k])} r={hover === i ? 7 : 5} fill="#fffaf0" stroke={DOMAINS[k].color} strokeWidth={3} style={{ transition: "r .2s" }} />
+                    <circle key={c.id} cx={xs[i]} cy={yz(c.scores[k])} r={hover === i ? 7 : 5} fill="#fffaf0" stroke={DOMAINS[k]?.color} strokeWidth={3} style={{ transition: "r .2s" }} />
                   ))}
                 </g>
               ))}
@@ -160,11 +160,11 @@ export function Growth() {
                   {evaluate(ordered[hover].scores, ordered[hover].regression).tier}
                 </p>
                 <ul className="mt-3 space-y-1">
-                  {DOMAIN_KEYS.filter((k) => on[k]).map((k) => (
+                  {keys.filter((k) => on[k] !== false).map((k) => (
                     <li key={k} className="flex items-center justify-between text-[11.5px]">
                       <span className="flex items-center gap-2 text-paper/80">
-                        <span className="size-2 rounded-full" style={{ background: DOMAINS[k].color }} />
-                        {DOMAINS[k].label}
+                        <span className="size-2 rounded-full" style={{ background: DOMAINS[k]?.color }} />
+                        {DOMAINS[k]?.label ?? k}
                       </span>
                       <span className="font-mono font-semibold">
                         {ordered[hover].scores[k] > 0 ? "+" : ""}
@@ -188,14 +188,14 @@ export function Growth() {
             </Eyebrow>
             {prev ? (
               <ul className="mt-6 divide-y divide-white/10">
-                {DOMAIN_KEYS.map((k) => {
+                {keys.map((k) => {
                   const d = latest.scores[k] - prev.scores[k];
                   const a = domainStatus(prev.scores[k]).label;
                   const b = domainStatus(latest.scores[k]).label;
                   return (
                     <li key={k} className="flex items-center justify-between gap-4 py-3.5">
                       <div>
-                        <p className="text-[14px] font-bold">{DOMAINS[k].plain}</p>
+                        <p className="text-[14px] font-bold">{DOMAINS[k]?.plain ?? k}</p>
                         <p className="text-[12px] text-paper/55">
                           {a === b ? b : `${a} → ${b}`}
                         </p>

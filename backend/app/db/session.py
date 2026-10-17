@@ -149,6 +149,14 @@ async def init_db() -> None:
                     text("ALTER TABLE answers ADD COLUMN source VARCHAR(16) DEFAULT 'recall'")
                 )
 
+            # Check risk_results table columns
+            res_risk = await conn.execute(text("PRAGMA table_info(risk_results)"))
+            risk_columns = {row[1] for row in res_risk.fetchall()}
+            if risk_columns and "domain_details" not in risk_columns:
+                await conn.execute(
+                    text("ALTER TABLE risk_results ADD COLUMN domain_details JSON")
+                )
+
     # Seed community healthcare workers
     factory = get_session_factory()
     async with factory() as db:

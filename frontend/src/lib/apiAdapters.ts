@@ -2,7 +2,8 @@ import type { CheckIn, Child, ChildStatus, Domain, Scores, Tier } from "./model"
 import type { ChildRecord } from "../api/types";
 import type { SessionSummary } from "../api/client";
 
-/** Module A backend domain id → design domain key. */
+/** Backend domain id → design domain key. Module A ids are remapped to the
+ *  design's short keys; Module B ids pass through unchanged. */
 const DOMAIN_MAP: Record<string, Domain> = {
   gross_motor: "gross",
   fine_motor: "fine",
@@ -10,7 +11,17 @@ const DOMAIN_MAP: Record<string, Domain> = {
   personal_social: "social",
   cognitive: "cog",
   self_help: "adaptive",
+  // Module B ids (already the design's keys)
+  attention: "attention",
+  listening_speaking: "listening_speaking",
+  reading: "reading",
+  writing: "writing",
+  numbers: "numbers",
+  motor: "motor",
+  emotion_conduct: "emotion_conduct",
 };
+
+const designDomain = (key: string): Domain => DOMAIN_MAP[key] ?? key;
 
 /**
  * Display calibration. The backend returns a real per-domain score in [0,1]
@@ -39,6 +50,33 @@ export function toTier(classification: string | null | undefined): Tier {
   return classification === "Refer" || classification === "Monitor" ? classification : "Typical";
 }
 
+const clampZ = (v: number) => Math.max(-3, Math.min(1, v));
+
+/** Per-domain score map: Module A from normalized domain_scores, Module B from
+ *  the per-domain IRT theta in domain_details. Domains present are never padded. */
+export function scoresFromSession(s: SessionSummary): Scores {
+  const details = s.domain_details ?? {};
+  if (Object.keys(details).length) {
+    const out: Scores = {};
+    for (const [key, d] of Object.entries(details)) {
+      const theta = d?.irt_theta;
+      if (typeof theta === "number") out[designDomain(key)] = clampZ(theta);
+    }
+    if (Object.keys(out).length) return out;
+  }
+  return toScores(s.domain_scores);
+}
+
+export function irtFromSession(s: SessionSummary): Record<string, number> | undefined {
+  const details = s.domain_details ?? {};
+  const out: Record<string, number> = {};
+  for (const [key, d] of Object.entries(details)) {
+    const theta = d?.irt_theta;
+    if (typeof theta === "number") out[designDomain(key)] = theta;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** Backend completed session → the design's CheckIn shape. */
 export function sessionToCheckIn(s: SessionSummary): CheckIn {
   const date = (s.completed_at ?? s.started_at ?? "").slice(0, 10);
@@ -52,7 +90,8 @@ export function sessionToCheckIn(s: SessionSummary): CheckIn {
     date,
     ageMonths: Math.round(s.corrected_age_months ?? 0),
     child: s.child_name ?? "Child",
-    scores: toScores(s.domain_scores),
+    scores: scoresFromSession(s),
+    irt: irtFromSession(s),
     tier: toTier(s.final_classification),
     probs,
     regression: Boolean(s.safety_override_triggered),

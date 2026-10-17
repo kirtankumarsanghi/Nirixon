@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCheck, FlaskConical, ShieldAlert } from "lucide-react";
 import { Btn, Chip, CountUp, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
-import { DOMAINS, DOMAIN_KEYS, SECTORS, TIER_META, ageBand, domainStatus, evaluate } from "../lib/model";
+import { DOMAINS, domainKeys, SECTORS, TIER_META, ageBand, domainStatus, evaluate } from "../lib/model";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -162,7 +162,7 @@ export function Cases() {
               <div>
                 <p className="mb-4 font-mono text-[10.5px] font-semibold tracking-[0.2em] text-paper/55 uppercase">Area scores (SD from expected)</p>
                 <div className="space-y-4">
-                  {DOMAIN_KEYS.map((k) => {
+                  {domainKeys(sel.scores ?? {}).map((k) => {
                     const z = sel.scores![k];
                     const s = domainStatus(z);
                     return (

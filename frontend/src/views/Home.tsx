@@ -3,7 +3,7 @@ import { ArrowDownRight, ArrowRight, ArrowUpRight, FlaskConical, Lightbulb, MapP
 import { Radar } from "../components/Radar";
 import { Photo } from "../components/Photo";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
-import { DOMAINS, DOMAIN_KEYS, TIER_META, domainStatus, evaluate, fmtDate, type Domain } from "../lib/model";
+import { DOMAINS, domainKeys, TIER_META, domainStatus, evaluate, fmtDate, type Domain } from "../lib/model";
 import { PHOTO } from "../photos";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -86,7 +86,7 @@ export function Home() {
           </div>
 
           <div>
-            <Radar scores={latest.scores} prev={showPrev ? previous?.scores : undefined} selected={sel} onSelect={setSel} tone={meta.hexLight} />
+            <Radar scores={latest.scores} prev={showPrev ? previous?.scores : undefined} irt={latest.irt} selected={sel} onSelect={setSel} tone={meta.hexLight} />
             <div className="mt-2 flex flex-wrap items-center justify-center gap-5 font-mono text-[10.5px] tracking-[0.16em] text-paper/60 uppercase">
               <span className="flex items-center gap-2">
                 <span className="h-0.5 w-6 rounded-full" style={{ background: meta.hexLight }} /> This check-in
@@ -105,14 +105,14 @@ export function Home() {
       <Reveal className="mt-14">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <Eyebrow index="03">Six areas</Eyebrow>
+            <Eyebrow index="03">{domainKeys(latest.scores).length} areas</Eyebrow>
             <Display as="h3" className="mt-4 text-[clamp(36px,4.6vw,64px)]">
               Tap an area to <span className="text-sea">look closer.</span>
             </Display>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {DOMAIN_KEYS.map((k) => {
+          {domainKeys(latest.scores).map((k) => {
             const s = domainStatus(latest.scores[k]);
             const on = sel === k;
             return (
@@ -125,8 +125,8 @@ export function Home() {
                 )}
               >
                 <span className="absolute top-0 left-0 h-1.5 w-full" style={{ background: s.hex }} />
-                <p className={cn("font-mono text-[10px] tracking-[0.2em] uppercase", on ? "text-paper/60" : "text-muted")}>{DOMAINS[k].plain}</p>
-                <p className="mt-2 font-display text-[26px] leading-none uppercase">{DOMAINS[k].label}</p>
+                <p className={cn("font-mono text-[10px] tracking-[0.2em] uppercase", on ? "text-paper/60" : "text-muted")}>{DOMAINS[k]?.plain ?? k}</p>
+                <p className="mt-2 font-display text-[26px] leading-none uppercase">{DOMAINS[k]?.label ?? k}</p>
                 <p className="mt-5 flex items-center justify-between text-[12px] font-semibold">
                   <span style={{ color: on ? "#fff4dc" : s.ink }}>{s.label}</span>
                   <span className="font-mono">{latest.scores[k] > 0 ? "+" : ""}{latest.scores[k].toFixed(1)}</span>
