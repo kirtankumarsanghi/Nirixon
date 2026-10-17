@@ -266,6 +266,9 @@ async def _run_completion_b(
                 caveats=payload.caveats,
                 stopping_reason=payload.stopping_reason or "module_b_engine",
                 domain_classifications=payload.domain_classifications,
+                domain_details={
+                    k: v.model_dump() for k, v in (payload.domain_details or {}).items()
+                },
             )
             db.add(risk)
             db.add(
@@ -1074,6 +1077,9 @@ async def list_sessions(
                     dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
                 ),
                 domain_scores=scores,
+                domain_details=(
+                    dict(getattr(rr, "domain_details", {}) or {}) if rr else {}
+                ),
             )
         )
     return summaries

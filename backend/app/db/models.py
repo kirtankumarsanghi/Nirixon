@@ -172,6 +172,8 @@ class RiskResult(Base):
     # {"attention": "Monitor", "reading": "Refer", "motor": "Typical", ...}
     # Empty dict for Module A sessions.
     domain_classifications: Mapped[dict] = mapped_column(JsonType, default=dict)
+    # Module B: per-domain details (score, IRT theta, state) keyed by domain.
+    domain_details: Mapped[dict] = mapped_column(JsonType, default=dict)
 
     # Module B: cross-context consistency score in [0, 1].
     # 1.0 = parent and teacher responses perfectly aligned;

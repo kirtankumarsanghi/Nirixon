@@ -1,6 +1,6 @@
 import { Activity, ArrowRight, FlaskConical, LineChart, Share2, ShieldAlert, Stethoscope } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
-import { DOMAINS, DOMAIN_KEYS, TIER_META, domainStatus, evaluate, fmtDate } from "../lib/model";
+import { DOMAINS, domainKeys, TIER_META, domainStatus, evaluate, fmtDate } from "../lib/model";
 import { useApp } from "../store";
 
 export function ClinicalReview() {
@@ -111,7 +111,7 @@ export function ClinicalReview() {
           </div>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {DOMAIN_KEYS.map((key) => {
+            {domainKeys(latest.scores).map((key) => {
               const status = domainStatus(latest.scores[key]);
               return (
                 <div key={key} className="rounded-[26px] border border-line-2 bg-card-2 p-5">

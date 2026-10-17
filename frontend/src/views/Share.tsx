@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, Clock, Copy, MessageCircle, Printer, Share2 } from "lucide-react";
 import { LogoLockup } from "../landing/components/system";
 import { Btn, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
-import { DOMAINS, DOMAIN_KEYS, TIER_META, buildSummary, domainStatus, evaluate, fmtDate } from "../lib/model";
+import { DOMAINS, domainKeys, TIER_META, buildSummary, domainStatus, evaluate, fmtDate } from "../lib/model";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -158,7 +158,7 @@ export function Share() {
               </div>
 
               <ul className="mt-8 space-y-4">
-                {DOMAIN_KEYS.map((k) => {
+                {domainKeys(ci.scores).map((k) => {
                   const s = domainStatus(ci.scores[k]);
                   const w = ((Math.max(-3, Math.min(1, ci.scores[k])) + 3) / 4) * 100;
                   return (

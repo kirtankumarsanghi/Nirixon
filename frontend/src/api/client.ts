@@ -560,6 +560,8 @@ export interface SessionSummary {
   safety_override_triggered: boolean;
   domain_classifications: Record<string, string>;
   domain_scores: Record<string, number>;
+  /** Module B: per-domain details (state, score, irt_theta). */
+  domain_details: Record<string, Record<string, unknown>>;
 }
 
 export interface GrowthVisit {

@@ -1,7 +1,7 @@
 import { ArrowRight, FlaskConical, LockKeyhole, ShieldAlert } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
-import { DOMAINS, DOMAIN_KEYS, TIER_META, evaluate } from "../lib/model";
+import { DOMAINS, domainKeys, TIER_META, evaluate } from "../lib/model";
 import { useApp } from "../store";
 
 const percent = (z: number) => Math.round(((Math.max(-3, Math.min(1, z)) + 3) / 4) * 100);
@@ -44,7 +44,7 @@ export function ParentWhatIf() {
               <LockKeyhole className="size-5 text-muted" />
             </div>
             <div className="mt-7 space-y-6">
-              {DOMAIN_KEYS.map((key) => {
+              {domainKeys(latest.scores).map((key) => {
                 const value = percent(latest.scores[key]);
                 return (
                   <div key={key}>
