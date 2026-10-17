@@ -104,6 +104,8 @@ export interface ResultPayload {
   imputed_count?: number | null;
   /** Module B: per-domain classification. Empty/omitted for Module A. */
   domain_classifications?: Record<string, "Typical" | "Monitor" | "Refer">;
+  /** Module A: normalized per-domain score in [0,1] (mean answer / 2). */
+  domain_scores?: Record<string, number>;
   /** Module B: parent vs. teacher consistency score in [0,1]. */
   consistency_score?: number | null;
   /** Module B: which domains have meaningful parent-teacher divergence. */
