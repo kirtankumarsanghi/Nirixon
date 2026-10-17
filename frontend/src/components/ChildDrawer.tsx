@@ -121,7 +121,7 @@ export function ChildDrawer({ child, onClose, onScreen, onRefer, onContacted, on
               </div>
             ) : (
               <p className="mt-7 rounded-2xl border border-dashed border-line-2 p-5 text-center text-[13px] text-ink-2">
-                No screening yet. A first check-in takes about five minutes.
+                No domain data yet. A first check-in takes about five minutes.
               </p>
             )}
 

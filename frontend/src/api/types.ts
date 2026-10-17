@@ -559,6 +559,8 @@ export interface ChildRecord {
   follow_up_due_at?: string | null;
   contact_count?: number;
   domains_flagged?: string[];
+  /** Latest completed Module A session's normalized per-domain scores [0,1]. */
+  domain_scores?: Record<string, number>;
   safety_rule_triggered?: string | null;
   is_overdue?: boolean;
   created_at: string;

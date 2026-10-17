@@ -106,8 +106,11 @@ export function childRecordToChild(rec: ChildRecord): Child {
     sector: wardToSector(rec.village_ward ?? ""),
     ageMonths: ageBracketToMonths(rec.age_bracket ?? ""),
     status: rec.is_overdue && status !== "refer" ? "overdue" : status,
-    // The backend does not expose per-domain scores on a child record.
-    scores: undefined,
+    // Per-domain scores when the child has a completed Module A session.
+    scores:
+      rec.domain_scores && Object.keys(rec.domain_scores).length
+        ? toScores(rec.domain_scores)
+        : undefined,
     regression: false,
     visits: rec.contact_count ?? 0,
     lastVisitDays: daysSince(rec.last_contacted_at ?? rec.last_screened_at),
