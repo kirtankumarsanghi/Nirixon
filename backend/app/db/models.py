@@ -254,12 +254,13 @@ class WorkerContactLog(Base):
 class GrowthVisit(Base):
     """
     Opt-in synchronized growth tracking visit.
-    
+
     CRITICAL PRIVACY GUARANTEE:
     Stores ONLY a pseudonymous random child ID, age bracket / birth month & year,
     visit date, domain scores, tier, and computed developmental/chronological ages.
     NO names, NO contact numbers, NO addresses, NO free-text clinical notes.
     """
+
     __tablename__ = "growth_visits"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -271,9 +272,7 @@ class GrowthVisit(Base):
     visit_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    domain_scores: Mapped[dict] = mapped_column(
-        JsonType, default=dict, nullable=False
-    )
+    domain_scores: Mapped[dict] = mapped_column(JsonType, default=dict, nullable=False)
     tier: Mapped[str] = mapped_column(String(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
@@ -285,6 +284,7 @@ class HelpCentre(Base):
     Public and community developmental health centres (DEIC, RBSK, District Hospitals, Rehabilitation).
     Imported from user data files or sample data files.
     """
+
     __tablename__ = "help_centres"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -311,6 +311,7 @@ class Worker(Base):
     Community health worker profile (ASHA / Anganwadi / ANM / Supervisor).
     A worker is scoped to an area (village or ward).
     """
+
     __tablename__ = "workers"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -318,7 +319,9 @@ class Worker(Base):
         String(36), ForeignKey("users.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(128))
-    role: Mapped[str] = mapped_column(String(32), default="chw")  # "chw" or "supervisor"
+    role: Mapped[str] = mapped_column(
+        String(32), default="chw"
+    )  # "chw" or "supervisor"
     area: Mapped[str] = mapped_column(String(128), index=True)  # village or ward
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -336,6 +339,7 @@ class ChildRecord(Base):
     Opt-in pseudonymous child record for community health worker referral coordination.
     Zero identifiable names, contact numbers, or exact birthdates stored.
     """
+
     __tablename__ = "child_records"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -365,7 +369,9 @@ class ChildRecord(Base):
     )
     contact_count: Mapped[int] = mapped_column(Integer, default=0)
     domains_flagged: Mapped[list] = mapped_column(JsonType, default=list)
-    safety_rule_triggered: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    safety_rule_triggered: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
@@ -391,6 +397,7 @@ class Referral(Base):
     Community health worker referral to a clinical facility (e.g. DEIC, CHC).
     Tracks status through created, sent, seen, outcome recorded, closed.
     """
+
     __tablename__ = "referrals"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -402,7 +409,9 @@ class Referral(Base):
     )
     to_facility: Mapped[str] = mapped_column(String(192))
     reason: Mapped[str] = mapped_column(Text)
-    tier: Mapped[str] = mapped_column(String(64))  # e.g. "Tier 3: Direct Referral" or "Refer"
+    tier: Mapped[str] = mapped_column(
+        String(64)
+    )  # e.g. "Tier 3: Direct Referral" or "Refer"
     status: Mapped[str] = mapped_column(
         String(32), default="created"
     )  # created, sent, seen, outcome recorded, closed
@@ -441,6 +450,7 @@ class JointInviteToken(Base):
     One-time expiring invite link for joint family respondents (max 3 per session).
     Exposes only question items, zero personal details about the child.
     """
+
     __tablename__ = "joint_invite_tokens"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -471,6 +481,7 @@ class JointRespondentAnswer(Base):
     Independent answers submitted by a secondary family/caregiver respondent.
     Identified strictly by a role label (e.g. 'Grandparent', 'Father') — NO personal names.
     """
+
     __tablename__ = "joint_respondent_answers"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
@@ -478,7 +489,9 @@ class JointRespondentAnswer(Base):
         String(36), ForeignKey("screening_sessions.id", ondelete="CASCADE"), index=True
     )
     token_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("joint_invite_tokens.id", ondelete="SET NULL"), nullable=True
+        String(36),
+        ForeignKey("joint_invite_tokens.id", ondelete="SET NULL"),
+        nullable=True,
     )
     role_label: Mapped[str] = mapped_column(String(64), default="Secondary Caregiver")
     answers: Mapped[dict] = mapped_column(JsonType, default=dict)
@@ -487,7 +500,9 @@ class JointRespondentAnswer(Base):
     )
 
     session: Mapped[ScreeningSession] = relationship(back_populates="joint_answers")
-    invite_token: Mapped[JointInviteToken | None] = relationship(back_populates="answers")
+    invite_token: Mapped[JointInviteToken | None] = relationship(
+        back_populates="answers"
+    )
 
 
 class SyncOperation(Base):
@@ -495,33 +510,48 @@ class SyncOperation(Base):
     Idempotency registry for frontline offline-first operations.
     Guarantees exactly-once application for screenings, referrals, contacts, and outcomes.
     """
+
     __tablename__ = "sync_operations"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     idempotency_key: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    worker_id: Mapped[str] = mapped_column(String(36), ForeignKey("workers.id"), index=True)
-    operation_type: Mapped[str] = mapped_column(String(32))  # "screening", "referral", "contact", "outcome"
+    worker_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("workers.id"), index=True
+    )
+    operation_type: Mapped[str] = mapped_column(
+        String(32)
+    )  # "screening", "referral", "contact", "outcome"
     entity_id: Mapped[str] = mapped_column(String(64), index=True)
-    status: Mapped[str] = mapped_column(String(32), default="created")  # "created", "deduplicated", "conflict"
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    status: Mapped[str] = mapped_column(
+        String(32), default="created"
+    )  # "created", "deduplicated", "conflict"
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
 
 
 class ConflictLog(Base):
     """
     Audit log of synchronization conflicts between offline client operations and server state.
     """
+
     __tablename__ = "conflict_logs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    worker_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("workers.id"), nullable=True, index=True)
-    entity_type: Mapped[str] = mapped_column(String(32))  # "screening", "referral", "child", "outcome"
+    worker_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("workers.id"), nullable=True, index=True
+    )
+    entity_type: Mapped[str] = mapped_column(
+        String(32)
+    )  # "screening", "referral", "child", "outcome"
     entity_id: Mapped[str] = mapped_column(String(64), index=True)
     operation: Mapped[str] = mapped_column(String(64))
     client_payload: Mapped[dict] = mapped_column(JsonType, default=dict)
     server_state: Mapped[dict] = mapped_column(JsonType, default=dict)
-    resolution: Mapped[str] = mapped_column(String(64))  # "server_retained", "client_applied", "merged", "rejected"
+    resolution: Mapped[str] = mapped_column(
+        String(64)
+    )  # "server_retained", "client_applied", "merged", "rejected"
     reason: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-
-
-
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )

@@ -125,15 +125,9 @@ def audit_vignettes() -> None:
     print("\n" + "=" * 90)
     print("      MODULE B SCRIPTED SMOKE CHECK (answers are scripted — NOT validation)")
     print("=" * 90)
-    print(
-        "Answers are chosen from each vignette's expected diagnosis, so a MATCH only"
-    )
-    print(
-        "shows the engine reproduces the label it was given. It says nothing about"
-    )
-    print(
-        "the NLP router or real-world accuracy. See router_metrics.json instead."
-    )
+    print("Answers are chosen from each vignette's expected diagnosis, so a MATCH only")
+    print("shows the engine reproduces the label it was given. It says nothing about")
+    print("the NLP router or real-world accuracy. See router_metrics.json instead.")
     print("-" * 90)
     print(
         f"{'ID':<4} | {'Phenotype':<30} | {'Expected Tier':<22} | {'Engine Tier':<22} | {'Status'}"
@@ -217,9 +211,7 @@ def audit_vignettes() -> None:
     print(
         f"SCRIPTED CONCORDANCE: {passed}/{len(VIGNETTES)} ({passed/len(VIGNETTES)*100:.1f}%)"
     )
-    print(
-        "INTERPRETATION: plumbing check only. The answers encode the expected label,"
-    )
+    print("INTERPRETATION: plumbing check only. The answers encode the expected label,")
     print(
         "so this cannot evidence diagnostic accuracy and must not be reported as such."
     )
@@ -227,9 +219,7 @@ def audit_vignettes() -> None:
         print(
             "NOTE: a MISMATCH above means the engine did not reproduce a scripted label —"
         )
-        print(
-            "      investigate the engine, not the router."
-        )
+        print("      investigate the engine, not the router.")
     print("=" * 90 + "\n")
 
 

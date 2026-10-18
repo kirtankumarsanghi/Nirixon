@@ -132,7 +132,7 @@ function Workspace() {
         photo={cfg.photo}
         eyebrow={cfg.group}
         title={cfg.user.name}
-        subtitle={`${cfg.user.title}. Synthetic demo data — nothing leaves your browser.`}
+        subtitle={`${cfg.user.title}. Demo workspace — records are served by the Nirixon API.`}
         onSignOut={logout}
         footer={
           <div className="space-y-7">

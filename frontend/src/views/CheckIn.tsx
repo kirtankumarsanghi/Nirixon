@@ -18,7 +18,7 @@ import { PHOTO } from "../photos";
 import { ROLES } from "../lib/roles";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
-import { api } from "../api/client";
+import { api, getAuthToken } from "../api/client";
 import type { ResultPayload, ScreenActionResponse } from "../api/types";
 import { scoresFromResult, irtFromResult } from "../lib/apiAdapters";
 
@@ -421,6 +421,11 @@ export function CheckIn() {
       saved = null;
     }
     if (!saved) return;
+    // Don't fire an unauthenticated request for a stale id from a previous session.
+    if (!getAuthToken()) {
+      persistSession(null);
+      return;
+    }
     (async () => {
       try {
         const s = await api.getSession(saved);

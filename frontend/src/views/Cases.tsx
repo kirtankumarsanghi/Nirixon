@@ -120,7 +120,7 @@ export function Cases() {
                   {sel.ageMonths} months ({ageBand(sel.ageMonths)}) · sector {sel.sector} · referred by {worker?.worker}
                 </p>
               </div>
-              <Chip tone="night">Synthetic record</Chip>
+              <Chip tone="night">Referral case</Chip>
             </div>
 
             <div className="mt-8 grid items-center gap-8 xl:grid-cols-[1fr_1fr]">

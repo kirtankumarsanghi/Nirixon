@@ -39,17 +39,19 @@ lines = [
 for r in rep["gating_rules"]:
     lines.append(f"- **{r}**")
 
-lines.extend([
-    "",
-    "---",
-    "",
-    "## 2. Validated Question Banks with Reviewed Narration (38 Items)",
-    "",
-    "All validated screening items in Module A (0–60 months) and core mandatory risk flags have pre-generated audio files in both English (`en`) and Hindi (`hi`).",
-    "",
-    "| Item ID | Bank | Domain | Supported Languages | Clinical Reviewer | Reviewed Date |",
-    "|---|---|---|---|---|---|",
-])
+lines.extend(
+    [
+        "",
+        "---",
+        "",
+        "## 2. Validated Question Banks with Reviewed Narration (38 Items)",
+        "",
+        "All validated screening items in Module A (0–60 months) and core mandatory risk flags have pre-generated audio files in both English (`en`) and Hindi (`hi`).",
+        "",
+        "| Item ID | Bank | Domain | Supported Languages | Clinical Reviewer | Reviewed Date |",
+        "|---|---|---|---|---|---|",
+    ]
+)
 
 for item in rep["covered_items"]:
     langs = ", ".join(item["languages"])
@@ -57,17 +59,19 @@ for item in rep["covered_items"]:
         f"| `{item['item_id']}` | {item['bank']} | `{item['domain']}` | {langs} | {item['reviewed_by']} | {item['reviewed_date']} |"
     )
 
-lines.extend([
-    "",
-    "---",
-    "",
-    "## 3. Items Without Audio (Falling Back to Text) (60 Items)",
-    "",
-    "The following items are part of Module B (School Age 5–12 years) and rule-out screenings. Consistent with the architectural safety mandate, **written translations and audio narrations remain gated behind specialist clinical review**. These items automatically fall back to validated written text in the UI.",
-    "",
-    "| Item ID | Bank | Domain | Question Text | Fallback Status | Reason |",
-    "|---|---|---|---|---|---|",
-])
+lines.extend(
+    [
+        "",
+        "---",
+        "",
+        "## 3. Items Without Audio (Falling Back to Text) (60 Items)",
+        "",
+        "The following items are part of Module B (School Age 5–12 years) and rule-out screenings. Consistent with the architectural safety mandate, **written translations and audio narrations remain gated behind specialist clinical review**. These items automatically fall back to validated written text in the UI.",
+        "",
+        "| Item ID | Bank | Domain | Question Text | Fallback Status | Reason |",
+        "|---|---|---|---|---|---|",
+    ]
+)
 
 for item in rep["uncovered_items"]:
     # Truncate very long text slightly if needed
@@ -76,30 +80,34 @@ for item in rep["uncovered_items"]:
         f"| `{item['item_id']}` | {item['bank']} | `{item['domain']}` | {clean_text} | **{item['fallback_mode']}** | {item['reason']} |"
     )
 
-lines.extend([
-    "",
-    "---",
-    "",
-    "## 4. Unreviewed & Hidden Items Gate",
-    "",
-    "| Entry | Status | Enforced Policy |",
-    "|---|---|---|",
-])
+lines.extend(
+    [
+        "",
+        "---",
+        "",
+        "## 4. Unreviewed & Hidden Items Gate",
+        "",
+        "| Entry | Status | Enforced Policy |",
+        "|---|---|---|",
+    ]
+)
 
 for unrev in rep["unreviewed_hidden_items"]:
     lines.append(
         f"| `{unrev}` | Unreviewed / Pending Sign-off | **HIDDEN BY DEFAULT** (never served to clients) |"
     )
 
-lines.extend([
-    "",
-    "---",
-    "",
-    "## 5. Offline PWA Caching Policy",
-    "",
-    "Audio narration assets are cached in the browser via `CacheStorage` in the service worker (`sw.js`). Frontline health workers (ASHA / Anganwadi / ANM) have full offline narration capability for validated items in rural settings without internet connectivity.",
-    "",
-])
+lines.extend(
+    [
+        "",
+        "---",
+        "",
+        "## 5. Offline PWA Caching Policy",
+        "",
+        "Audio narration assets are cached in the browser via `CacheStorage` in the service worker (`sw.js`). Frontline health workers (ASHA / Anganwadi / ANM) have full offline narration capability for validated items in rural settings without internet connectivity.",
+        "",
+    ]
+)
 
 output_path = backend_dir.parent / "docs" / "AUDIO_COVERAGE_REPORT.md"
 output_path.parent.mkdir(parents=True, exist_ok=True)

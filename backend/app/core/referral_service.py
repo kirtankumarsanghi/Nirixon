@@ -136,8 +136,14 @@ def build_summary_dict(referral: Referral) -> dict[str, Any]:
 def generate_summary_text(referral: Referral) -> str:
     """Generate shareable plain-text summary with minimum data needed."""
     summary = build_summary_dict(referral)
-    domains_str = ", ".join(summary["domains_of_concern"]) if summary["domains_of_concern"] else "None flagged"
-    safety_str = summary["safety_rule_trigger"] if summary["safety_rule_trigger"] else "None"
+    domains_str = (
+        ", ".join(summary["domains_of_concern"])
+        if summary["domains_of_concern"]
+        else "None flagged"
+    )
+    safety_str = (
+        summary["safety_rule_trigger"] if summary["safety_rule_trigger"] else "None"
+    )
 
     return (
         "NIRIXON REFERRAL SUMMARY\n"
@@ -158,8 +164,14 @@ def generate_summary_pdf(referral: Referral) -> bytes:
     Implemented in pure Python with zero external C/wheel dependencies.
     """
     summary = build_summary_dict(referral)
-    domains_str = ", ".join(summary["domains_of_concern"]) if summary["domains_of_concern"] else "None flagged"
-    safety_str = summary["safety_rule_trigger"] if summary["safety_rule_trigger"] else "None"
+    domains_str = (
+        ", ".join(summary["domains_of_concern"])
+        if summary["domains_of_concern"]
+        else "None flagged"
+    )
+    safety_str = (
+        summary["safety_rule_trigger"] if summary["safety_rule_trigger"] else "None"
+    )
 
     lines = [
         "NIRIXON DEVELOPMENTAL REFERRAL SUMMARY",

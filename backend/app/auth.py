@@ -92,7 +92,10 @@ async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> 
 
 async def require_worker(user: Annotated[User, Depends(get_current_user)]) -> User:
     if user.role not in ("chw", "supervisor", "internal"):
-        raise HTTPException(status_code=403, detail="Community Health Worker or Supervisor role required")
+        raise HTTPException(
+            status_code=403,
+            detail="Community Health Worker or Supervisor role required",
+        )
     return user
 
 

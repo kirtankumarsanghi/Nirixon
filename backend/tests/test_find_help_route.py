@@ -6,7 +6,6 @@ Behaviour lives in tests/test_find_help.py; this only checks the wiring in app.m
 from __future__ import annotations
 
 import pytest
-
 from tests.test_api import _login
 
 pytest_plugins = ("tests.test_api",)
@@ -29,10 +28,18 @@ async def test_facilities_route_mounted_and_validated(api_env):
         assert body["helplines"], "helplines are always returned"
 
     # Public reference data: no auth required.
-    assert (await client.get("/api/facilities", params={"pin": "302031"})).status_code in (200, 503)
-
-    assert (await client.get("/api/facilities", params={"pin": "12345"})).status_code == 422
-    assert (await client.get("/api/facilities", params={"pin": "012345"})).status_code == 422
     assert (
-        await client.get("/api/facilities", params={"pin": "302031", "age_group": "13-18"})
+        await client.get("/api/facilities", params={"pin": "302031"})
+    ).status_code in (200, 503)
+
+    assert (
+        await client.get("/api/facilities", params={"pin": "12345"})
+    ).status_code == 422
+    assert (
+        await client.get("/api/facilities", params={"pin": "012345"})
+    ).status_code == 422
+    assert (
+        await client.get(
+            "/api/facilities", params={"pin": "302031", "age_group": "13-18"}
+        )
     ).status_code == 422

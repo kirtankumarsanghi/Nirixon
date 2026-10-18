@@ -31,7 +31,7 @@ export function AppFooter() {
             <Wordmark />
           </button>
           <p className="mt-5 max-w-[300px] text-[13px] leading-relaxed text-ink-2">
-            One child, four connected workspaces. Every record in this demo is synthetic and stays in your browser.
+            One child, four connected workspaces. Records are stored by the Nirixon API — a screening aid, not a diagnosis.
           </p>
         </div>
 

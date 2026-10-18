@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # 1. UNIT TESTS FOR THE PLATEAU RULE
 # ---------------------------------------------------------------------------
 
+
 class TestPlateauRuleUnit:
     """
     Acceptance check 1:
@@ -139,6 +140,7 @@ class TestPlateauRuleUnit:
 # 2. SCHEMA NO-PERSONAL-DATA VERIFICATION TEST
 # ---------------------------------------------------------------------------
 
+
 class TestSchemaPrivacyAudit:
     """
     Acceptance check 4:
@@ -191,14 +193,15 @@ class TestSchemaPrivacyAudit:
 
         for col_name in columns:
             for forbidden in forbidden_patterns:
-                assert forbidden not in col_name.lower(), (
-                    f"Forbidden personal data substring '{forbidden}' found in column '{col_name}'"
-                )
+                assert (
+                    forbidden not in col_name.lower()
+                ), f"Forbidden personal data substring '{forbidden}' found in column '{col_name}'"
 
 
 # ---------------------------------------------------------------------------
 # 3. DATABASE & API FIXTURES
 # ---------------------------------------------------------------------------
+
 
 @pytest_asyncio.fixture
 async def growth_db():
@@ -230,6 +233,7 @@ async def growth_db():
 # ---------------------------------------------------------------------------
 # 4. API INTEGRATION TESTS: DELETION AND CONFIGURATION FLAG
 # ---------------------------------------------------------------------------
+
 
 class TestGrowthSyncApi:
     """
@@ -342,6 +346,7 @@ class TestGrowthSyncApi:
             DATABASE_URL="sqlite+aiosqlite:///:memory:",
         )
         from app.config import get_settings
+
         app.dependency_overrides[get_settings] = lambda: disabled_settings
 
         transport = ASGITransport(app=app)
@@ -367,9 +372,9 @@ class TestGrowthSyncApi:
             async with session_factory() as db:
                 res = await db.execute(select(GrowthVisit))
                 all_visits = res.scalars().all()
-                assert len(all_visits) == 0, (
-                    f"Expected 0 visits stored when flag is off, but found {len(all_visits)}"
-                )
+                assert (
+                    len(all_visits) == 0
+                ), f"Expected 0 visits stored when flag is off, but found {len(all_visits)}"
 
     @pytest.mark.asyncio
     async def test_analysis_endpoint_plateau_detection(self, growth_db):

@@ -89,7 +89,9 @@ async def save_growth_visit(
     row = GrowthVisit(
         child_id=body.child_id.strip(),
         age_bracket=body.age_bracket.strip(),
-        birth_year_month=body.birth_year_month.strip() if body.birth_year_month else None,
+        birth_year_month=(
+            body.birth_year_month.strip() if body.birth_year_month else None
+        ),
         chronological_age_months=float(body.chronological_age_months),
         developmental_age_months=float(dev_age),
         visit_date=visit_dt,
@@ -101,7 +103,11 @@ async def save_growth_visit(
     await db.commit()
     await db.refresh(row)
 
-    logger.info("Saved pseudonymous growth visit for child_id=%s tier=%s", row.child_id, row.tier)
+    logger.info(
+        "Saved pseudonymous growth visit for child_id=%s tier=%s",
+        row.child_id,
+        row.tier,
+    )
 
     return row
 
