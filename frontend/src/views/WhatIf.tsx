@@ -58,7 +58,7 @@ export function WhatIf() {
           What if…?
         </Display>
         <div className="flex flex-wrap items-center gap-3">
-          {whatIfSeed && <Chip tone="sea">Loaded from {whatIfSeed.label.replace("child-seed-", "")}</Chip>}
+          {whatIfSeed && <Chip tone="sea">Loaded from {whatIfSeed.label}</Chip>}
           <Btn variant="light" onClick={reset}>
             <RotateCcw className="size-4" /> Reset
           </Btn>

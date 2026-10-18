@@ -230,7 +230,7 @@ export function MenuOverlay({ open, onClose, items, photo, eyebrow, title, subti
           className="relative hidden min-h-[480px] overflow-hidden rounded-[36px] lg:block"
           style={{ transition: "opacity .9s .45s, transform .9s .45s", opacity: open ? 1 : 0, transform: open ? "none" : "translateY(40px)" }}
         >
-          <Photo src={photo} alt="" />
+          <Photo src={photo} alt="" wrapperClassName="absolute inset-0" />
           <div className="absolute inset-0 bg-gradient-to-t from-night via-night/40 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-8">
             <p className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.22em] text-peach">{eyebrow}</p>

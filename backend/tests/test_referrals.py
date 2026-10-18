@@ -13,6 +13,7 @@ Acceptance Checks Enforced:
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -553,34 +554,92 @@ async def test_supervisor_access_and_cross_area_summary_forbidden(referral_env):
     assert check_del.status_code == 404
 
 
+async def _insert_children(db_factory, area: str, count: int) -> None:
+    """Insert dashboard child fixtures directly into the DB (no seed endpoint)."""
+    now = datetime.now(UTC)
+    age_brackets = ["0-6m", "6-12m", "12-24m", "24-36m", "36-48m", "48-60m"]
+    sub_wards = [f"{area} - Sector {s}" for s in ("A", "B", "C", "D")]
+    async with db_factory() as db:
+        for i in range(count):
+            mod = i % 10
+            bracket = age_brackets[i % len(age_brackets)]
+            sub_ward = sub_wards[i % len(sub_wards)]
+            if mod in (0, 1, 2, 3):
+                tier, domains, safety = "Tier 1: Typical", [], None
+                last_screened = now - timedelta(days=10 + (i % 50))
+                last_contacted = now - timedelta(days=5 + (i % 20))
+                follow_up = now + timedelta(days=60 + (i % 30))
+                contacts = 2 + (i % 4)
+            elif mod in (4, 5, 6):
+                tier = "Tier 2: In-App Reflex Monitor"
+                domains = ["social_emotional"] if i % 2 == 0 else ["fine_motor", "communication"]
+                safety = None
+                last_screened = now - timedelta(days=14 + (i % 40))
+                last_contacted = now - timedelta(days=3 + (i % 15))
+                follow_up = (
+                    now - timedelta(days=3 + (i % 10))
+                    if i % 3 == 0
+                    else now + timedelta(days=14 + (i % 20))
+                )
+                contacts = 3 + (i % 5)
+            elif mod in (7, 8):
+                tier = "Tier 3: Direct Referral"
+                domains = ["gross_motor", "communication"] if i % 2 == 0 else ["motor", "cognitive"]
+                safety = (
+                    "Loss of motor milestones (SD <= -2.0)"
+                    if i % 2 == 0
+                    else "Severe developmental divergence flagged"
+                )
+                last_screened = now - timedelta(days=5 + (i % 25))
+                last_contacted = now - timedelta(days=2 + (i % 10))
+                follow_up = (
+                    now - timedelta(days=4 + (i % 12))
+                    if i % 2 == 0
+                    else now + timedelta(days=7 + (i % 14))
+                )
+                contacts = 4 + (i % 6)
+            else:
+                tier, domains, safety = "Unscreened", [], None
+                last_screened = last_contacted = follow_up = None
+                contacts = 0
+
+            db.add(
+                ChildRecord(
+                    pseudonymous_id=f"{area.replace(' ', '').lower()}-{i + 1:03d}",
+                    age_bracket=bracket,
+                    village_ward=sub_ward,
+                    consent_given=True,
+                    consent_recorded_at=now - timedelta(days=60),
+                    opt_in=True,
+                    current_tier=tier,
+                    last_screened_at=last_screened,
+                    last_contacted_at=last_contacted,
+                    follow_up_due_at=follow_up,
+                    contact_count=contacts,
+                    domains_flagged=domains,
+                    safety_rule_triggered=safety,
+                    created_at=now - timedelta(days=60 - (i % 30)),
+                )
+            )
+        await db.commit()
+
+
 @pytest.mark.asyncio
-async def test_low_literacy_worker_dashboard_seed_filter_actions(referral_env):
+async def test_low_literacy_worker_dashboard_filter_actions(referral_env):
     """
     Acceptance check for the low-literacy worker dashboard:
-    1. Seed 200 children with realistic tiers, age groups, overdue visits, and referrals.
+    1. Load 200 children with realistic tiers, age groups, and overdue visits.
     2. List 200 children and verify tier counts per tier.
     3. Verify mobile-first filters (tier, overdue follow-up, age group, search).
     4. Quick action: mark 'contacted' (updates timestamp and contact count).
     5. Quick action: one-touch referral (uses 6a minimal summary).
     6. Quick action: record outcome (updates referral and child follow-up).
     """
-    client, _ = referral_env
+    client, db_factory = referral_env
     h12 = _auth_header("user-chw-ward12", "chw")
 
-    # 1. Seed 200 children in Ward 12
-    seed_res = await client.post(
-        "/api/chw/seed-children",
-        json={"count": 200, "area": "Ward 12", "clean_first": False},
-        headers=h12,
-    )
-    assert seed_res.status_code == 201
-    seed_data = seed_res.json()
-    assert seed_data["seeded_count"] == 200
-    assert seed_data["area"] == "Ward 12"
-    assert seed_data["tier_counts"]["Tier 1: Typical"] > 0
-    assert seed_data["tier_counts"]["Tier 2: In-App Reflex Monitor"] > 0
-    assert seed_data["tier_counts"]["Tier 3: Direct Referral"] > 0
-    assert seed_data["tier_counts"]["Unscreened"] > 0
+    # 1. Insert 200 children in Ward 12 directly (dashboard fixtures)
+    await _insert_children(db_factory, "Ward 12", 200)
 
     # 2. Get Tier counts
     counts_res = await client.get("/api/chw/tier-counts", headers=h12)

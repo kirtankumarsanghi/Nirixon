@@ -7,6 +7,8 @@ interface PhotoProps {
   className?: string;
   /** Rendered behind the image while it loads and if it fails. */
   fallbackClassName?: string;
+  /** Classes for the outer wrapper (e.g. to absolutely fill a positioned parent). */
+  wrapperClassName?: string;
   eager?: boolean;
   style?: CSSProperties;
 }
@@ -16,12 +18,12 @@ interface PhotoProps {
  * image streams in, then the photo fades up. Keeps layout stable (the parent
  * owns the size) and never leaves a broken-image icon.
  */
-export function Photo({ src, alt, className, fallbackClassName, eager = false, style }: PhotoProps) {
+export function Photo({ src, alt, className, fallbackClassName, wrapperClassName, eager = false, style }: PhotoProps) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
   return (
     <span
-      className={cn("relative block overflow-hidden", fallbackClassName ?? "bg-gradient-to-br from-sand via-card-2 to-sand")}
+      className={cn("relative block overflow-hidden", fallbackClassName ?? "bg-gradient-to-br from-sand via-card-2 to-sand", wrapperClassName)}
       style={style}
     >
       {state !== "ready" && <span className="absolute inset-0 animate-pulse bg-sand/60" aria-hidden />}

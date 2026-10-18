@@ -52,6 +52,7 @@ from app.ml.inference_service import (
 )
 from app.schemas.screen import (
     AnswerRequest,
+    DomainTrackPayload,
     IntakeRequest,
     IntakeResponse,
     QuestionPayload,
@@ -156,6 +157,23 @@ def _module_a_domain_scores(real_answers: dict[str, Any]) -> dict[str, float]:
         totals[dom] = totals.get(dom, 0.0) + float(ans)
         counts[dom] = counts.get(dom, 0) + 1
     return {d: totals[d] / (2.0 * counts[d]) for d in totals if counts.get(d, 0) > 0}
+
+
+def _domain_tracks(raw: dict[str, Any] | None) -> dict[str, DomainTrackPayload]:
+    """Rebuild Module B per-domain tracks from the persisted risk-result JSON.
+
+    The completion path stores ``DomainTrackPayload`` dumps (state, IRT theta,
+    rule-out flags). Read paths must rebuild them, otherwise a finished Module B
+    check-in reports no areas even though the engine scored them.
+    """
+    fields = set(DomainTrackPayload.model_fields)
+    out: dict[str, DomainTrackPayload] = {}
+    for key, value in (raw or {}).items():
+        if isinstance(value, dict):
+            out[key] = DomainTrackPayload(
+                **{k: v for k, v in value.items() if k in fields}
+            )
+    return out
 
 
 def _result_payload_from_prediction(
@@ -1008,6 +1026,8 @@ async def get_result(
         stopping_reason=rr.stopping_reason,
         caveats=list(rr.caveats or []),
         domain_classifications=getattr(rr, "domain_classifications", None) or {},
+        domain_details=_domain_tracks(getattr(rr, "domain_details", None)),
+        flagged_domains=flagged,
         domain_scores=(
             _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
             if db_row.module == "A"
@@ -1113,6 +1133,12 @@ async def get_session(
             stopping_reason=rr.stopping_reason,
             caveats=list(rr.caveats or []),
             domain_classifications=getattr(rr, "domain_classifications", None) or {},
+            domain_details=_domain_tracks(getattr(rr, "domain_details", None)),
+            flagged_domains=[
+                k
+                for k, v in (rr.domain_classifications or {}).items()
+                if v in ("Monitor", "Refer")
+            ],
             domain_scores=(
                 _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
                 if db_row.module == "A"

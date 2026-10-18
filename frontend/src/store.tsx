@@ -3,7 +3,7 @@ import type { CheckIn, Child, Scores } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
 import { api, referralApi, setAuthToken } from "./api/client";
-import { childRecordToChild, sessionToCheckIn } from "./lib/apiAdapters";
+import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
 
 /** Map a backend role string onto a design role id. Backend uses "internal"
  *  for clinicians; everything else passes through, unknown → "parent". */
@@ -39,7 +39,6 @@ interface AppCtx {
 
   children: Child[];
   patchChild: (id: string, patch: Partial<Child>) => void;
-  resetChildren: () => void;
   /** Persisted caseload mutations — optimistic, rollback + toast on failure. */
   referChild: (id: string, patch: Partial<Child>) => Promise<void>;
   contactChild: (id: string, patch: Partial<Child>) => Promise<void>;
@@ -147,7 +146,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       try {
         if (activeRole === "parent" || activeRole === "clinician") {
           const sessions = await api.getSessions();
-          if (!cancelled) setCheckIns(sessions.map(sessionToCheckIn));
+          if (!cancelled) setCheckIns(sessionsToCheckIns(sessions));
         }
         if (activeRole === "chw" || activeRole === "supervisor" || activeRole === "clinician") {
           const recs = await referralApi.getChildren({ limit: 500 });
@@ -262,7 +261,6 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       addCheckIn: (ci) => setCheckIns((p) => [ci, ...p]),
       children,
       patchChild: (id, patch) => setChildren((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c))),
-      resetChildren: () => setReloadKey((k) => k + 1),
       referChild,
       contactChild,
       outcomeChild,

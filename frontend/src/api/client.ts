@@ -30,7 +30,6 @@ import type {
   ReferralOutcomeRequest,
   ReferralSummary,
   TierCounts,
-  SeedChildrenResponse,
   ChildContactResponse,
   OneTouchReferralResponse,
   RecordChildOutcomeRequest,
@@ -47,6 +46,7 @@ import type {
   AudioManifestResponse,
   AudioItemQueryResponse,
   AudioCoverageReport,
+  FacilitiesResponse,
 } from "./types";
 
 const rawBase = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -230,6 +230,11 @@ export const api = {
     });
   },
 
+  /** Module B: advance past an informational notice (safety helplines, recall help). */
+  nextAction(sessionId: string): Promise<ScreenActionResponse> {
+    return request<ScreenActionResponse>(`/api/screen/${sessionId}/next`);
+  },
+
   /** Module B: submit recall-help domain selection. */
   submitRecall(
     sessionId: string,
@@ -349,6 +354,22 @@ export const helpApi = {
   },
 };
 
+export const facilitiesApi = {
+  /**
+   * Public, read-only reference data: nearest hospitals/clinics for a PIN.
+   * `ageGroup` ranks developmental/early-intervention services first.
+   */
+  get(
+    pin: string,
+    opts: { ageGroup?: "0-5" | "6-12"; limit?: number } = {},
+  ): Promise<FacilitiesResponse> {
+    const q = new URLSearchParams({ pin });
+    if (opts.ageGroup) q.set("age_group", opts.ageGroup);
+    if (opts.limit != null) q.set("limit", String(opts.limit));
+    return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
+  },
+};
+
 export const referralApi = {
   getMe(): Promise<WorkerRecord> {
     return request<WorkerRecord>("/api/chw/workers/me");
@@ -379,12 +400,6 @@ export const referralApi = {
   getTierCounts(village_ward?: string): Promise<TierCounts> {
     const qs = village_ward ? `?village_ward=${encodeURIComponent(village_ward)}` : "";
     return request<TierCounts>(`/api/chw/tier-counts${qs}`);
-  },
-  seedChildren(count = 200, area?: string, cleanFirst = false): Promise<SeedChildrenResponse> {
-    return request<SeedChildrenResponse>("/api/chw/seed-children", {
-      method: "POST",
-      body: JSON.stringify({ count, area, clean_first: cleanFirst }),
-    });
   },
   markContacted(childId: string): Promise<ChildContactResponse> {
     return request<ChildContactResponse>(`/api/chw/children/${encodeURIComponent(childId)}/contact`, {

@@ -90,7 +90,7 @@ export function Cases() {
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[12.5px] font-semibold">{c.id.replace("child-seed-", "")}</span>
+                      <span className="font-mono text-[12.5px] font-semibold">{c.id}</span>
                       {c.handoff === "queued" ? <Chip tone={on ? "night" : "lilac"}>Queued</Chip> : c.handoff === "done" ? <Chip tone={on ? "night" : "moss"}>Reviewed</Chip> : <Chip tone={on ? "night" : "sand"}>New</Chip>}
                     </div>
                     <p className={cn("mt-1.5 flex items-center gap-2 text-[12px]", on ? "text-paper/65" : "text-muted")}>
@@ -219,7 +219,7 @@ export function Cases() {
                   disabled={sel.handoff === "done"}
                   onClick={() => {
                     patchChild(sel.id, { handoff: "done" });
-                    showToast(`${sel.id.replace("child-seed-", "")} acknowledged`);
+                    showToast(`${sel.id} acknowledged`);
                   }}
                 >
                   <CheckCheck className="size-4" /> {sel.handoff === "done" ? "Acknowledged" : "Acknowledge handoff"}

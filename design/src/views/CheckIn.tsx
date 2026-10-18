@@ -317,7 +317,7 @@ export function CheckIn() {
           </div>
 
           <aside className="relative min-h-[420px] overflow-hidden rounded-[36px] bg-night text-paper">
-            <Photo src={PHOTO.blocksGirl} alt="" className="opacity-55" eager />
+            <Photo src={PHOTO.blocksGirl} alt="" wrapperClassName="absolute inset-0" className="opacity-55" eager />
             <div className="absolute inset-0 bg-gradient-to-t from-night via-night/70 to-night/20" />
             <div className="relative flex h-full min-h-[420px] flex-col justify-end p-8">
               <Eyebrow tone="peach" index="02">Module {module} · {moduleMeta.label}</Eyebrow>

@@ -22,6 +22,7 @@ from app.db.models import User, Worker
 from app.db.session import get_engine, get_session_factory, init_db
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.ml.inference_service import inference_service, inference_service_b
+from app.core.find_help.router import router as find_help_router
 from app.routers import (
     audio,
     auth,
@@ -282,6 +283,8 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     app.include_router(referrals.router)
     app.include_router(audio.router)
     app.include_router(evidence.router)
+    # Public, read-only facility reference data (its own SQLite, no patient data).
+    app.include_router(find_help_router)
 
     static_audio_dir = Path(__file__).resolve().parent.parent / "static" / "audio"
     if static_audio_dir.exists():

@@ -55,15 +55,15 @@ export function Referrals() {
   };
   const send = (child: Child) => {
     void referChild(child.id, { status: "refer", handoff: "queued", visits: child.visits + 1, lastVisitDays: 0 });
-    showToast(`${child.id.replace("child-seed-", "")} sent to the clinician queue`);
+    showToast(`${child.id} sent to the clinician queue`);
   };
   const confirm = (child: Child) => {
     void outcomeChild(child.id, { handoff: "done", visits: child.visits + 1, lastVisitDays: 0 });
-    showToast(`${child.id.replace("child-seed-", "")} handoff confirmed`);
+    showToast(`${child.id} handoff confirmed`);
   };
   const contacted = (child: Child) => {
     void contactChild(child.id, { visits: child.visits + 1, lastVisitDays: 0 });
-    showToast(`${child.id.replace("child-seed-", "")} caregiver contacted`);
+    showToast(`${child.id} caregiver contacted`);
   };
 
   const workerRows = SECTORS.map((s) => {
@@ -192,7 +192,7 @@ export function Referrals() {
                       <div className="grid items-center gap-4 px-5 py-5 sm:px-7 lg:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
                         <button onClick={() => setSelectedId(child.id)} className="group min-w-0 text-left">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[12.5px] font-semibold">{child.id.replace("child-seed-", "")}</span>
+                            <span className="font-mono text-[12.5px] font-semibold">{child.id}</span>
                             <Chip tone={childStage === "ready" ? "brick" : childStage === "queued" ? "amber" : "moss"}>
                               {childStage === "ready" ? "Ready to send" : childStage === "queued" ? "With clinician" : "Confirmed"}
                             </Chip>

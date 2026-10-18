@@ -77,6 +77,13 @@ class Settings(BaseSettings):
         alias="MODULE_B_ARTIFACT_DIR",
     )
 
+    # Find Help facility reference data. A separate read-only SQLite built by
+    # backend/scripts/find_help/import_reference_data.py; holds no patient data.
+    find_help_db: str = Field(
+        default=str(_BACKEND_ROOT / "data" / "find_help" / "reference.sqlite"),
+        alias="NIRIXON_REFERENCE_DB",
+    )
+
     # Rate limiting
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
     rate_limit_requests: int = Field(default=60, alias="RATE_LIMIT_REQUESTS")

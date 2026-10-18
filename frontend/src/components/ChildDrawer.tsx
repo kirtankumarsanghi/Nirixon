@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { CheckCheck, ClipboardCheck, PhoneCall, ScanLine, Send, ShieldAlert, X } from "lucide-react";
 import {
   DOMAINS,
-  DOMAIN_KEYS,
   SECTORS,
   STATUS_META,
   TIER_META,
   ageBand,
+  domainKeys,
   domainStatus,
   evaluate,
   type Child,
@@ -87,7 +87,7 @@ export function ChildDrawer({ child, onClose, onScreen, onRefer, onContacted, on
               ))}
             </div>
 
-            {ev && child.scores ? (
+            {ev && child.scores && domainKeys(child.scores).length ? (
               <div className="mt-7">
                 <div className="flex items-center justify-between">
                   <p className="font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Area scores (SD)</p>
@@ -96,8 +96,8 @@ export function ChildDrawer({ child, onClose, onScreen, onRefer, onContacted, on
                   </span>
                 </div>
                 <div className="mt-4 space-y-3.5">
-                  {DOMAIN_KEYS.map((k) => {
-                    const z = child.scores![k];
+                  {domainKeys(child.scores).map((k) => {
+                    const z = child.scores![k] as number;
                     const s = domainStatus(z);
                     return (
                       <div key={k}>

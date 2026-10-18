@@ -338,6 +338,89 @@ export interface HelpNearbyResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Find Help: public facility reference data (GET /api/facilities)
+// Read-only OpenStreetMap / government-directory rows. No patient data.
+// ---------------------------------------------------------------------------
+
+export type FacilityType =
+  | "DEIC"
+  | "RBSK"
+  | "District Hospital"
+  | "CHC"
+  | "PHC"
+  | "Hospital"
+  | "Clinic";
+
+export type FacilitiesCoverage = "nearby" | "district" | "state" | "none";
+
+export interface FacilityRelevance {
+  /** 0 = developmental/early-intervention fit, 1 = referral hospital, 2 = general. */
+  tier: number;
+  label: string;
+}
+
+export interface Facility {
+  id: number;
+  name: string;
+  type: FacilityType;
+  km: number;
+  phone: string | null;
+  address: string;
+  district: string;
+  state: string;
+  lat: number;
+  lng: number;
+  source: string;
+  verified_at: string | null;
+  specialty: string[];
+  relevance: FacilityRelevance;
+}
+
+export interface FacilitySuggestion {
+  id: string;
+  title: string;
+  detail: string;
+  maps_url: string | null;
+  phone: string | null;
+  note?: string;
+}
+
+export interface FacilitiesResolved {
+  district: string;
+  state: string;
+  lat: number;
+  lng: number;
+  approximate: boolean;
+  match: string;
+}
+
+export interface StateDeic {
+  state: string;
+  operational: number;
+  source: string;
+}
+
+export interface FacilityHelpline {
+  name: string;
+  number: string;
+  note?: string;
+}
+
+export interface FacilitiesResponse {
+  pin: string;
+  age_group: string | null;
+  result: string | null;
+  resolved: FacilitiesResolved | null;
+  coverage: FacilitiesCoverage;
+  facilities: Facility[];
+  nearest_specialist: Facility | null;
+  suggestions: FacilitySuggestion[];
+  advice: string | null;
+  state_deic: StateDeic | null;
+  helplines: FacilityHelpline[];
+}
+
+// ---------------------------------------------------------------------------
 // Module A: Live Elicitation (Direct Observation) types
 // ---------------------------------------------------------------------------
 
@@ -576,13 +659,6 @@ export interface TierCounts {
   tier3_referral: number;
   unscreened: number;
   overdue_follow_up: number;
-}
-
-export interface SeedChildrenResponse {
-  message: string;
-  seeded_count: number;
-  area: string;
-  tier_counts: Record<string, number>;
 }
 
 export interface ChildContactResponse {
