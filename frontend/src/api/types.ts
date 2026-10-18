@@ -661,6 +661,36 @@ export interface TierCounts {
   overdue_follow_up: number;
 }
 
+export interface ReferralFunnel {
+  screened: number;
+  created: number;
+  sent: number;
+  seen: number;
+  outcome_recorded: number;
+  closed: number;
+  overdue: number;
+  total_referrals: number;
+}
+
+export interface TimeToIntervention {
+  median_screened_to_referral_days: number | null;
+  median_referral_to_seen_days: number | null;
+}
+
+export interface WardCoverage {
+  village_ward: string;
+  children: number;
+  screened: number;
+  coverage_pct: number;
+  referrals: number;
+}
+
+export interface CHWAnalytics {
+  funnel: ReferralFunnel;
+  time_to_intervention: TimeToIntervention;
+  coverage_by_ward: WardCoverage[];
+}
+
 export interface ChildContactResponse {
   message: string;
   child_id: string;

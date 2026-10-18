@@ -181,6 +181,36 @@ class TierCountsResponse(BaseModel):
     overdue_follow_up: int
 
 
+class ReferralFunnel(BaseModel):
+    screened: int
+    created: int
+    sent: int
+    seen: int
+    outcome_recorded: int
+    closed: int
+    overdue: int
+    total_referrals: int
+
+
+class TimeToIntervention(BaseModel):
+    median_screened_to_referral_days: float | None = None
+    median_referral_to_seen_days: float | None = None
+
+
+class WardCoverage(BaseModel):
+    village_ward: str
+    children: int
+    screened: int
+    coverage_pct: float
+    referrals: int
+
+
+class CHWAnalyticsResponse(BaseModel):
+    funnel: ReferralFunnel
+    time_to_intervention: TimeToIntervention
+    coverage_by_ward: list[WardCoverage]
+
+
 class ReferralCreate(BaseModel):
     child_id: str = Field(
         ...,
