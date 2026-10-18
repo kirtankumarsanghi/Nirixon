@@ -982,3 +982,32 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
     conflicts = conflicts_list_res.json()
     assert len(conflicts) >= 1
     assert any(c["entity_id"] == "non-existent-child-uuid" for c in conflicts)
+
+
+@pytest.mark.asyncio
+async def test_supervisor_programme_analytics(referral_env):
+    """Analytics scopes to the worker's area and reports funnel + ward coverage."""
+    client, db_factory = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+    await _insert_children(db_factory, "Ward 12", 12)
+
+    res = await client.get("/api/chw/analytics", headers=h12)
+    assert res.status_code == 200
+    body = res.json()
+
+    assert body["funnel"]["screened"] > 0
+    assert body["funnel"]["total_referrals"] == 0
+    assert body["time_to_intervention"]["median_referral_to_seen_days"] is None
+    assert body["coverage_by_ward"]
+    assert all(
+        w["village_ward"].startswith("Ward 12") for w in body["coverage_by_ward"]
+    )
+    assert sum(w["children"] for w in body["coverage_by_ward"]) >= 12
+
+    # A ward outside this worker's area must never leak in.
+    await _insert_children(db_factory, "Ward 99", 3)
+    res2 = await client.get("/api/chw/analytics", headers=h12)
+    assert res2.status_code == 200
+    assert all(
+        "Ward 99" not in w["village_ward"] for w in res2.json()["coverage_by_ward"]
+    )

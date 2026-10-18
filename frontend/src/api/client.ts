@@ -30,6 +30,7 @@ import type {
   ReferralOutcomeRequest,
   ReferralSummary,
   TierCounts,
+  CHWAnalytics,
   ChildContactResponse,
   OneTouchReferralResponse,
   RecordChildOutcomeRequest,
@@ -400,6 +401,9 @@ export const referralApi = {
   getTierCounts(village_ward?: string): Promise<TierCounts> {
     const qs = village_ward ? `?village_ward=${encodeURIComponent(village_ward)}` : "";
     return request<TierCounts>(`/api/chw/tier-counts${qs}`);
+  },
+  getAnalytics(): Promise<CHWAnalytics> {
+    return request<CHWAnalytics>("/api/chw/analytics");
   },
   markContacted(childId: string): Promise<ChildContactResponse> {
     return request<ChildContactResponse>(`/api/chw/children/${encodeURIComponent(childId)}/contact`, {

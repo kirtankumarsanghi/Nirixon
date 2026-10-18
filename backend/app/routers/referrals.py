@@ -114,6 +114,7 @@ from app.schemas.referral import (
     ChildContactResponse,
     ChildRecordCreate,
     ChildRecordResponse,
+    CHWAnalyticsResponse,
     CHWSyncBatchRequest,
     CHWSyncBatchResponse,
     CHWSyncItemResult,
@@ -121,11 +122,14 @@ from app.schemas.referral import (
     OneTouchReferralResponse,
     RecordChildOutcomeRequest,
     ReferralCreate,
+    ReferralFunnel,
     ReferralOutcomeRequest,
     ReferralResponse,
     ReferralSummary,
     ReferralUpdate,
     TierCountsResponse,
+    TimeToIntervention,
+    WardCoverage,
     WorkerCreate,
     WorkerResponse,
 )
@@ -1051,6 +1055,134 @@ async def get_tier_counts(
         tier3_referral=t3,
         unscreened=unscreened,
         overdue_follow_up=overdue,
+    )
+
+
+@router.get("/api/chw/analytics", response_model=CHWAnalyticsResponse)
+async def get_chw_analytics(
+    worker: Worker = Depends(get_current_worker),
+    db: AsyncSession = Depends(get_db),
+):
+    """Programme analytics: referral funnel, time-to-intervention medians and
+    per-ward coverage. Scoped exactly like the tier counts."""
+    if worker.role == "supervisor" and worker.area.strip().lower() in ("all", "*"):
+        conditions = [ChildRecord.opt_in.is_(True)]
+    else:
+        worker_area = worker.area.strip()
+        conditions = [
+            ChildRecord.opt_in.is_(True),
+            or_(
+                ChildRecord.village_ward == worker_area,
+                ChildRecord.village_ward.like(f"{worker_area} - %"),
+                ChildRecord.village_ward.like(f"{worker_area} / %"),
+                ChildRecord.village_ward.like(f"{worker_area}: %"),
+            ),
+        ]
+
+    records = list(
+        (await db.execute(select(ChildRecord).where(*conditions))).scalars().all()
+    )
+    by_id = {c.id: c for c in records}
+
+    if by_id:
+        ref_stmt = select(Referral).where(Referral.child_id.in_(list(by_id)))
+        referrals = list((await db.execute(ref_stmt)).scalars().all())
+    else:
+        referrals = []
+
+    now = _utcnow()
+
+    def _aware(dt: datetime | None) -> datetime | None:
+        if not dt:
+            return None
+        return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+    def _median(values: list[float]) -> float | None:
+        if not values:
+            return None
+        values = sorted(values)
+        mid = len(values) // 2
+        if len(values) % 2:
+            return round(values[mid], 1)
+        return round((values[mid - 1] + values[mid]) / 2, 1)
+
+    screened = sum(1 for c in records if _aware(c.last_screened_at))
+    overdue = sum(
+        1
+        for c in records
+        if _aware(c.follow_up_due_at) and _aware(c.follow_up_due_at) < now
+    )
+
+    funnel = ReferralFunnel(
+        screened=screened,
+        created=0,
+        sent=0,
+        seen=0,
+        outcome_recorded=0,
+        closed=0,
+        overdue=overdue,
+        total_referrals=len(referrals),
+    )
+    screened_to_referral: list[float] = []
+    referral_to_seen: list[float] = []
+
+    for ref in referrals:
+        status = normalize_status(ref.status)
+        if status == STATUS_CREATED:
+            funnel.created += 1
+        elif status == STATUS_SENT:
+            funnel.sent += 1
+        elif status == STATUS_SEEN:
+            funnel.seen += 1
+        elif status == STATUS_OUTCOME_RECORDED:
+            funnel.outcome_recorded += 1
+        elif status == STATUS_CLOSED:
+            funnel.closed += 1
+
+        created = _aware(ref.created_at)
+        child = by_id.get(ref.child_id)
+        last_screened = _aware(child.last_screened_at) if child else None
+        if created and last_screened and created >= last_screened:
+            screened_to_referral.append(
+                (created - last_screened).total_seconds() / 86400
+            )
+        seen = _aware(ref.seen_at)
+        if created and seen and seen >= created:
+            referral_to_seen.append((seen - created).total_seconds() / 86400)
+
+    wards: dict[str, dict[str, int]] = {}
+    for child in records:
+        ward = wards.setdefault(
+            child.village_ward, {"children": 0, "screened": 0, "referrals": 0}
+        )
+        ward["children"] += 1
+        if _aware(child.last_screened_at):
+            ward["screened"] += 1
+    for ref in referrals:
+        child = by_id.get(ref.child_id)
+        if child:
+            wards[child.village_ward]["referrals"] += 1
+
+    coverage = [
+        WardCoverage(
+            village_ward=name,
+            children=w["children"],
+            screened=w["screened"],
+            coverage_pct=(
+                round(100 * w["screened"] / w["children"], 1) if w["children"] else 0.0
+            ),
+            referrals=w["referrals"],
+        )
+        for name, w in sorted(wards.items())
+    ]
+
+    return CHWAnalyticsResponse(
+        funnel=funnel,
+        time_to_intervention=TimeToIntervention(
+            median_screened_to_referral_days=_median(screened_to_referral),
+            median_referral_to_seen_days=_median(referral_to_seen),
+        ),
+        coverage_by_ward=coverage,
     )
 
 
