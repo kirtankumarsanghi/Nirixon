@@ -1,19 +1,25 @@
 import { useState } from "react";
-import { MessageCircle, MessageSquare, Phone, Send } from "lucide-react";
+import QRCode from "qrcode";
+import { MessageCircle, MessageSquare, Phone, Printer, Send } from "lucide-react";
 import { referralApi } from "../api/client";
 import type { ReferralSummary } from "../api/types";
 import { referralSmsText, referralWhatsAppText, smsLink, telLink, waLink } from "../lib/handoff";
+import type { Child } from "../lib/model";
+import { caregiverPlanBody, planItemsFromScores, printSheet, referralSlipBody } from "../lib/printSheet";
 import { useApp } from "../store";
 import { Btn } from "./ui";
 
 const HELPLINE = "14416"; // Tele-MANAS, also listed in Find Help
 
+const today = () =>
+  new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+
 /**
- * Share the referral handoff. The summary comes from the server (creates or
- * reuses the child's open referral), so WhatsApp / SMS / copy all carry the
- * same four consent-appropriate fields as the printed slip.
+ * Share or print the referral handoff. The summary comes from the server
+ * (creates or reuses the child's open referral), so WhatsApp / SMS / the
+ * printed slip all carry the same four consent-appropriate fields.
  */
-export function HandoffActions({ childId }: { childId: string }) {
+export function HandoffActions({ child }: { child: Child }) {
   const { showToast, go } = useApp();
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,7 +28,7 @@ export function HandoffActions({ childId }: { childId: string }) {
     if (summary) return summary;
     setBusy(true);
     try {
-      const res = await referralApi.oneTouchReferral(childId);
+      const res = await referralApi.oneTouchReferral(child.id);
       setSummary(res.summary);
       return res.summary;
     } catch (e) {
@@ -53,6 +59,20 @@ export function HandoffActions({ childId }: { childId: string }) {
     }
   };
 
+  const printSlip = async () => {
+    const s = await ensureSummary();
+    if (!s) return;
+    setBusy(true);
+    try {
+      const qr = await QRCode.toDataURL(referralSmsText(s), { margin: 1, width: 264 });
+      printSheet("Nirixon referral summary", referralSlipBody(s, qr, child.id));
+    } catch {
+      showToast("Could not prepare the printed slip");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="mt-6 rounded-2xl border border-line-2 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -68,6 +88,18 @@ export function HandoffActions({ childId }: { childId: string }) {
         </Btn>
         <Btn size="sm" variant="light" onClick={() => void share("copy")} disabled={busy}>
           <Send className="size-3.5" /> Copy
+        </Btn>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Btn size="sm" variant="light" onClick={() => void printSlip()} disabled={busy}>
+          <Printer className="size-3.5" /> Print slip
+        </Btn>
+        <Btn
+          size="sm"
+          variant="light"
+          onClick={() => printSheet("Nirixon home activities", caregiverPlanBody(planItemsFromScores(child.scores), { childId: child.id, date: today() }))}
+        >
+          <Printer className="size-3.5" /> Print plan
         </Btn>
       </div>
       <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-muted">

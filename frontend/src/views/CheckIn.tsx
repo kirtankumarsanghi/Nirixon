@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
+import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, Printer, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { QuestionAudio } from "../components/QuestionAudio";
+import { caregiverPlanBody, printSheet } from "../lib/printSheet";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
@@ -661,6 +662,27 @@ export function CheckIn() {
       }
       return DOMAINS[k]?.activity ?? "";
     };
+    const printPlan = () => {
+      const items = lows
+        .map((k) => {
+          const acts = (backendResult?.activities as Record<string, unknown> | undefined)?.[k];
+          const raw = Array.isArray(acts) && acts.length ? acts[0] : null;
+          const obj = raw && typeof raw === "object" ? (raw as { title?: string; steps?: string; minutes?: number }) : null;
+          return {
+            label: DOMAINS[k]?.label ?? k,
+            activity: (typeof raw === "string" ? raw : obj?.title) ?? DOMAINS[k]?.activity ?? "",
+            detail: obj?.steps ?? (obj?.minutes ? `${obj.minutes} min` : undefined),
+          };
+        })
+        .filter((i) => i.activity);
+      printSheet(
+        "Nirixon home activities",
+        caregiverPlanBody(items, {
+          childId: targetChild?.id,
+          date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+        }),
+      );
+    };
     return (
       <Page>
         <section className="relative overflow-hidden rounded-[44px] bg-night text-paper">
@@ -730,6 +752,7 @@ export function CheckIn() {
                 </>
               )}
               <Btn variant={tier === "Refer" ? "rust" : "light"} onClick={() => go("help")}><MapPin className="size-4" /> Find help</Btn>
+              <Btn variant="light" onClick={printPlan}><Printer className="size-4" /> Print plan</Btn>
               <Btn variant="soft" onClick={() => { setPhase("setup"); setResult(null); setBackendResult(null); setTarget(""); setQuestion(null); setAnswers({}); persistSession(null); window.scrollTo({ top: 0 }); }}>
                 <RotateCcw className="size-4" /> Another
               </Btn>
