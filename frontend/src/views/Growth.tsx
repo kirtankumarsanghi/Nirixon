@@ -9,6 +9,7 @@ import {
   domainStatus,
   evaluate,
   fmtDate,
+  zToPercentile,
 } from "../lib/model";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -19,6 +20,8 @@ const PAD = { l: 64, r: 28, t: 28, b: 54 };
 const PW = W - PAD.l - PAD.r;
 const PH = H - PAD.t - PAD.b;
 const yz = (z: number) => PAD.t + (1 - (z + 3) / 4) * PH;
+/** Percentile label for a z band (standard-normal equivalent). */
+const pct = (z: number) => `${zToPercentile(z).toFixed(1)}%`;
 
 export function Growth() {
   const { checkIns, go } = useApp();
@@ -110,7 +113,7 @@ export function Growth() {
                 </g>
               ))}
               <text x={W - PAD.r - 6} y={yz(-2) - 7} textAnchor="end" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="var(--chart-band-refer)" letterSpacing="1.5">
-                SAFETY LINE −2.0
+                SAFETY LINE −2.0 · 2.3rd PCT
               </text>
 
               {hover !== null && <line x1={xs[hover]} x2={xs[hover]} y1={PAD.t} y2={H - PAD.b} stroke="var(--chart-ink)" strokeWidth={1.2} />}
@@ -175,6 +178,10 @@ export function Growth() {
                 </g>
               ))}
             </svg>
+
+            <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted">
+              Standard-normal equivalents: −1 SD ≈ {pct(-1)} · −2 SD ≈ {pct(-2)} (ICDS/RBSK referral cut-off) · −3 SD ≈ {pct(-3)}.
+            </p>
 
             {hover !== null && (
               <div
