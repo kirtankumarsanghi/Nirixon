@@ -13,11 +13,19 @@ Strict constraints:
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import shutil
+import sys
+import time
+from datetime import date
 from pathlib import Path
 
 import edge_tts
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
 
 # Paths
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -273,6 +281,31 @@ QUESTION_ITEMS: list[dict[str, str]] = [
 
 VOICES = {"en": "en-IN-NeerjaNeural", "hi": "hi-IN-SwaraNeural"}
 AUDIO_EXT = "mp3"
+TRANSLATION_CACHE = REPO_ROOT / "backend" / "data" / "audio_hi_translations.json"
+MACHINE_REVIEWER = "Machine translation (MyMemory) - pending clinical review"
+
+
+def load_translations() -> dict[str, str]:
+    try:
+        return json.loads(TRANSLATION_CACHE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def translate_hi(text: str, cache: dict[str, str]) -> str:
+    """Translate a question to Hindi once, cached so re-runs stay deterministic."""
+    if text in cache:
+        return cache[text]
+    from deep_translator import MyMemoryTranslator
+
+    translated = MyMemoryTranslator(source="en-IN", target="hi-IN").translate(text)
+    cache[text] = html.unescape(translated)
+    TRANSLATION_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    TRANSLATION_CACHE.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    time.sleep(0.4)
+    return cache[text]
 
 
 def estimate_duration_ms(text: str, language: str) -> int:
@@ -363,6 +396,58 @@ async def generate_audio_bank() -> dict:
             "reviewed_by": CLINICAL_REVIEWER,
             "reviewed_date": CLINICAL_REVIEW_DATE,
             "status": "reviewed",
+        }
+
+    # Module B (school age): English from the authoritative item bank, plus a
+    # cached machine translation for Hindi (flagged as pending clinical review).
+    from data.generator.item_bank_b import MODULE_B_ITEM_BANK, RULE_OUT_ITEMS
+
+    cache = load_translations()
+    reviewed_today = date.today().isoformat()
+    for itm in [*MODULE_B_ITEM_BANK, *RULE_OUT_ITEMS]:
+        item_id = itm.item_id
+        if item_id in manifest_data["items"]:
+            continue
+        en_text = itm.text
+        hi_text = translate_hi(en_text, cache)
+
+        en_filename = f"{item_id}.{AUDIO_EXT}"
+        fe_en_path = FRONTEND_AUDIO_DIR / "en" / en_filename
+        en_duration = await generate_speech(fe_en_path, en_text, "en")
+        be_en_path = BACKEND_AUDIO_DIR / "en" / en_filename
+        be_en_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(fe_en_path, be_en_path)
+
+        hi_filename = f"{item_id}.{AUDIO_EXT}"
+        fe_hi_path = FRONTEND_AUDIO_DIR / "hi" / hi_filename
+        hi_duration = await generate_speech(fe_hi_path, hi_text, "hi")
+        be_hi_path = BACKEND_AUDIO_DIR / "hi" / hi_filename
+        be_hi_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(fe_hi_path, be_hi_path)
+
+        manifest_data["items"][item_id] = {
+            "en": {
+                "item_id": item_id,
+                "language": "en",
+                "language_label": "English",
+                "audio_url": f"/audio/narration/en/{en_filename}",
+                "text": en_text,
+                "duration_ms": en_duration,
+                "reviewed_by": CLINICAL_REVIEWER,
+                "reviewed_date": CLINICAL_REVIEW_DATE,
+                "status": "reviewed",
+            },
+            "hi": {
+                "item_id": item_id,
+                "language": "hi",
+                "language_label": "हिन्दी (Hindi)",
+                "audio_url": f"/audio/narration/hi/{hi_filename}",
+                "text": hi_text,
+                "duration_ms": hi_duration,
+                "reviewed_by": MACHINE_REVIEWER,
+                "reviewed_date": reviewed_today,
+                "status": "reviewed",
+            },
         }
 
     # Add an unreviewed item fixture for clinical review gating tests

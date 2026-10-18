@@ -1035,10 +1035,7 @@ export function CheckIn() {
               </div>
 
               <div className="mx-6 mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
-                <div className="flex items-center gap-2">
-                  <QuestionAudio itemId="regression_flag" lang={lang} />
-                  <p className="text-[12.5px] leading-snug font-semibold">{REGRESSION_Q[lang]}</p>
-                </div>
+                <p className="text-[12.5px] leading-snug font-semibold">{REGRESSION_Q[lang]}</p>
                 <button
                   role="switch"
                   aria-checked={regression}

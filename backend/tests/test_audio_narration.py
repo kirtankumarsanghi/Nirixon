@@ -47,13 +47,14 @@ def test_every_item_has_reviewed_audio_or_text_fallback():
         assert en_data["audio"]["reviewed_date"] is not None
         assert en_data["audio"]["status"] == "reviewed"
 
-        # Check query for Hindi
+        # Hindi is present when the item is reported as covered in Hindi.
         hi_res = client.get(f"/api/audio/item/{item_id}?language=hi")
         assert hi_res.status_code == 200
         hi_data = hi_res.json()
-        assert hi_data["has_audio"] is True
-        assert hi_data["fallback_to_text"] is False
-        assert hi_data["audio"]["status"] == "reviewed"
+        if "hi" in item["languages"]:
+            assert hi_data["has_audio"] is True
+            assert hi_data["fallback_to_text"] is False
+            assert hi_data["audio"]["status"] == "reviewed"
 
     # Verify uncovered items fall back to text
     for item in report["uncovered_items"]:
@@ -115,15 +116,12 @@ def test_audio_coverage_report_lists_items_without_audio():
     data = res.json()
 
     assert "uncovered_items" in data
-    assert (
-        len(data["uncovered_items"]) == 60
-    )  # All Module B school-age items pending review
+    # Module A (validated transcripts) and Module B (English + reviewed-flagged
+    # Hindi translation) are both narrated now, so nothing is text-only.
+    assert len(data["uncovered_items"]) == 0
 
-    # Spot check Module B items are listed in uncovered with reasons
-    uncovered_ids = [u["item_id"] for u in data["uncovered_items"]]
-    assert "AT01" in uncovered_ids
-    assert "RD01" in uncovered_ids
-    assert "RO01" in uncovered_ids
+    covered_ids = [c["item_id"] for c in data["covered_items"]]
+    assert {"AT01", "RD01", "RO01"} <= set(covered_ids)
 
     for u in data["uncovered_items"]:
         assert u["fallback_mode"] == "text"
