@@ -4,6 +4,7 @@ import { AppFooter } from "./components/AppFooter";
 import { Crumbs } from "./components/Crumbs";
 import { MenuOverlay, Nav } from "./components/Nav";
 import { RoleDock } from "./components/RoleDock";
+import { SyncStatus } from "./components/SyncStatus";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
 import { AppProvider, useApp } from "./store";
@@ -177,6 +178,7 @@ function Workspace() {
       </main>
 
       <AppFooter />
+      <SyncStatus />
       <RoleDock />
 
       {toast && (
