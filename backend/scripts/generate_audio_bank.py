@@ -12,11 +12,12 @@ Strict constraints:
 
 from __future__ import annotations
 
+import asyncio
 import json
-import math
-import struct
-import wave
+import shutil
 from pathlib import Path
+
+import edge_tts
 
 # Paths
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -270,84 +271,35 @@ QUESTION_ITEMS: list[dict[str, str]] = [
 ]
 
 
+VOICES = {"en": "en-IN-NeerjaNeural", "hi": "hi-IN-SwaraNeural"}
+AUDIO_EXT = "mp3"
+
+
 def estimate_duration_ms(text: str, language: str) -> int:
-    """Calculates speech-like duration based on word/character count."""
-    words = text.split()
-    word_count = len(words)
-    # Average speaking rate: ~140 words per minute (~430ms per word + phrase pauses)
-    base_ms = int(word_count * 380) + 800
-    # Keep between 3000ms and 5500ms for comfortable question narration
-    return max(3200, min(5600, base_ms))
+    """Fallback duration when the synthesiser reports no word boundaries."""
+    return max(3200, min(5600, int(len(text.split()) * 380) + 800))
 
 
-def generate_synthesized_wav(
-    filepath: Path, duration_ms: int, pitch_base: float = 180.0
-) -> None:
-    """
-    Generates a high-quality 16-bit PCM Mono WAV file with multi-harmonic speech formants
-    and smooth cadence envelopes so it sounds melodic and natural when played in the browser.
-    """
+async def generate_speech(filepath: Path, text: str, language: str) -> int:
+    """Synthesise real narration with a neural voice; returns the duration in ms."""
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    sample_rate = 22050
-    duration_sec = duration_ms / 1000.0
-    total_samples = int(sample_rate * duration_sec)
-
-    # Number of word pulses across the duration
-    num_pulses = max(4, int(duration_sec * 2.8))
-    pulse_length = total_samples / num_pulses
-
-    samples = []
-    for i in range(total_samples):
-        t = i / sample_rate
-        # Pulse index & local progress within syllable
-        pulse_idx = int(i / pulse_length)
-        local_t = (i % pulse_length) / pulse_length
-
-        # Syllable rise-decay envelope
-        syllable_envelope = (
-            math.sin(math.pi * local_t) ** 1.5 if local_t < 0.85 else 0.0
-        )
-
-        # Overall sentence envelope (soft lead-in and gentle fade out)
-        global_fade = 1.0
-        if i < sample_rate * 0.15:
-            global_fade = i / (sample_rate * 0.15)
-        elif i > total_samples - sample_rate * 0.25:
-            global_fade = (total_samples - i) / (sample_rate * 0.25)
-
-        # Melodic inflection: slight question intonation rise towards the end
-        pitch_mod = 1.0 + 0.12 * math.sin(math.pi * pulse_idx / num_pulses)
-        if pulse_idx >= num_pulses - 2:
-            pitch_mod += 0.08 * (pulse_idx - (num_pulses - 2))  # rising question tone
-
-        f0 = pitch_base * pitch_mod
-        f1 = 550.0  # first formant (vowel vowel-like)
-        f2 = 1650.0  # second formant
-
-        # Acoustic harmonic mixture
-        harmonic = (
-            0.50 * math.sin(2 * math.pi * f0 * t)
-            + 0.25 * math.sin(2 * math.pi * f0 * 2 * t)
-            + 0.15 * math.sin(2 * math.pi * f1 * t)
-            + 0.10 * math.sin(2 * math.pi * f2 * t)
-        )
-
-        amp = 32767.0 * 0.32 * syllable_envelope * global_fade
-        sample_val = int(amp * harmonic)
-        # Clamp to 16-bit range
-        sample_val = max(-32768, min(32767, sample_val))
-        samples.append(sample_val)
-
-    with wave.open(str(filepath), "wb") as wf:
-        wf.setnchannels(1)  # Mono
-        wf.setsampwidth(2)  # 16-bit
-        wf.setframerate(sample_rate)
-        raw_frames = struct.pack(f"<{len(samples)}h", *samples)
-        wf.writeframes(raw_frames)
+    communicate = edge_tts.Communicate(text, VOICES[language])
+    last_end_100ns = 0
+    with open(filepath, "wb") as audio:
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio.write(chunk["data"])
+            elif chunk["type"] == "WordBoundary":
+                last_end_100ns = chunk["offset"] + chunk["duration"]
+    return (
+        int(last_end_100ns / 10_000)
+        if last_end_100ns
+        else estimate_duration_ms(text, language)
+    )
 
 
-def generate_audio_bank() -> dict:
-    """Generates all .wav assets and returns the structured manifest."""
+async def generate_audio_bank() -> dict:
+    """Generates all narration assets (.mp3) and returns the structured manifest."""
     manifest_data = {
         "manifest_version": "1.0.0",
         "generated_at": "2026-10-16T11:00:00Z",
@@ -365,16 +317,16 @@ def generate_audio_bank() -> dict:
 
         # English (en)
         en_text = item["en"]
-        en_duration = estimate_duration_ms(en_text, "en")
-        en_filename = f"{item_id}.wav"
+        en_filename = f"{item_id}.{AUDIO_EXT}"
 
         # Write to frontend public directory
         fe_en_path = FRONTEND_AUDIO_DIR / "en" / en_filename
-        generate_synthesized_wav(fe_en_path, en_duration, pitch_base=175.0)
+        en_duration = await generate_speech(fe_en_path, en_text, "en")
 
         # Mirror to backend static directory
         be_en_path = BACKEND_AUDIO_DIR / "en" / en_filename
-        generate_synthesized_wav(be_en_path, en_duration, pitch_base=175.0)
+        be_en_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(fe_en_path, be_en_path)
 
         manifest_data["items"][item_id]["en"] = {
             "item_id": item_id,
@@ -390,16 +342,16 @@ def generate_audio_bank() -> dict:
 
         # Hindi (hi)
         hi_text = item["hi"]
-        hi_duration = estimate_duration_ms(hi_text, "hi")
-        hi_filename = f"{item_id}.wav"
+        hi_filename = f"{item_id}.{AUDIO_EXT}"
 
         # Write to frontend public directory
         fe_hi_path = FRONTEND_AUDIO_DIR / "hi" / hi_filename
-        generate_synthesized_wav(fe_hi_path, hi_duration, pitch_base=190.0)
+        hi_duration = await generate_speech(fe_hi_path, hi_text, "hi")
 
         # Mirror to backend static directory
         be_hi_path = BACKEND_AUDIO_DIR / "hi" / hi_filename
-        generate_synthesized_wav(be_hi_path, hi_duration, pitch_base=190.0)
+        be_hi_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(fe_hi_path, be_hi_path)
 
         manifest_data["items"][item_id]["hi"] = {
             "item_id": item_id,
@@ -414,14 +366,33 @@ def generate_audio_bank() -> dict:
         }
 
     # Add an unreviewed item fixture for clinical review gating tests
+    unreview_en = "Experimental unreviewed pilot screening question."
+    unreview_hi = "प्रायोगिक गैर-समीक्षित स्क्रीनिंग प्रश्न।"
+    unreview_en_dur = await generate_speech(
+        FRONTEND_AUDIO_DIR / "en" / f"UNREV01.{AUDIO_EXT}", unreview_en, "en"
+    )
+    BACKEND_AUDIO_DIR.joinpath("en").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        FRONTEND_AUDIO_DIR / "en" / f"UNREV01.{AUDIO_EXT}",
+        BACKEND_AUDIO_DIR / "en" / f"UNREV01.{AUDIO_EXT}",
+    )
+    unreview_hi_dur = await generate_speech(
+        FRONTEND_AUDIO_DIR / "hi" / f"UNREV01.{AUDIO_EXT}", unreview_hi, "hi"
+    )
+    BACKEND_AUDIO_DIR.joinpath("hi").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        FRONTEND_AUDIO_DIR / "hi" / f"UNREV01.{AUDIO_EXT}",
+        BACKEND_AUDIO_DIR / "hi" / f"UNREV01.{AUDIO_EXT}",
+    )
+
     manifest_data["items"]["UNREV01"] = {
         "en": {
             "item_id": "UNREV01",
             "language": "en",
             "language_label": "English",
-            "audio_url": "/audio/narration/en/UNREV01.wav",
-            "text": "Experimental unreviewed pilot screening question.",
-            "duration_ms": 3500,
+            "audio_url": f"/audio/narration/en/UNREV01.{AUDIO_EXT}",
+            "text": unreview_en,
+            "duration_ms": unreview_en_dur,
             "reviewed_by": None,
             "reviewed_date": None,
             "status": "unreviewed",
@@ -430,19 +401,20 @@ def generate_audio_bank() -> dict:
             "item_id": "UNREV01",
             "language": "hi",
             "language_label": "हिन्दी (Hindi)",
-            "audio_url": "/audio/narration/hi/UNREV01.wav",
-            "text": "प्रायोगिक गैर-समीक्षित स्क्रीनिंग प्रश्न।",
-            "duration_ms": 3600,
+            "audio_url": f"/audio/narration/hi/UNREV01.{AUDIO_EXT}",
+            "text": unreview_hi,
+            "duration_ms": unreview_hi_dur,
             "reviewed_by": None,
             "reviewed_date": None,
             "status": "unreviewed",
         },
     }
-    # Generate wav for the unreviewed test item too
-    generate_synthesized_wav(FRONTEND_AUDIO_DIR / "en" / "UNREV01.wav", 3500)
-    generate_synthesized_wav(BACKEND_AUDIO_DIR / "en" / "UNREV01.wav", 3500)
-    generate_synthesized_wav(FRONTEND_AUDIO_DIR / "hi" / "UNREV01.wav", 3600)
-    generate_synthesized_wav(BACKEND_AUDIO_DIR / "hi" / "UNREV01.wav", 3600)
+
+    # Remove the old placeholder WAV tone files.
+    for root in (FRONTEND_AUDIO_DIR, BACKEND_AUDIO_DIR):
+        for lang in ("en", "hi"):
+            for stale in (root / lang).glob("*.wav"):
+                stale.unlink()
 
     # Save manifest files
     BACKEND_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -459,4 +431,4 @@ def generate_audio_bank() -> dict:
 
 
 if __name__ == "__main__":
-    generate_audio_bank()
+    asyncio.run(generate_audio_bank())
