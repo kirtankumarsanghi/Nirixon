@@ -43,6 +43,25 @@ const textOnly: AudioItemQueryResponse = {
   available_languages: [],
 };
 
+class FakeUtterance {
+  text: string;
+  lang = "";
+  rate = 1;
+  voice: unknown;
+  onend: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor(text: string) {
+    this.text = text;
+  }
+}
+
+function stubSpeech() {
+  const speak = vi.fn();
+  vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+  vi.stubGlobal("speechSynthesis", { speak, cancel: vi.fn(), getVoices: () => [], speaking: false });
+  return speak;
+}
+
 describe("QuestionAudio", () => {
   beforeEach(() => {
     vi.mocked(shareApi.getAudioItem).mockReset();
@@ -76,20 +95,7 @@ describe("QuestionAudio", () => {
   });
 
   it("reads the on-screen question when there is no reviewed clip", async () => {
-    class FakeUtterance {
-      text: string;
-      lang = "";
-      rate = 1;
-      voice: unknown;
-      onend: (() => void) | null = null;
-      onerror: (() => void) | null = null;
-      constructor(text: string) {
-        this.text = text;
-      }
-    }
-    const speak = vi.fn();
-    vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
-    vi.stubGlobal("speechSynthesis", { speak, cancel: vi.fn(), getVoices: () => [], speaking: false });
+    const speak = stubSpeech();
 
     vi.mocked(shareApi.getAudioItem).mockResolvedValue({
       item_id: "att_start.P.5-7.a0",
@@ -114,5 +120,31 @@ describe("QuestionAudio", () => {
     expect(speak.mock.calls[0][0].text).toBe(
       "Your child needs repeated reminders before beginning a worksheet.",
     );
+  });
+
+  it("speaks English and flags it when Hindi has no source text", async () => {
+    const speak = stubSpeech();
+
+    vi.mocked(shareApi.getAudioItem).mockResolvedValue({
+      item_id: "att_start.P.5-7.a0",
+      has_audio: false,
+      fallback_to_text: true,
+      reason: "Item not present in audio manifest",
+      text: null,
+      audio: null,
+      available_languages: [],
+    });
+
+    render(
+      <QuestionAudio itemId="att_start.P.5-7.a0" lang="hi" text="Your child needs repeated reminders." />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /play question audio in english/i }),
+    );
+    await waitFor(() => expect(speak).toHaveBeenCalled());
+    expect(speak.mock.calls[0][0].text).toBe("Your child needs repeated reminders.");
+    expect(speak.mock.calls[0][0].lang).toBe("en-IN");
+    expect(screen.getByText("EN")).toBeTruthy();
   });
 });
