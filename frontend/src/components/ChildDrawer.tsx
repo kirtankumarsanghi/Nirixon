@@ -140,7 +140,7 @@ export function ChildDrawer({ child, onClose, onScreen, onRefer, onContacted, on
                 <CheckCheck className="size-4" /> Record outcome
               </Btn>
             </div>
-            <HandoffActions childId={child.id} />
+            <HandoffActions child={child} />
             <p className="mt-4 flex items-center gap-2 text-[11px] text-muted">
               <ClipboardCheck className="size-3.5" /> Actions update the shared workspace.
             </p>
