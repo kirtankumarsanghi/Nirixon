@@ -355,7 +355,6 @@ Interactive Swagger documentation is available at `http://localhost:8000/docs` w
 | `PATCH`| `/api/referrals/{id}` | Worker | Update referral status (`sent`, `seen`, `outcome recorded`, `closed`). |
 | `GET` | `/api/referrals/{id}/summary` | Worker | Export minimal 4-field referral summary (JSON, PDF, shareable text). |
 | `POST` | `/api/chw/sync` | Worker | Batch sync offline-queued actions with idempotency keys & conflict handling. |
-| `POST` | `/api/chw/seed-children` | Worker/Sup | Seed demo children (e.g. 200 records in Ward 12) for field training. |
 
 ### Multi-Caregiver Triangulation (Joint Family)
 | Method | Endpoint | Access | Description |

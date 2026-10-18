@@ -16,6 +16,8 @@ dist/
 # Databases
 *.db
 *.sqlite3
+# Generated Find Help reference DB (rebuild: python backend/scripts/find_help/import_reference_data.py)
+*.sqlite
 
 # IDEs
 .vscode/

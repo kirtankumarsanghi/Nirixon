@@ -25,7 +25,8 @@ import { scoresFromResult, irtFromResult } from "../lib/apiAdapters";
 type DesignVal = 0 | 1 | 2;
 type Lang = "en" | "hi";
 type Module = "A" | "B";
-type Phase = "setup" | "quiz" | "result";
+type Phase = "setup" | "intake" | "recall" | "safety" | "quiz" | "result";
+type IntakeSetting = "home" | "school" | "both";
 
 interface BackendQuestion {
   item_id: string;
@@ -118,6 +119,16 @@ export function CheckIn() {
   const [question, setQuestion] = useState<BackendQuestion | null>(null);
   const [answers, setAnswers] = useState<Record<string, { sum: number; n: number }>>({});
   const [busy, setBusy] = useState(false);
+
+  // Module B: free-text intake, recall-help chips and the safety notice.
+  const [intakeText, setIntakeText] = useState("");
+  const [intakeChips, setIntakeChips] = useState<string[]>([]);
+  const [intakeSetting, setIntakeSetting] = useState<IntakeSetting>("both");
+  const [recallOptions, setRecallOptions] = useState<Record<string, string>>({});
+  const [recallMessage, setRecallMessage] = useState("");
+  const [recallPicked, setRecallPicked] = useState<string[]>([]);
+  const [safetyMessage, setSafetyMessage] = useState("");
+  const [helplines, setHelplines] = useState<Record<string, string>>({});
 
   useEffect(() => () => setCheckInTarget(null), [setCheckInTarget]);
 
@@ -214,23 +225,38 @@ export function CheckIn() {
         return;
       }
       if (res.type === "intake_required" && res.session_id) {
-        // Module B needs a short intake before questions. The design has no
-        // intake screen, so send an empty intake and let the backend route on.
-        const ir = await api.submitIntake(res.session_id, { text: "", chips: [], setting: "both" });
-        if (ir.action) {
-          await applyAction(ir.action, ageMonths);
-          return;
-        }
-        if (ir.question) {
-          setQuestion(ir.question as unknown as BackendQuestion);
-          setPhase("quiz");
-          return;
-        }
-        showToast(ir.recall_message || "This check-in needs a short description before questions.");
+        // Module B routes on a short caregiver note, so collect it here rather
+        // than posting an empty one (which the backend rejects with 422).
+        persistSession(res.session_id);
+        setIntakeText("");
+        setIntakeChips([]);
+        setPhase("intake");
+        return;
+      }
+      if (res.type === "recall_help") {
+        setRecallOptions(res.recall_options ?? {});
+        setRecallMessage(res.recall_message ?? "");
+        setRecallPicked([]);
+        setPhase("recall");
         return;
       }
       if (res.type === "safety_notice") {
-        showToast(res.safety_message || "A safety concern was flagged — please seek help.");
+        setSafetyMessage(res.safety_message ?? "");
+        setHelplines(res.helplines ?? {});
+        setPhase("safety");
+        return;
+      }
+      if (res.type === "done") {
+        // The engine finished without an inline result — pull the saved one.
+        const sid = res.session_id ?? sessionId;
+        if (sid) {
+          try {
+            finalize(await api.getResult(sid), sid, ageMonths);
+            return;
+          } catch (e) {
+            showToast(errMsg(e));
+          }
+        }
         setPhase("setup");
         return;
       }
@@ -298,6 +324,94 @@ export function CheckIn() {
     }
   };
 
+  /** Module B: send the caregiver's note (and any chips) to the NLP router. */
+  const submitIntakeForm = async () => {
+    if (busy || !sessionId) return;
+    const text = intakeText.trim();
+    if (!text && intakeChips.length === 0) {
+      showToast("Please describe what you've noticed, or pick an area of concern.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const ir = await api.submitIntake(sessionId, { text, chips: intakeChips, setting: intakeSetting });
+      if (ir.action) {
+        await applyAction(ir.action, age);
+        return;
+      }
+      if (ir.question) {
+        setQuestion(ir.question as unknown as BackendQuestion);
+        setPhase("quiz");
+        return;
+      }
+      if (ir.next_action === "recall_help") {
+        setRecallOptions(
+          ir.recall_options ?? Object.fromEntries((ir.recall_help_options ?? []).map((d) => [d, DOMAINS[d]?.label ?? d]))
+        );
+        setRecallMessage(ir.recall_message ?? "");
+        setRecallPicked([]);
+        setPhase("recall");
+        return;
+      }
+      if (ir.next_action === "safety_notice") {
+        setSafetyMessage(ir.safety_message ?? "");
+        setHelplines(ir.helplines ?? {});
+        setPhase("safety");
+        return;
+      }
+      showToast(ir.recall_message || "Please add a little more detail so we can pick the right questions.");
+    } catch (e) {
+      showToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Module B: resume the questionnaire with the areas the caregiver picked. */
+  const submitRecallForm = async () => {
+    if (busy || !sessionId) return;
+    if (recallPicked.length === 0) {
+      showToast("Pick at least one area to continue.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.submitRecall(sessionId, { domains: recallPicked });
+      setRecallPicked([]);
+      await applyAction(res, age);
+    } catch (e) {
+      showToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Module B: continue past the safety notice into the safety questions. */
+  const continueAfterSafety = async () => {
+    if (busy || !sessionId) return;
+    setBusy(true);
+    try {
+      await applyAction(await api.nextAction(sessionId), age);
+    } catch (e) {
+      showToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Leave the Module B pre-quiz screens and start over. */
+  const cancelToSetup = () => {
+    persistSession(null);
+    setPhase("setup");
+    setQuestion(null);
+    setResult(null);
+    setBackendResult(null);
+    setAnswers({});
+    setIntakeText("");
+    setIntakeChips([]);
+    setRecallPicked([]);
+  };
+
   // Resume an in-flight session on reload.
   useEffect(() => {
     let saved: string | null = null;
@@ -318,6 +432,12 @@ export function CheckIn() {
           setModule((s.module ?? moduleForAge(s.corrected_age_months)) as Module);
           setQuestion(s.next_question as unknown as BackendQuestion);
           setPhase("quiz");
+        } else if ((s.module ?? moduleForAge(s.corrected_age_months)) === "B") {
+          // Module B in flight but no question queued yet — it still needs its intake note.
+          setSessionId(saved);
+          setAge(Math.round(s.corrected_age_months));
+          setModule("B");
+          setPhase("intake");
         }
       } catch {
         try {
@@ -488,7 +608,7 @@ export function CheckIn() {
           </div>
 
           <aside className="relative min-h-[420px] overflow-hidden rounded-[36px] bg-night text-paper">
-            <Photo src={PHOTO.blocksGirl} alt="" className="opacity-55" eager />
+            <Photo src={PHOTO.blocksGirl} alt="" wrapperClassName="absolute inset-0" className="opacity-55" eager />
             <div className="absolute inset-0 bg-gradient-to-t from-night via-night/70 to-night/20" />
             <div className="relative flex h-full min-h-[420px] flex-col justify-end p-8">
               <Eyebrow tone="peach" index="02">Module {module} · {moduleMeta.label}</Eyebrow>
@@ -517,9 +637,13 @@ export function CheckIn() {
   /* ============================== RESULT ============================== */
   if (phase === "result" && result) {
     const base = evaluate(result.scores, result.regression);
-    const tier = result.tier ?? base.tier;
+    // A safety override is not a score: the engine deliberately keeps the domain
+    // verdicts but refers regardless (final_classification can still read
+    // "Typical"), so the headline has to show the override, not the score tier.
+    const override = result.regression || base.safety;
+    const tier = override ? "Refer" : (result.tier ?? base.tier);
     const meta = TIER_META[tier];
-    const safety = result.regression || base.safety;
+    const safety = override;
     const reason = backendResult?.summary || (backendResult?.caveats?.length ? backendResult.caveats.join(" ") : base.reason);
     const lows = [...Object.keys(result.scores)].sort((a, b) => result.scores[a] - result.scores[b]).slice(0, tier === "Typical" ? 1 : 2);
     const activityFor = (k: string) => {
@@ -540,6 +664,7 @@ export function CheckIn() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Chip tone="night">Module {result.module ?? module}</Chip>
                 <Chip tone="night">{result.ageMonths} months · {ageBand(result.ageMonths)}</Chip>
+                {backendResult?.triage_tier && <Chip tone="night">{backendResult.triage_tier}</Chip>}
               </div>
               <div className="mt-8 flex items-center gap-5">
                 <GlowDot hex={meta.hexLight} glow={meta.glow} size={58} />
@@ -609,6 +734,193 @@ export function CheckIn() {
     );
   }
 
+  /* ========================= INTAKE (Module B) ========================= */
+  if (phase === "intake") {
+    return (
+      <Page>
+        <Eyebrow index="01">{assisting ? `Assisting as ${ROLES[role].short}` : "Module B · School age"}</Eyebrow>
+        <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
+          <Display as="h1" className="text-[clamp(48px,7vw,108px)]">
+            What have you
+            <br />
+            <span className="text-sea">noticed?</span>
+          </Display>
+          <p className="max-w-[360px] text-[15px] leading-relaxed text-ink-2">
+            Write it the way you would explain it to a friend. It is read once to choose the right questions — you can still add areas by hand.
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-7 rounded-[36px] border border-line-2 bg-card p-7 sm:p-10">
+            <label className="block">
+              <span className="mb-3 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">In your own words</span>
+              <textarea
+                value={intakeText}
+                onChange={(e) => setIntakeText(e.target.value)}
+                rows={5}
+                maxLength={2000}
+                placeholder="e.g. He loses focus in class, the teacher says he is falling behind in reading, and he avoids homework."
+                className="w-full resize-y rounded-2xl border border-line-2 bg-card-2 px-5 py-4 text-[15px] leading-relaxed focus:border-sea focus:outline-none"
+              />
+            </label>
+
+            <div>
+              <span className="mb-3 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Areas you are already worried about</span>
+              <div className="flex flex-wrap gap-2">
+                {MODULE_B_DOMAINS.map((d) => {
+                  const on = intakeChips.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setIntakeChips((prev) => (on ? prev.filter((x) => x !== d) : [...prev, d]))}
+                      aria-pressed={on}
+                      className={cn(
+                        "rounded-full border px-4 py-2 text-[13px] font-semibold transition-all",
+                        on ? "border-ink bg-ink text-paper" : "border-line-2 bg-card-2 text-ink-2 hover:border-ink/50"
+                      )}
+                    >
+                      {DOMAINS[d]?.plain ?? d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <span className="mb-3 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Where do you see this?</span>
+              <div className="inline-flex rounded-full border border-line-2 bg-card-2 p-1">
+                {(["home", "school", "both"] as IntakeSetting[]).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setIntakeSetting(s)}
+                    aria-pressed={intakeSetting === s}
+                    className={cn("rounded-full px-6 py-3 text-[14px] font-bold capitalize transition-all", intakeSetting === s ? "bg-ink text-paper" : "text-ink-2")}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <CtaPill onClick={submitIntakeForm}>{busy ? "Reading your note…" : "Continue"}</CtaPill>
+              <Btn variant="soft" onClick={cancelToSetup}>Cancel</Btn>
+            </div>
+          </div>
+
+          <aside className="relative min-h-[320px] overflow-hidden rounded-[36px] bg-night p-8 text-paper">
+            <ShieldAlert className="size-6 text-peach" />
+            <p className="mt-5 font-mono text-[10.5px] font-semibold tracking-[0.22em] text-peach uppercase">What happens to this</p>
+            <p className="mt-3 text-[13.5px] leading-relaxed text-paper/75">
+              Your note is read once on the server to pick question areas, then discarded. Only an anonymised fingerprint is kept for the audit trail —
+              the text itself is never stored.
+            </p>
+            <p className="mt-5 text-[12px] leading-relaxed text-paper/55">
+              Prefer not to write anything? Pick the areas above instead; the check-in works either way.
+            </p>
+          </aside>
+        </div>
+      </Page>
+    );
+  }
+
+  /* ========================= RECALL HELP (Module B) ========================= */
+  if (phase === "recall") {
+    const options = Object.entries(recallOptions);
+    return (
+      <Page>
+        <Eyebrow index="01">Module B · School age</Eyebrow>
+        <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,96px)]">
+          Which of these <span className="text-sea">sound familiar?</span>
+        </Display>
+        <p className="mt-5 max-w-[560px] text-[15px] leading-relaxed text-ink-2">
+          {recallMessage || "Your note was a little general, so pick the areas you would like us to look at more closely."}
+        </p>
+
+        <div className="mt-10 max-w-[860px] rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {options.map(([key, label]) => {
+              const on = recallPicked.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setRecallPicked((prev) => (on ? prev.filter((x) => x !== key) : [...prev, key]))}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex items-center gap-3.5 rounded-[22px] border px-5 py-4 text-left text-[14px] font-semibold transition-all",
+                    on ? "border-ink bg-ink text-paper" : "border-line-2 bg-card-2 hover:border-ink/50"
+                  )}
+                >
+                  <span className={cn("grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors", on ? "border-peach bg-peach text-night" : "border-ink/25")}>
+                    {on && <Check className="size-3.5" />}
+                  </span>
+                  <span className="flex-1 capitalize">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <CtaPill onClick={submitRecallForm}>{busy ? "Starting…" : "Continue"}</CtaPill>
+            <Btn variant="soft" onClick={cancelToSetup}>Cancel</Btn>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  /* ========================= SAFETY NOTICE (Module B) ========================= */
+  if (phase === "safety") {
+    return (
+      <Page>
+        <div className="mx-auto max-w-[720px]">
+          <div className="rounded-[36px] border border-brick/40 bg-brick-bg p-8 sm:p-10">
+            <ShieldAlert className="size-8 text-brick" />
+            <Display as="h1" className="mt-6 text-[clamp(38px,5vw,64px)]">
+              Please read this first.
+            </Display>
+            <p className="mt-5 text-[15px] leading-relaxed text-ink-2">
+              {safetyMessage || "Something you shared suggests it is worth talking to someone now."}
+            </p>
+
+            {Object.keys(helplines).length > 0 && (
+              <ul className="mt-7 space-y-3">
+                {Object.entries(helplines).map(([key, text]) => {
+                  const number = text.match(/[0-9][0-9\- ]{3,}/)?.[0]?.trim();
+                  return (
+                    <li key={key} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/70 px-5 py-4">
+                      <span className="text-[14px] font-semibold">{text}</span>
+                      {number && (
+                        <a
+                          href={`tel:${number.replace(/[^0-9+]/g, "")}`}
+                          className="rounded-full bg-brick px-5 py-2 text-[13px] font-bold text-white"
+                        >
+                          Call
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Btn size="lg" variant="rust" onClick={continueAfterSafety} disabled={busy}>
+                {busy ? "Continuing…" : "Continue the check-in"}
+              </Btn>
+              <Btn size="lg" variant="light" onClick={cancelToSetup}>Stop here</Btn>
+            </div>
+            <p className="mt-5 text-[12px] leading-relaxed text-muted">
+              These helplines are free and confidential. If anyone is in immediate danger, call 112.
+            </p>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
   /* =============================== QUIZ =============================== */
   const ui = UI[lang];
   const qText = question?.question_text ?? "";
@@ -646,7 +958,7 @@ export function CheckIn() {
                 <LogoMark size={38} />
                 <div className="leading-tight">
                   <p className="text-[14.5px] font-bold">Nirixon</p>
-                  <p className="text-[12px] text-muted">{targetChild ? targetChild.id.replace("child-seed-", "") : name || "Sample child"} · {age} months · Module {module}</p>
+                  <p className="text-[12px] text-muted">{targetChild ? targetChild.id : name || "Sample child"} · {age} months · Module {module}</p>
                 </div>
                 <button
                   onClick={() => setLang(lang === "en" ? "hi" : "en")}

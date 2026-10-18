@@ -189,7 +189,7 @@ export function Home() {
           </div>
 
           <button onClick={() => go("help")} className="group relative min-h-[260px] overflow-hidden rounded-[32px] text-left text-paper">
-            <Photo src={PHOTO.doctor} alt="" className="transition-transform duration-700 group-hover:scale-105" />
+            <Photo src={PHOTO.doctor} alt="" wrapperClassName="absolute inset-0" className="transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
             <div className="relative flex h-full min-h-[260px] flex-col justify-between p-7">
               <MapPin className="size-6 text-peach" />

@@ -21,6 +21,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // Force the test build even when the shell exports NODE_ENV=production —
+    // React's production bundle has no `act`, which breaks React Testing Library.
+    env: { NODE_ENV: "test" },
     setupFiles: "./src/test/setup.ts",
     css: true,
   },

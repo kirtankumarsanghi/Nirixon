@@ -26,6 +26,10 @@ export function Growth() {
   const n = ordered.length;
   const xs = ordered.map((_, i) => (n === 1 ? PAD.l + PW / 2 : PAD.l + (i * PW) / (n - 1)));
   const slot = n === 1 ? PW : PW / (n - 1);
+  // Thin the x-axis so the age/date ticks don't collide once there are many
+  // check-ins — always keep the first and the latest.
+  const labelStep = Math.max(1, Math.ceil(78 / Math.max(slot, 1)));
+  const showLabel = (i: number) => i % labelStep === 0 || i === n - 1;
 
   const [on, setOn] = useState<Record<string, boolean>>({});
   const [hover, setHover] = useState<number | null>(null);
@@ -33,6 +37,9 @@ export function Growth() {
   const latest = checkIns[0];
   const keys = domainKeys(latest?.scores ?? {});
   const prev = checkIns[1];
+  // Only areas scored in both check-ins can be compared; modules A and B, and
+  // partial check-ins, do not overlap completely.
+  const shared = prev ? keys.filter((k) => typeof prev.scores[k] === "number") : [];
   const dev = developmentalAge(latest);
   const pace = prev ? (dev - developmentalAge(prev)) / (latest.ageMonths - prev.ageMonths || 1) : null;
 
@@ -108,33 +115,54 @@ export function Growth() {
 
               {hover !== null && <line x1={xs[hover]} x2={xs[hover]} y1={PAD.t} y2={H - PAD.b} stroke="var(--chart-ink)" strokeWidth={1.2} />}
 
-              {keys.filter((k) => on[k] !== false).map((k) => (
-                <g key={k}>
-                  <polyline
-                    pathLength={1}
-                    className="nrx-draw"
-                    style={{ ["--len" as string]: 1 }}
-                    points={ordered.map((c, i) => `${xs[i]},${yz(c.scores[k])}`).join(" ")}
-                    fill="none"
-                    stroke={DOMAINS[k]?.color}
-                    strokeWidth={3}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {ordered.map((c, i) => (
-                    <circle key={c.id} cx={xs[i]} cy={yz(c.scores[k])} r={hover === i ? 7 : 5} fill="#fffaf0" stroke={DOMAINS[k]?.color} strokeWidth={3} style={{ transition: "r .2s" }} />
-                  ))}
-                </g>
-              ))}
+              {keys.filter((k) => on[k] !== false).map((k) => {
+                // A check-in only scores the areas it actually asked about, so a
+                // series can have gaps — plot the points that exist and leave the rest out.
+                const pts = ordered
+                  .map((c, i) => ({ i, v: c.scores[k] }))
+                  .filter((p): p is { i: number; v: number } => typeof p.v === "number");
+                if (pts.length === 0) return null;
+                return (
+                  <g key={k}>
+                    <polyline
+                      pathLength={1}
+                      className="nrx-draw"
+                      style={{ ["--len" as string]: 1 }}
+                      points={pts.map((p) => `${xs[p.i]},${yz(p.v)}`).join(" ")}
+                      fill="none"
+                      stroke={DOMAINS[k]?.color}
+                      strokeWidth={3}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {pts.map((p) => (
+                      <circle
+                        key={ordered[p.i].id}
+                        cx={xs[p.i]}
+                        cy={yz(p.v)}
+                        r={hover === p.i ? 7 : 5}
+                        fill="#fffaf0"
+                        stroke={DOMAINS[k]?.color}
+                        strokeWidth={3}
+                        style={{ transition: "r .2s" }}
+                      />
+                    ))}
+                  </g>
+                );
+              })}
 
               {ordered.map((c, i) => (
                 <g key={c.id}>
-                  <text x={xs[i]} y={H - 26} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--chart-ink)">
-                    {c.ageMonths} mo
-                  </text>
-                  <text x={xs[i]} y={H - 10} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono, monospace" fill="var(--chart-axis)">
-                    {fmtDate(c.date)}
-                  </text>
+                  {showLabel(i) && (
+                    <>
+                      <text x={xs[i]} y={H - 26} textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--chart-ink)">
+                        {c.ageMonths} mo
+                      </text>
+                      <text x={xs[i]} y={H - 10} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono, monospace" fill="var(--chart-axis)">
+                        {fmtDate(c.date)}
+                      </text>
+                    </>
+                  )}
                   <rect
                     x={Math.max(0, xs[i] - slot / 2)}
                     y={PAD.t}
@@ -160,18 +188,23 @@ export function Growth() {
                   {evaluate(ordered[hover].scores, ordered[hover].regression).tier}
                 </p>
                 <ul className="mt-3 space-y-1">
-                  {keys.filter((k) => on[k] !== false).map((k) => (
-                    <li key={k} className="flex items-center justify-between text-[11.5px]">
-                      <span className="flex items-center gap-2 text-paper/80">
-                        <span className="size-2 rounded-full" style={{ background: DOMAINS[k]?.color }} />
-                        {DOMAINS[k]?.label ?? k}
-                      </span>
-                      <span className="font-mono font-semibold">
-                        {ordered[hover].scores[k] > 0 ? "+" : ""}
-                        {ordered[hover].scores[k].toFixed(1)}
-                      </span>
-                    </li>
-                  ))}
+                  {domainKeys(ordered[hover].scores)
+                    .filter((k) => on[k] !== false)
+                    .map((k) => {
+                      const v = ordered[hover].scores[k] as number;
+                      return (
+                        <li key={k} className="flex items-center justify-between text-[11.5px]">
+                          <span className="flex items-center gap-2 text-paper/80">
+                            <span className="size-2 rounded-full" style={{ background: DOMAINS[k]?.color }} />
+                            {DOMAINS[k]?.label ?? k}
+                          </span>
+                          <span className="font-mono font-semibold">
+                            {v > 0 ? "+" : ""}
+                            {v.toFixed(1)}
+                          </span>
+                        </li>
+                      );
+                    })}
                 </ul>
               </div>
             )}
@@ -186,9 +219,9 @@ export function Growth() {
             <Eyebrow tone="peach" index="02">
               Since the previous check-in
             </Eyebrow>
-            {prev ? (
+            {prev && shared.length > 0 ? (
               <ul className="mt-6 divide-y divide-white/10">
-                {keys.map((k) => {
+                {shared.map((k) => {
                   const d = latest.scores[k] - prev.scores[k];
                   const a = domainStatus(prev.scores[k]).label;
                   const b = domainStatus(latest.scores[k]).label;
@@ -214,6 +247,10 @@ export function Growth() {
                   );
                 })}
               </ul>
+            ) : prev ? (
+              <p className="mt-6 text-paper/70">
+                The last two check-ins cover different areas, so there is nothing to compare yet.
+              </p>
             ) : (
               <p className="mt-6 text-paper/70">Complete one more check-in to see changes.</p>
             )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownRight, ArrowRight, ArrowUpRight, FlaskConical, Lightbulb, MapPin, Share2, ShieldAlert } from "lucide-react";
 import { Radar } from "../components/Radar";
 import { Photo } from "../components/Photo";
@@ -7,6 +7,10 @@ import { DOMAINS, domainKeys, TIER_META, domainStatus, evaluate, fmtDate, type D
 import { PHOTO } from "../photos";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
+
+/** The rhythm strip lives in a narrow third-width card, so show only the latest
+ *  few check-ins and summarise the rest instead of overflowing silently. */
+const RHYTHM_WINDOW = 4;
 
 export function Home() {
   const { checkIns, go } = useApp();
@@ -17,10 +21,30 @@ export function Home() {
   const [sel, setSel] = useState<Domain>(ev.lowest);
   const [showPrev, setShowPrev] = useState(true);
 
-  const z = latest.scores[sel];
+  // Newest-first checkIns → the most recent window, in chronological order.
+  const rhythmOffset = Math.max(0, checkIns.length - RHYTHM_WINDOW);
+  const rhythm = [...checkIns.slice(0, RHYTHM_WINDOW)].reverse();
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stripRef.current;
+    if (el) el.scrollLeft = el.scrollWidth; // keep the newest in view
+  }, [checkIns.length]);
+
+  // A new check-in can be added while this screen is mounted, so the previously
+  // selected area may not exist in the latest scores — fall back to the weakest area.
+  const active = typeof latest.scores[sel] === "number" ? sel : ev.lowest;
+  const z = latest.scores[active] as number;
   const st = domainStatus(z);
-  const delta = previous ? z - previous.scores[sel] : null;
+  // A check-in only covers the areas it asked about, so the previous one may not
+  // have this area at all — a delta is only meaningful when both do.
+  const prevZ = previous?.scores[active];
+  const delta = typeof z === "number" && typeof prevZ === "number" ? z - prevZ : null;
   const ptier = previous ? evaluate(previous.scores, previous.regression).tier : null;
+  // Only overlay the previous radar when the two check-ins share the axis set.
+  const prevComparable =
+    previous && domainKeys(previous.scores).filter((k) => k in latest.scores).length >= 3
+      ? previous.scores
+      : undefined;
 
   return (
     <Page>
@@ -86,12 +110,12 @@ export function Home() {
           </div>
 
           <div>
-            <Radar scores={latest.scores} prev={showPrev ? previous?.scores : undefined} irt={latest.irt} selected={sel} onSelect={setSel} tone={meta.hexLight} />
+            <Radar scores={latest.scores} prev={showPrev ? prevComparable : undefined} irt={latest.irt} selected={active} onSelect={setSel} tone={meta.hexLight} />
             <div className="mt-2 flex flex-wrap items-center justify-center gap-5 font-mono text-[10.5px] tracking-[0.16em] text-paper/60 uppercase">
               <span className="flex items-center gap-2">
                 <span className="h-0.5 w-6 rounded-full" style={{ background: meta.hexLight }} /> This check-in
               </span>
-              {previous && (
+              {previous && prevComparable && (
                 <button onClick={() => setShowPrev((s) => !s)} className={cn("flex items-center gap-2 transition-opacity", !showPrev && "opacity-40")}>
                   <span className="h-0 w-6 border-t-2 border-dashed border-paper/60" /> Previous · {fmtDate(previous.date)}
                 </button>
@@ -114,7 +138,7 @@ export function Home() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {domainKeys(latest.scores).map((k) => {
             const s = domainStatus(latest.scores[k]);
-            const on = sel === k;
+            const on = active === k;
             return (
               <button
                 key={k}
@@ -136,7 +160,7 @@ export function Home() {
           })}
         </div>
 
-        <div key={sel} className="nrx-rise mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div key={active} className="nrx-rise mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[32px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex flex-wrap items-center gap-3">
               <Chip tone={st.level === 0 ? "moss" : st.level === 1 ? "amber" : "brick"}>{st.label}</Chip>
@@ -148,8 +172,8 @@ export function Home() {
                 </span>
               )}
             </div>
-            <h4 className="mt-5 font-display text-[clamp(40px,5vw,72px)] leading-[0.92] uppercase">{DOMAINS[sel].label}</h4>
-            <p className="mt-4 max-w-[480px] text-[15px] leading-relaxed text-ink-2">{DOMAINS[sel].blurb}</p>
+            <h4 className="mt-5 font-display text-[clamp(40px,5vw,72px)] leading-[0.92] uppercase">{DOMAINS[active].label}</h4>
+            <p className="mt-4 max-w-[480px] text-[15px] leading-relaxed text-ink-2">{DOMAINS[active].blurb}</p>
             {ptier && ptier !== ev.tier && (
               <p className="mt-5 text-[13px] font-semibold text-ink-2">
                 Overall tier moved from <b className={TIER_META[ptier].text}>{ptier}</b> to <b className={meta.text}>{ev.tier}</b> across your last two check-ins.
@@ -159,7 +183,7 @@ export function Home() {
           <div className="relative overflow-hidden rounded-[32px] bg-rust p-7 text-white sm:p-9">
             <Lightbulb className="size-7" />
             <p className="mt-5 font-mono text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/90">Try at home this week</p>
-            <p className="mt-3 font-display text-[clamp(26px,2.8vw,38px)] leading-[1.05] uppercase">{DOMAINS[sel].activity}</p>
+            <p className="mt-3 font-display text-[clamp(26px,2.8vw,38px)] leading-[1.05] uppercase">{DOMAINS[active].activity}</p>
             <p className="mt-5 text-[12px] text-white/90">Five minutes is plenty. Follow your child’s lead.</p>
           </div>
         </div>
@@ -168,28 +192,39 @@ export function Home() {
       {/* ============================ next steps ============================ */}
       <Reveal className="mt-14">
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-[32px] border border-line-2 bg-card p-7">
+          <div className="min-w-0 rounded-[32px] border border-line-2 bg-card p-7">
             <Eyebrow index="04" tone="muted">Check-in rhythm</Eyebrow>
-            <div className="mt-8 flex items-start">
-              {[...checkIns].reverse().map((c, i) => (
-                <div key={c.id} className="flex flex-1 items-start">
-                  <div className="flex shrink-0 flex-col items-center gap-2">
-                    <span className="grid size-10 place-items-center rounded-full bg-ink font-mono text-[11px] font-semibold text-paper">{i + 1}</span>
-                    <span className="font-mono text-[10px] whitespace-nowrap text-muted">{fmtDate(c.date)}</span>
+            <div ref={stripRef} className="nrx-hide-scroll mt-8 -mx-7 overflow-x-auto px-7">
+              <div className="flex min-w-full items-start">
+                {rhythmOffset > 0 && (
+                  <div className="flex shrink-0 items-start">
+                    <div className="flex shrink-0 flex-col items-center gap-2">
+                      <span className="grid size-10 place-items-center rounded-full border border-dashed border-line-2 font-mono text-[10px] font-semibold text-muted">+{rhythmOffset}</span>
+                      <span className="font-mono text-[10px] whitespace-nowrap text-muted">earlier</span>
+                    </div>
+                    <span className="mx-1.5 mt-5 h-px w-6 bg-ink/50" />
                   </div>
-                  <span className="mx-1.5 mt-5 h-px min-w-2 flex-1 bg-ink/50" />
+                )}
+                {rhythm.map((c, i) => (
+                  <div key={c.id} className="flex min-w-0 flex-1 items-start">
+                    <div className="flex shrink-0 flex-col items-center gap-2">
+                      <span className="grid size-10 place-items-center rounded-full bg-ink font-mono text-[11px] font-semibold text-paper">{rhythmOffset + i + 1}</span>
+                      <span className="font-mono text-[10px] whitespace-nowrap text-muted">{fmtDate(c.date)}</span>
+                    </div>
+                    <span className="mx-1.5 mt-5 h-px min-w-2 flex-1 bg-ink/50" />
+                  </div>
+                ))}
+                <div className="flex shrink-0 flex-col items-center gap-2">
+                  <span className="grid size-10 place-items-center rounded-full border-2 border-dashed border-rust font-mono text-[11px] text-rust">+</span>
+                  <span className="font-mono text-[10px] text-rust">Next</span>
                 </div>
-              ))}
-              <div className="flex shrink-0 flex-col items-center gap-2">
-                <span className="grid size-10 place-items-center rounded-full border-2 border-dashed border-rust font-mono text-[11px] text-rust">+</span>
-                <span className="font-mono text-[10px] text-rust">Next</span>
               </div>
             </div>
             <p className="mt-6 text-[13px] leading-relaxed text-ink-2">A check-in every ~3 months shows the trend, not just a snapshot.</p>
           </div>
 
           <button onClick={() => go("help")} className="group relative min-h-[260px] overflow-hidden rounded-[32px] text-left text-paper">
-            <Photo src={PHOTO.doctor} alt="" className="transition-transform duration-700 group-hover:scale-105" />
+            <Photo src={PHOTO.doctor} alt="" wrapperClassName="absolute inset-0" className="transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-night via-night/55 to-night/10" />
             <div className="relative flex h-full min-h-[260px] flex-col justify-between p-7">
               <MapPin className="size-6 text-peach" />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, MapPinned, RotateCcw, ScanLine, Search, Send, UsersRound } from "lucide-react";
+import { ChevronDown, ChevronRight, MapPinned, ScanLine, Search, Send, UsersRound } from "lucide-react";
 import { ChildDrawer } from "../components/ChildDrawer";
 import { Btn, Chip, CountUp, Display, Eyebrow, Page, Reveal } from "../components/ui";
 import { AGE_BANDS, SECTORS, STATUS_META, ageBand, evaluate, type Child, type ChildStatus, type Sector } from "../lib/model";
@@ -17,7 +17,7 @@ function statusFromScores(c: Child): ChildStatus {
 }
 
 export function Caseload() {
-  const { role, children, referChild, contactChild, outcomeChild, resetChildren, setCheckInTarget, go, showToast } = useApp();
+  const { role, children, referChild, contactChild, outcomeChild, setCheckInTarget, go, showToast } = useApp();
   const user = ROLES[role].user;
   const isSup = role === "supervisor";
 
@@ -67,7 +67,7 @@ export function Caseload() {
   };
   const refer = (c: Child) => {
     void referChild(c.id, { status: "refer", handoff: "queued", visits: c.visits + 1, lastVisitDays: 0 });
-    showToast(`${c.id.replace("child-seed-", "")} referred · handoff queued`);
+    showToast(`${c.id} referred · handoff queued`);
   };
   const contacted = (c: Child) => {
     void contactChild(c.id, {
@@ -75,7 +75,7 @@ export function Caseload() {
       lastVisitDays: 0,
       status: c.status === "overdue" ? statusFromScores(c) : c.status,
     });
-    showToast(`${c.id.replace("child-seed-", "")} marked as contacted`);
+    showToast(`${c.id} marked as contacted`);
   };
   const outcome = (c: Child) => {
     void outcomeChild(c.id, {
@@ -84,7 +84,7 @@ export function Caseload() {
       handoff: c.handoff === "queued" ? "done" : c.handoff,
       status: c.status === "overdue" ? statusFromScores(c) : c.status,
     });
-    showToast(`Outcome recorded for ${c.id.replace("child-seed-", "")}`);
+    showToast(`Outcome recorded for ${c.id}`);
   };
 
   const teams = SECTORS.map((s) => {
@@ -119,15 +119,6 @@ export function Caseload() {
               <span className="block text-[12px] text-muted">{user.title}</span>
             </span>
           </div>
-          <Btn
-            variant="light"
-            onClick={() => {
-              resetChildren();
-              showToast("Sample caseload reset to 200 records");
-            }}
-          >
-            <RotateCcw className="size-4" /> Reset sample data
-          </Btn>
         </div>
       </div>
 
@@ -324,7 +315,7 @@ export function Caseload() {
                 <>
                   <span className="flex items-center gap-3">
                     <span className="size-3 rounded-[3px]" style={{ background: STATUS_META[hovered.status].hex }} />
-                    <span className="font-mono font-semibold">{hovered.id.replace("child-seed-", "")}</span>
+                    <span className="font-mono font-semibold">{hovered.id}</span>
                     <span className="text-paper/70">{STATUS_META[hovered.status].label}</span>
                   </span>
                   <span className="hidden font-mono text-[11px] text-paper/55 sm:block">
@@ -354,7 +345,7 @@ export function Caseload() {
                     <li key={c.id} className="flex items-center gap-3 py-3.5">
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] font-semibold text-paper">{i + 1}</span>
                       <button onClick={() => setSel(c.id)} className="min-w-0 flex-1 text-left">
-                        <span className="block truncate font-mono text-[12.5px] font-semibold">{c.id.replace("child-seed-", "")}</span>
+                        <span className="block truncate font-mono text-[12.5px] font-semibold">{c.id}</span>
                         <span className={cn("block text-[11.5px] font-semibold", m.text)}>
                           {c.status === "overdue" ? `Visit ${c.lastVisitDays}d overdue` : c.status === "refer" ? "Referral not yet sent" : "First screening needed"}
                         </span>
@@ -386,7 +377,7 @@ export function Caseload() {
                   {queued.slice(0, 5).map((c) => (
                     <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-card p-3.5">
                       <span className="size-2.5 shrink-0 rounded-full bg-brick" />
-                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-semibold">{c.id.replace("child-seed-", "")}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-semibold">{c.id}</span>
                       <Btn size="xs" variant="light" onClick={() => outcome(c)}>Confirm</Btn>
                     </li>
                   ))}

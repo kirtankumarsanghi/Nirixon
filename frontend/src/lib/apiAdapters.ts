@@ -130,11 +130,18 @@ export function sessionToCheckIn(s: SessionSummary): CheckIn {
   };
 }
 
+/** Completed sessions → the design's CheckIn shape. Sessions that were marked
+ *  completed without answering anything carry no scored areas, so they are
+ *  dropped — otherwise they show up as blank check-ins and make every
+ *  "since the previous check-in" comparison meaningless. */
+export function sessionsToCheckIns(sessions: SessionSummary[]): CheckIn[] {
+  return sessions.map(sessionToCheckIn).filter((ci) => Object.keys(ci.scores).length > 0);
+}
+
 const SECTORS = ["A", "B", "C", "D"] as const;
 
-/** Prefer a real "Sector X" marker in the ward label (the seeded data uses
- *  "Ward 12 - Sector B"); otherwise fold the free-text label into one of the
- *  design's four displayed sectors. */
+/** Prefer a real "Sector X" marker in the ward label (e.g. "Ward 12 - Sector B");
+ *  otherwise fold the free-text label into one of the design's four displayed sectors. */
 function wardToSector(ward: string): (typeof SECTORS)[number] {
   const m = ward.match(/sector\s*([A-D])/i);
   if (m) return m[1].toUpperCase() as (typeof SECTORS)[number];

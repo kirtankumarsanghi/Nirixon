@@ -131,19 +131,6 @@ class ChildRecordResponse(BaseModel):
         return data
 
 
-class SeedChildrenRequest(BaseModel):
-    count: int = Field(default=200, ge=1, le=1000, description="Number of children to seed")
-    area: str | None = Field(default=None, description="Village or ward. Defaults to worker's area")
-    clean_first: bool = Field(default=False, description="Clear existing children in the area first")
-
-
-class SeedChildrenResponse(BaseModel):
-    message: str
-    seeded_count: int
-    area: str
-    tier_counts: dict[str, int]
-
-
 class ChildContactResponse(BaseModel):
     message: str
     child_id: str
