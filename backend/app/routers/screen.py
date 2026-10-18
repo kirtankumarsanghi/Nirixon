@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -37,7 +37,8 @@ from app.core.triage_guard import (
     evaluate_live_tiered_triage,
     evaluate_response_guards,
 )
-from app.db.models import Answer, AuditLog, RiskResult, User
+from app.core.worker_service import get_suggested_workers
+from app.db.models import Answer, AuditLog, RiskResult, User, WorkerContactLog
 from app.db.models import ScreeningSession as DbSession
 from app.db.session import get_db
 from app.db.session_repo import SessionRepository, get_session_repo
@@ -51,6 +52,7 @@ from app.ml.inference_service import (
 )
 from app.schemas.screen import (
     AnswerRequest,
+    DomainTrackPayload,
     IntakeRequest,
     IntakeResponse,
     QuestionPayload,
@@ -58,6 +60,7 @@ from app.schemas.screen import (
     ResultPayload,
     ScreenActionResponse,
     SessionStateResponse,
+    SessionSummary,
     ShapFeature,
     StartScreenRequest,
     TeacherAnswerRequest,
@@ -65,6 +68,13 @@ from app.schemas.screen import (
     TeacherInviteResponse,
     TeacherItemPayload,
     TeacherItemsResponse,
+    WorkerContactRequest,
+    WorkerContactResponse,
+    WorkerSuggestion,
+)
+from app.schemas.touch import (
+    TouchTelemetryResponse,
+    TouchTelemetrySubmission,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,6 +141,41 @@ def _question_payload(q: NextQuestion) -> QuestionPayload:
     )
 
 
+def _module_a_domain_scores(real_answers: dict[str, Any]) -> dict[str, float]:
+    """Normalized per-domain mean in [0,1] (answer / 2) from real answers.
+
+    Mirrors the completion-path computation so GET /result and GET /{id} return
+    the same per-domain scores used at triage time. Module A only.
+    """
+    totals: dict[str, float] = {}
+    counts: dict[str, int] = {}
+    for item_id, ans in real_answers.items():
+        meta = ITEM_METADATA.get(item_id)
+        if not meta:
+            continue
+        dom = meta["domain"]
+        totals[dom] = totals.get(dom, 0.0) + float(ans)
+        counts[dom] = counts.get(dom, 0) + 1
+    return {d: totals[d] / (2.0 * counts[d]) for d in totals if counts.get(d, 0) > 0}
+
+
+def _domain_tracks(raw: dict[str, Any] | None) -> dict[str, DomainTrackPayload]:
+    """Rebuild Module B per-domain tracks from the persisted risk-result JSON.
+
+    The completion path stores ``DomainTrackPayload`` dumps (state, IRT theta,
+    rule-out flags). Read paths must rebuild them, otherwise a finished Module B
+    check-in reports no areas even though the engine scored them.
+    """
+    fields = set(DomainTrackPayload.model_fields)
+    out: dict[str, DomainTrackPayload] = {}
+    for key, value in (raw or {}).items():
+        if isinstance(value, dict):
+            out[key] = DomainTrackPayload(
+                **{k: v for k, v in value.items() if k in fields}
+            )
+    return out
+
+
 def _result_payload_from_prediction(
     pred,
     *,
@@ -140,12 +185,18 @@ def _result_payload_from_prediction(
     real_answer_count: int | None = None,
     imputed_count: int | None = None,
     domain_classifications: dict[str, str] | None = None,
+    domain_scores: dict[str, float] | None = None,
     module: str = "A",
     triage_tier: str | None = None,
     reflex_branch_recommended: bool = False,
     target_reflex_domains: list[str] | None = None,
     guard_flags: dict[str, bool] | None = None,
     guard_advisories: list[str] | None = None,
+    latency_ms: float | None = None,
+    observed_answers: dict[str, int] | None = None,
+    answer_sources: dict[str, str] | None = None,
+    touch_telemetry: list[dict[str, Any]] | None = None,
+    touch_telemetry_notice: str = "Exploratory, not used in the result.",
 ) -> ResultPayload:
     return ResultPayload(
         final_classification=pred.final_classification,
@@ -162,12 +213,18 @@ def _result_payload_from_prediction(
         real_answer_count=real_answer_count,
         imputed_count=imputed_count,
         domain_classifications=domain_classifications or {},
+        domain_scores=domain_scores or {},
         module=module,  # type: ignore[arg-type]
         triage_tier=triage_tier,
         reflex_branch_recommended=reflex_branch_recommended,
         target_reflex_domains=target_reflex_domains or [],
         guard_flags=guard_flags or {},
         guard_advisories=guard_advisories or [],
+        latency_ms=latency_ms,
+        observed_answers=observed_answers or {},
+        answer_sources=answer_sources or {},
+        touch_telemetry=touch_telemetry or [],
+        touch_telemetry_notice=touch_telemetry_notice,
     )
 
 
@@ -227,6 +284,9 @@ async def _run_completion_b(
                 caveats=payload.caveats,
                 stopping_reason=payload.stopping_reason or "module_b_engine",
                 domain_classifications=payload.domain_classifications,
+                domain_details={
+                    k: v.model_dump() for k, v in (payload.domain_details or {}).items()
+                },
             )
             db.add(risk)
             db.add(
@@ -243,6 +303,26 @@ async def _run_completion_b(
                 )
             )
             await db.flush()
+
+            # Community & healthcare worker suggestions based on location and triage
+            suggested = await get_suggested_workers(
+                db,
+                city=db_row.location_city,
+                state=db_row.location_state,
+                pincode=db_row.location_pincode,
+                triage_tier=payload.triage_tier,
+                final_classification=payload.final_classification,
+                flagged_domains=payload.flagged_domains,
+            )
+            payload.suggested_workers = [WorkerSuggestion(**w) for w in suggested]
+            payload.child_name = db_row.child_name
+            payload.parent_name = db_row.parent_name
+            payload.parent_phone = db_row.parent_phone
+            payload.relationship_to_child = db_row.relationship_to_child
+            payload.location_pincode = db_row.location_pincode
+            payload.location_city = db_row.location_city
+            payload.location_state = db_row.location_state
+            payload.location_address = db_row.location_address
             return payload
 
     from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
@@ -315,6 +395,30 @@ async def _run_completion_b(
     )
     await db.flush()
 
+    flagged_b = [
+        dom
+        for dom, cls_val in domain_classifications.items()
+        if cls_val in ("Monitor", "Refer")
+    ]
+    triage_tier_b = (
+        "Tier 3: Direct Referral"
+        if final_classification == "Refer"
+        else (
+            "Tier 2: In-App Reflex Monitor"
+            if final_classification == "Monitor"
+            else "Tier 1: Routine Pass"
+        )
+    )
+    suggested_b = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier_b,
+        final_classification=final_classification,
+        flagged_domains=flagged_b,
+    )
+
     return ResultPayload(
         final_classification=final_classification,
         ml_classification=final_classification,
@@ -331,6 +435,16 @@ async def _run_completion_b(
         imputed_count=0,
         domain_classifications=domain_classifications,
         module=core.module,
+        triage_tier=triage_tier_b,
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+        suggested_workers=[WorkerSuggestion(**w) for w in suggested_b],
     )
 
 
@@ -484,7 +598,7 @@ async def _run_completion(
         )
     await db.flush()
 
-    return _result_payload_from_prediction(
+    res = _result_payload_from_prediction(
         pred,
         model_name=inference.production_model_name,
         stopping_reason=final.stopping_reason,
@@ -492,13 +606,54 @@ async def _run_completion(
         real_answer_count=len(final.real_answers),
         imputed_count=len(final.imputed_answers),
         domain_classifications=domain_cls,
+        domain_scores=domain_scores if core.module == "A" else {},
         module=core.module,
         triage_tier=triage_tier,
         reflex_branch_recommended=reflex_rec,
         target_reflex_domains=target_reflex_domains,
         guard_flags=guard_flags,
         guard_advisories=guard_advisories,
+        observed_answers=core.observed_answers,
+        answer_sources=core.answer_sources,
+        touch_telemetry=core.touch_telemetry,
     )
+    flagged_a = [dom for dom, score in domain_scores.items() if score > 0.3]
+    suggested_a = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=pred.final_classification,
+        flagged_domains=flagged_a,
+    )
+    res.suggested_workers = [WorkerSuggestion(**w) for w in suggested_a]
+    res.child_name = db_row.child_name
+    res.parent_name = db_row.parent_name
+    res.parent_phone = db_row.parent_phone
+    res.relationship_to_child = db_row.relationship_to_child
+    res.location_pincode = db_row.location_pincode
+    res.location_city = db_row.location_city
+    res.location_state = db_row.location_state
+    res.location_address = db_row.location_address
+    return res
+
+
+@router.get("/touch-config")
+async def get_touch_config():
+    """Return provisional normative reference ranges for touch micro-tasks."""
+    from app.core.touch_config import PROVISIONAL_TOUCH_CONFIG
+
+    return PROVISIONAL_TOUCH_CONFIG
+
+
+@router.get("/live-tasks/{bracket}")
+async def get_live_tasks_for_bracket_endpoint(bracket: str):
+    """Retrieve live observational task definitions for an age bracket."""
+    from app.core.live_elicitation import get_tasks_for_bracket
+
+    tasks = get_tasks_for_bracket(bracket)
+    return [t.to_dict() for t in tasks]
 
 
 @router.post("/start", response_model=ScreenActionResponse)
@@ -540,6 +695,14 @@ async def start_screen(
         age_bracket=age_bracket,
         question_cap=body.question_cap,
         module=module,  # type: ignore[arg-type]
+        child_name=body.child_name,
+        parent_name=body.parent_name,
+        parent_phone=body.parent_phone,
+        relationship_to_child=body.relationship_to_child or "Parent",
+        location_pincode=body.location_pincode,
+        location_city=body.location_city,
+        location_state=body.location_state,
+        location_address=body.location_address,
     )
 
     db_row = DbSession(
@@ -551,6 +714,14 @@ async def start_screen(
         age_bracket=age_bracket,
         question_cap=body.question_cap,
         module=module,
+        child_name=body.child_name,
+        parent_name=body.parent_name,
+        parent_phone=body.parent_phone,
+        relationship_to_child=body.relationship_to_child or "Parent",
+        location_pincode=body.location_pincode,
+        location_city=body.location_city,
+        location_state=body.location_state,
+        location_address=body.location_address,
         state_json=core.to_dict(),
     )
     db.add(db_row)
@@ -559,7 +730,10 @@ async def start_screen(
             actor_id=user.id,
             action="screen.start",
             target_id=session_id,
-            detail=f"consent_given=true module={module}",
+            detail=(
+                f"consent_given=true module={module} "
+                f"city={body.location_city} pin={body.location_pincode}"
+            ),
         )
     )
     await db.flush()
@@ -692,12 +866,13 @@ async def submit_answer(
             if isinstance(val, int)
             else (1 if val == "Yes" else (0 if val == "No" else 2))
         )
-        core.answers[body.item_id] = resp_num
+        core.record_answer(body.item_id, resp_num, source=body.source)
         db.add(
             Answer(
                 session_id=session_id,
                 item_id=body.item_id,
                 response_value=resp_num,
+                source=body.source,
             )
         )
 
@@ -751,7 +926,7 @@ async def submit_answer(
                 raise HTTPException(
                     status_code=422, detail="Milestone answer must be 0, 1, or 2"
                 )
-            core.answers[body.item_id] = body.answer
+            core.record_answer(body.item_id, body.answer, source=body.source)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -760,6 +935,7 @@ async def submit_answer(
             session_id=session_id,
             item_id=body.item_id,
             response_value=body.answer,
+            source=body.source,
         )
     )
     db_row.state_json = core.to_dict()
@@ -807,6 +983,29 @@ async def get_result(
         raise HTTPException(status_code=409, detail="Session not yet complete")
 
     rr = db_row.risk_result
+    flagged = [
+        k
+        for k, v in (rr.domain_classifications or {}).items()
+        if v in ("Monitor", "Refer")
+    ]
+    triage_tier = (
+        "Tier 3: Direct Referral"
+        if rr.final_classification == "Refer"
+        else (
+            "Tier 2: In-App Reflex Monitor"
+            if rr.final_classification == "Monitor"
+            else "Tier 1: Routine Pass"
+        )
+    )
+    workers = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=rr.final_classification,
+        flagged_domains=flagged,
+    )
     return ResultPayload(
         final_classification=rr.final_classification,
         ml_classification=rr.ml_classification,
@@ -826,7 +1025,84 @@ async def get_result(
         shap_values=rr.shap_values or {},
         stopping_reason=rr.stopping_reason,
         caveats=list(rr.caveats or []),
+        domain_classifications=getattr(rr, "domain_classifications", None) or {},
+        domain_details=_domain_tracks(getattr(rr, "domain_details", None)),
+        flagged_domains=flagged,
+        domain_scores=(
+            _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
+            if db_row.module == "A"
+            else {}
+        ),
+        module=db_row.module,  # type: ignore[arg-type]
+        triage_tier=triage_tier,
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+        suggested_workers=[WorkerSuggestion(**w) for w in workers],
+        observed_answers=(db_row.state_json or {}).get("observed_answers", {}),
+        answer_sources=(db_row.state_json or {}).get("answer_sources", {}),
+        touch_telemetry=(db_row.state_json or {}).get("touch_telemetry", []),
+        touch_telemetry_notice="Exploratory, not used in the result.",
     )
+
+
+@router.get("/sessions", response_model=list[SessionSummary])
+async def list_sessions(
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 50,
+):
+    """List the caller's own completed screening sessions, newest first.
+
+    Powers the parent history (Home / Growth / Share). Scoped to the caller so
+    other parents' sessions are never returned. Returns the authoritative
+    classification plus the real per-domain scores for Module A.
+    """
+    stmt = (
+        select(DbSession)
+        .options(selectinload(DbSession.risk_result))
+        .where(
+            DbSession.parent_user_id == user.id,
+            DbSession.status == "completed",
+        )
+        .order_by(DbSession.completed_at.desc())
+        .limit(max(1, min(limit, 200)))
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+
+    summaries: list[SessionSummary] = []
+    for row in rows:
+        rr = row.risk_result
+        answers = row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+        scores = _module_a_domain_scores(answers) if row.module == "A" else {}
+        summaries.append(
+            SessionSummary(
+                id=row.id,
+                status=row.status,
+                module=row.module,
+                corrected_age_months=row.corrected_age_months,
+                age_bracket=row.age_bracket or "Unknown",
+                completed_at=row.completed_at.isoformat() if row.completed_at else None,
+                started_at=row.started_at.isoformat() if row.started_at else None,
+                child_name=row.child_name,
+                final_classification=rr.final_classification if rr else None,
+                probabilities=dict(rr.probabilities or {}) if rr else {},
+                safety_override_triggered=bool(rr.safety_override_triggered) if rr else False,
+                domain_classifications=(
+                    dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
+                ),
+                domain_scores=scores,
+                domain_details=(
+                    dict(getattr(rr, "domain_details", {}) or {}) if rr else {}
+                ),
+            )
+        )
+    return summaries
 
 
 @router.get("/{session_id}", response_model=SessionStateResponse)
@@ -857,10 +1133,29 @@ async def get_session(
             stopping_reason=rr.stopping_reason,
             caveats=list(rr.caveats or []),
             domain_classifications=getattr(rr, "domain_classifications", None) or {},
+            domain_details=_domain_tracks(getattr(rr, "domain_details", None)),
+            flagged_domains=[
+                k
+                for k, v in (rr.domain_classifications or {}).items()
+                if v in ("Monitor", "Refer")
+            ],
+            domain_scores=(
+                _module_a_domain_scores((db_row.state_json or {}).get("answers", {}))
+                if db_row.module == "A"
+                else {}
+            ),
             consistency_score=getattr(rr, "consistency_score", None),
             consistency_flags=dict(telemetry.get("consistency_flags") or {}),
             module=core.module if core else "A",  # type: ignore[arg-type]
             real_answer_count=core.real_answer_count if core else None,
+            child_name=db_row.child_name,
+            parent_name=db_row.parent_name,
+            parent_phone=db_row.parent_phone,
+            relationship_to_child=db_row.relationship_to_child,
+            location_pincode=db_row.location_pincode,
+            location_city=db_row.location_city,
+            location_state=db_row.location_state,
+            location_address=db_row.location_address,
         )
 
     next_q = None
@@ -885,6 +1180,100 @@ async def get_session(
         next_question=next_q,
         module=core.module,  # type: ignore[arg-type]
         detected_domains=list(core.detected_domains),
+        child_name=db_row.child_name,
+        parent_name=db_row.parent_name,
+        parent_phone=db_row.parent_phone,
+        relationship_to_child=db_row.relationship_to_child,
+        location_pincode=db_row.location_pincode,
+        location_city=db_row.location_city,
+        location_state=db_row.location_state,
+        location_address=db_row.location_address,
+    )
+
+
+@router.get("/{session_id}/workers", response_model=list[WorkerSuggestion])
+async def list_suggested_workers(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    db_row = await _load_owned_session(db, session_id, user.id, with_result=True)
+    final_cls = "Typical"
+    flagged = []
+    triage_tier = "Tier 1: Routine Pass"
+    if db_row.risk_result is not None:
+        final_cls = db_row.risk_result.final_classification
+        flagged = [
+            k
+            for k, v in (db_row.risk_result.domain_classifications or {}).items()
+            if v in ("Monitor", "Refer")
+        ]
+        triage_tier = (
+            "Tier 3: Direct Referral"
+            if final_cls == "Refer"
+            else (
+                "Tier 2: In-App Reflex Monitor"
+                if final_cls == "Monitor"
+                else "Tier 1: Routine Pass"
+            )
+        )
+
+    workers = await get_suggested_workers(
+        db,
+        city=db_row.location_city,
+        state=db_row.location_state,
+        pincode=db_row.location_pincode,
+        triage_tier=triage_tier,
+        final_classification=final_cls,
+        flagged_domains=flagged,
+    )
+    return [WorkerSuggestion(**w) for w in workers]
+
+
+@router.post("/{session_id}/contact_worker", response_model=WorkerContactResponse)
+async def contact_worker(
+    session_id: str,
+    body: WorkerContactRequest,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    db_row = await _load_owned_session(db, session_id, user.id)
+    from app.db.models import CommunityWorker
+
+    stmt = select(CommunityWorker).where(CommunityWorker.id == body.worker_id)
+    res = await db.execute(stmt)
+    worker = res.scalar_one_or_none()
+
+    worker_name = worker.name if worker else "Community Health Worker"
+    worker_phone = worker.phone if worker else "104"
+    worker_role = worker.role if worker else "Healthcare Worker"
+
+    log_entry = WorkerContactLog(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        worker_id=body.worker_id,
+        worker_name=worker_name,
+        worker_role=worker_role,
+        parent_phone=db_row.parent_phone,
+        contact_channel=body.contact_method,
+        notes=body.notes,
+    )
+    db.add(log_entry)
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            action="worker.contact_initiated",
+            target_id=session_id,
+            detail=f"worker_id={body.worker_id} method={body.contact_method}",
+        )
+    )
+    await db.commit()
+
+    return WorkerContactResponse(
+        status="success",
+        worker_name=worker_name,
+        contact_phone=worker_phone,
+        message=f"Contact request logged for {worker_name}. You may reach out via {body.contact_method}.",
     )
 
 
@@ -1681,4 +2070,145 @@ async def submit_teacher_assessment(
         concordance_classification=concordance,
         caveats=caveats,
         summary=summary,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Module A — Live Elicitation & Touch Micro-Tasks (Session-bound)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{session_id}/live-tasks")
+async def get_session_live_tasks(
+    session_id: str,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Retrieve live observational tasks applicable to the current screening session."""
+    db_row = await _load_owned_session(db, session_id, user.id)
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    from app.core.live_elicitation import get_tasks_for_bracket
+
+    all_tasks = get_tasks_for_bracket(core.age_bracket)
+    tasks_with_status = []
+    for t in all_tasks:
+        td = t.to_dict()
+        td["already_answered"] = core.item_already_answered(t.milestone_item_id)
+        td["current_source"] = core.answer_sources.get(t.milestone_item_id)
+        td["current_value"] = core.answers.get(t.milestone_item_id)
+        tasks_with_status.append(td)
+
+    return {
+        "session_id": session_id,
+        "age_bracket": core.age_bracket,
+        "corrected_age_months": core.corrected_age_months,
+        "tasks": tasks_with_status,
+    }
+
+
+@router.post("/{session_id}/touch-telemetry", response_model=TouchTelemetryResponse)
+async def submit_touch_telemetry(
+    session_id: str,
+    body: TouchTelemetrySubmission,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+):
+    """Ingest exploratory touch micro-task telemetry (24+ months).
+
+    EXPLORATORY GUARANTEE:
+    - Scalar metrics only (reaction time, accuracy %, jitter px). No images/video.
+    - Stored for clinician review with reference ranges marked provisional.
+    - NEVER fed into the screening model or safety floor rule.
+    """
+    db_row = await _load_owned_session(db, session_id, user.id)
+    core = repo.get(session_id)
+    if core is None:
+        core = CoreSession.from_dict(db_row.state_json)
+
+    if core.corrected_age_months < 24.0:
+        raise HTTPException(
+            status_code=400,
+            detail="Touch micro-tasks are exploratory and available only for children 24 months and older.",
+        )
+
+    from app.core.touch_config import (
+        PROVISIONAL_TOUCH_CONFIG,
+        compare_touch_metric_to_reference,
+    )
+
+    comparisons = []
+    for task in body.tasks:
+        task_dict = task.model_dump()
+        core.touch_telemetry.append(task_dict)
+        rt_comp = compare_touch_metric_to_reference(
+            task.task_type,
+            "reaction_time_ms",
+            task.reaction_time_ms,
+            core.corrected_age_months,
+        )
+        comparisons.append(
+            {
+                "task_type": task.task_type,
+                "metric": "reaction_time_ms",
+                "value": task.reaction_time_ms,
+                "comparison": rt_comp,
+            }
+        )
+        if task.path_accuracy_pct is not None:
+            acc_comp = compare_touch_metric_to_reference(
+                task.task_type,
+                "accuracy_pct",
+                task.path_accuracy_pct,
+                core.corrected_age_months,
+            )
+            comparisons.append(
+                {
+                    "task_type": task.task_type,
+                    "metric": "accuracy_pct",
+                    "value": task.path_accuracy_pct,
+                    "comparison": acc_comp,
+                }
+            )
+        if task.jitter_px is not None:
+            jit_comp = compare_touch_metric_to_reference(
+                task.task_type,
+                "jitter_px",
+                task.jitter_px,
+                core.corrected_age_months,
+            )
+            comparisons.append(
+                {
+                    "task_type": task.task_type,
+                    "metric": "jitter_px",
+                    "value": task.jitter_px,
+                    "comparison": jit_comp,
+                }
+            )
+
+    db_row.state_json = core.to_dict()
+    db.add(
+        AuditLog(
+            actor_id=user.id,
+            action="screen.touch_telemetry",
+            target_id=db_row.id,
+            detail=f"metrics_count={len(body.tasks)} exploratory=true",
+        )
+    )
+    await db.flush()
+    repo.save(session_id, core)
+
+    return TouchTelemetryResponse(
+        status="received",
+        message=f"Recorded {len(body.tasks)} touch micro-task telemetry metrics.",
+        recorded_metrics_count=len(body.tasks),
+        exploratory_notice="Exploratory, not used in the result.",
+        comparisons=comparisons,
+        provisional_config_version=str(
+            PROVISIONAL_TOUCH_CONFIG.get("version", "provisional")
+        ),
     )

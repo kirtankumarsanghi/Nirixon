@@ -30,6 +30,15 @@ class StartScreenRequest(BaseModel):
     consent_given: bool = Field(
         ..., description="Parent informed-consent acknowledgment"
     )
+    # Caregiver, Child & Location Profile
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = "Parent"
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
 
 
 class AnswerRequest(BaseModel):
@@ -37,6 +46,27 @@ class AnswerRequest(BaseModel):
     answer: Any
     track: str | None = None
     engine_session: str | None = None
+    source: Literal["recall", "observed"] = "recall"
+
+
+class SessionSummary(BaseModel):
+    """One completed screening session for the caller's history (Home/Growth/Share)."""
+
+    id: str
+    status: str
+    module: Literal["A", "B"] = "A"
+    corrected_age_months: float | None = None
+    age_bracket: str = "Unknown"
+    completed_at: str | None = None
+    started_at: str | None = None
+    child_name: str | None = None
+    final_classification: str | None = None
+    probabilities: dict[str, float] = Field(default_factory=dict)
+    safety_override_triggered: bool = False
+    domain_classifications: dict[str, str] = Field(default_factory=dict)
+    domain_scores: dict[str, float] = Field(default_factory=dict)
+    # Module B: per-domain details (state, score, irt_theta) keyed by domain.
+    domain_details: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class ActivityPayload(BaseModel):
@@ -75,6 +105,39 @@ class ShapFeature(BaseModel):
     shap_value: float
 
 
+class WorkerSuggestion(BaseModel):
+    id: str
+    name: str
+    role: str
+    facility_name: str | None = None
+    phone: str
+    whatsapp: str | None = None
+    email: str | None = None
+    city: str | None = None
+    district: str | None = None
+    state: str | None = None
+    pincode: str | None = None
+    distance_hint: str | None = None
+    recommendation_reason: str | None = None
+    operating_hours: str | None = None
+    tier_relevance: str | None = None
+    free_service: bool = True
+    actions: list[str] = Field(default_factory=list)
+
+
+class WorkerContactRequest(BaseModel):
+    worker_id: str
+    contact_method: Literal["call", "sms", "whatsapp", "in_person"] = "call"
+    notes: str | None = None
+
+
+class WorkerContactResponse(BaseModel):
+    status: str
+    worker_name: str
+    contact_phone: str
+    message: str
+
+
 class ResultPayload(BaseModel):
     final_classification: str
     ml_classification: str
@@ -91,6 +154,10 @@ class ResultPayload(BaseModel):
     imputed_count: int | None = None
     # Module B: per-domain classification; empty for Module A
     domain_classifications: dict[str, str] = {}
+    # Module A: normalized per-domain score in [0,1] (mean answer / 2). Real,
+    # computed from the session's answers; empty for Module B (which carries
+    # per-domain IRT theta in domain_details instead).
+    domain_scores: dict[str, float] = Field(default_factory=dict)
     # Module B: parent-vs-teacher cross-context consistency score in [0,1]
     consistency_score: float | None = None
     # Module B: which domains have a meaningful divergence between raters
@@ -120,6 +187,24 @@ class ResultPayload(BaseModel):
     # Reporting Quality & Behavioral Guards
     guard_flags: dict[str, bool] = Field(default_factory=dict)
     guard_advisories: list[str] = Field(default_factory=list)
+    # Caregiver, Child & Location Profile
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = None
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None
+    # Suggested Early Intervention & Community Health Workers
+    suggested_workers: list[WorkerSuggestion] = Field(default_factory=list)
+    # Model inference latency in milliseconds
+    latency_ms: float | None = None
+    # Live Observation & Exploratory Touch Telemetry
+    observed_answers: dict[str, int] = Field(default_factory=dict)
+    answer_sources: dict[str, str] = Field(default_factory=dict)
+    touch_telemetry: list[dict[str, Any]] = Field(default_factory=list)
+    touch_telemetry_notice: str = "Exploratory, not used in the result."
 
 
 class ScreenActionResponse(BaseModel):
@@ -233,3 +318,11 @@ class SessionStateResponse(BaseModel):
     extra: dict[str, Any] | None = None
     module: Literal["A", "B"] = "A"
     detected_domains: list[str] = []
+    child_name: str | None = None
+    parent_name: str | None = None
+    parent_phone: str | None = None
+    relationship_to_child: str | None = None
+    location_pincode: str | None = None
+    location_city: str | None = None
+    location_state: str | None = None
+    location_address: str | None = None

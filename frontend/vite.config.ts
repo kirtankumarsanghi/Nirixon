@@ -4,27 +4,15 @@ import react from "@vitejs/plugin-react";
 // Vitest types are ambient via /// reference; keeps tsc -b happy across vite versions.
 /// <reference types="vitest/config" />
 
-import { fileURLToPath } from "node:url";
-
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "react-router-dom": fileURLToPath(
-        new URL(
-          "./node_modules/react-router-dom/dist/index.mjs",
-          import.meta.url,
-        ),
-      ),
-    },
-  },
   server: {
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },
@@ -33,6 +21,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // Force the test build even when the shell exports NODE_ENV=production —
+    // React's production bundle has no `act`, which breaks React Testing Library.
+    env: { NODE_ENV: "test" },
     setupFiles: "./src/test/setup.ts",
     css: true,
   },

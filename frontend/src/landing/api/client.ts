@@ -74,6 +74,17 @@ export interface ScreenActionResponse {
   result: ResultPayload | null;
 }
 
+export interface IntakeResponsePayload {
+  recall_help_needed: boolean;
+  recall_help_options: string[];
+  detected_domains: string[];
+  rule_out_flagged: boolean;
+  next_action: string;
+  question: QuestionPayload | null;
+  safety_message: string | null;
+  helplines?: Record<string, string>;
+}
+
 /** Start a Module A screening for an illustrative 20-month-old child. */
 export async function startDemoScreening(correctedAgeMonths = 20): Promise<ScreenActionResponse> {
   await ensureToken();
@@ -84,7 +95,35 @@ export async function startDemoScreening(correctedAgeMonths = 20): Promise<Scree
       child_ref: "landing-demo",
       question_cap: 15,
       consent_given: true,
+      module: "A",
     }),
+  });
+}
+
+/** Start a Module B screening for an illustrative 84-month-old (7-year-old) child. */
+export async function startModuleBScreening(correctedAgeMonths = 84): Promise<ScreenActionResponse> {
+  await ensureToken();
+  return _req<ScreenActionResponse>("/api/screen/start", {
+    method: "POST",
+    body: JSON.stringify({
+      corrected_age_months: correctedAgeMonths,
+      child_ref: "landing-module-b",
+      question_cap: 20,
+      consent_given: true,
+      module: "B",
+    }),
+  });
+}
+
+/** Submit Module B free-text observation to NLP router. */
+export async function submitModuleBIntake(
+  sessionId: string,
+  text: string,
+): Promise<IntakeResponsePayload> {
+  await ensureToken();
+  return _req<IntakeResponsePayload>(`/api/screen/${sessionId}/intake`, {
+    method: "POST",
+    body: JSON.stringify({ text, setting: "both" }),
   });
 }
 

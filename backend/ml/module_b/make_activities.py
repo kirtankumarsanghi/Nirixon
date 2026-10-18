@@ -553,7 +553,7 @@ add(
     "Talk to a counsellor",
     0,
     "school|health",
-    "Speak with the school counsellor, a paediatrician or a child mental-health service. Kiran (1800-599-0019, free) can help you find support.",
+    "Speak with the school counsellor, a paediatrician or a child mental-health service. Kiran mental health helpline (toll-free) can help you find support.",
     "",
 )
 

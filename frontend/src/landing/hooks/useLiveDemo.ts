@@ -144,14 +144,9 @@ export function useLiveDemo(): LiveDemoState {
       : 0;
 
   const triageTier =
+    result?.final_classification ??
     result?.triage_tier ??
-    (result?.final_classification === "Refer"
-      ? "Tier 3: Direct Referral"
-      : result?.final_classification === "Monitor"
-        ? "Tier 2: Reflex-Branch"
-        : result?.final_classification === "Typical"
-          ? "Tier 1: Routine Pass"
-          : null);
+    null;
 
   const shapReasons = (result?.shap_top_features ?? [])
     .slice(0, 5)

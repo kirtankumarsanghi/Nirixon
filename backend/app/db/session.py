@@ -98,18 +98,71 @@ async def init_db() -> None:
         if conn.dialect.name == "sqlite":
             result = await conn.execute(text("PRAGMA table_info(screening_sessions)"))
             columns = {row[1] for row in result.fetchall()}
-            if columns and "pending_item_id" not in columns:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE screening_sessions ADD COLUMN pending_item_id VARCHAR(64)"
+            new_cols = [
+                ("pending_item_id", "VARCHAR(64)"),
+                ("module_b_state", "JSON"),
+                ("child_name", "VARCHAR(128)"),
+                ("parent_name", "VARCHAR(128)"),
+                ("parent_phone", "VARCHAR(32)"),
+                ("relationship_to_child", "VARCHAR(64)"),
+                ("location_pincode", "VARCHAR(16)"),
+                ("location_city", "VARCHAR(128)"),
+                ("location_state", "VARCHAR(128)"),
+                ("location_address", "VARCHAR(255)"),
+                ("idempotency_key", "VARCHAR(64)"),
+                ("child_record_id", "VARCHAR(36)"),
+            ]
+            for col_name, col_type in new_cols:
+                if columns and col_name not in columns:
+                    await conn.execute(
+                        text(
+                            f"ALTER TABLE screening_sessions ADD COLUMN {col_name} {col_type}"
+                        )
                     )
-                )
-            if columns and "module_b_state" not in columns:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE screening_sessions ADD COLUMN module_b_state JSON"
+
+            # Check referrals table columns
+            res_ref = await conn.execute(text("PRAGMA table_info(referrals)"))
+            ref_columns = {row[1] for row in res_ref.fetchall()}
+            ref_cols = [
+                ("idempotency_key", "VARCHAR(64)"),
+                ("domains_of_concern", "JSON"),
+                ("safety_rule_trigger", "VARCHAR(255)"),
+                ("outcome_notes", "TEXT"),
+                ("sent_at", "DATETIME"),
+                ("seen_at", "DATETIME"),
+                ("outcome_recorded_at", "DATETIME"),
+                ("closed_at", "DATETIME"),
+            ]
+            for col_name, col_type in ref_cols:
+                if ref_columns and col_name not in ref_columns:
+                    await conn.execute(
+                        text(
+                            f"ALTER TABLE referrals ADD COLUMN {col_name} {col_type}"
+                        )
                     )
+
+            # Check answers table columns
+            res_ans = await conn.execute(text("PRAGMA table_info(answers)"))
+            ans_columns = {row[1] for row in res_ans.fetchall()}
+            if ans_columns and "source" not in ans_columns:
+                await conn.execute(
+                    text("ALTER TABLE answers ADD COLUMN source VARCHAR(16) DEFAULT 'recall'")
                 )
+
+            # Check risk_results table columns
+            res_risk = await conn.execute(text("PRAGMA table_info(risk_results)"))
+            risk_columns = {row[1] for row in res_risk.fetchall()}
+            if risk_columns and "domain_details" not in risk_columns:
+                await conn.execute(
+                    text("ALTER TABLE risk_results ADD COLUMN domain_details JSON")
+                )
+
+    # Seed community healthcare workers
+    factory = get_session_factory()
+    async with factory() as db:
+        from app.core.worker_service import seed_community_workers
+
+        await seed_community_workers(db)
 
 
 # Expose `engine` for code that imports it directly

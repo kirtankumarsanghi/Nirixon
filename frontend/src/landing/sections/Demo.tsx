@@ -6,6 +6,10 @@ import { EASE, Kicker, MaskedHeadline } from "../components/editorial";
 import { EvaluatorNote, SampleBadge, TIER_COLORS, TIER_RGBA, useView } from "../components/ViewContext";
 import { cn } from "../utils/cn";
 import { useLiveDemo } from "../hooks/useLiveDemo";
+import claimsRegister from "../claims_register.json";
+
+const claims = claimsRegister.claims;
+const DISCLAIMER_STRIP = claimsRegister.metadata.disclaimer;
 
 type Answer = "easy" | "hesitated" | "notyet";
 type Tier = "green" | "amber" | "red";
@@ -18,9 +22,9 @@ const ANSWERS: { id: Answer; label: string }[] = [
 
 // ─── Tier mapping ────────────────────────────────────────────────────────────
 const RESULTS: Record<Tier, { title: string; body: string }> = {
-  green: { title: "On track", body: "Here are activities to try at home." },
-  amber: { title: "Let's look closer", body: "A few more questions, or a quick activity to try with your child right now." },
-  red: { title: "Please see a doctor", body: "Here is your nearest early-intervention centre (DEIC)." },
+  green: { title: "Typical (On track)", body: "Here are activities to try at home." },
+  amber: { title: "Monitor (Look closer)", body: "A few more questions, or a quick activity to try with your child right now." },
+  red: { title: "Refer (See a doctor)", body: "Direct referral to your nearest early-intervention centre (DEIC)." },
 };
 
 function classificationToTier(cls: string | undefined, override: boolean): Tier | null {
@@ -328,6 +332,10 @@ export function Demo() {
                       {RESULTS[tier].body}
                     </motion.p>
 
+                    <p className="mt-3 text-[11.5px] font-medium text-apricot/90">
+                      {DISCLAIMER_STRIP}
+                    </p>
+
                     {/* ── LIVE: safety override explanation ── */}
                     {showSafetyOverride && (
                       <motion.p
@@ -425,8 +433,8 @@ export function Demo() {
             </ul>
 
             <EvaluatorNote>
-              The phone uses a simplified illustration of the result logic. The safety rule shown (reported regression → Tier 3
-              referral) is the deployed deterministic override. Model inference 14.3 ms (p50).{" "}
+              The phone demonstrates the live backend flow. The safety rule shown (reported regression → Refer
+              classification) is the deployed deterministic override. Model inference {claims.latency_p50.display} (p50).{" "}
               {isLiveComplete
                 ? "This result came from a live API call to the real backend model."
                 : "Connect the backend (uvicorn app.main:app) to see live data here."}
@@ -459,14 +467,14 @@ export function Demo() {
           </div>
         </div>
 
-        {/* 85 of 100 */}
+        {/* Held-out test performance banner */}
         <div className="mt-16 flex flex-col gap-6 border-t-2 border-bone pt-8 sm:flex-row sm:items-center">
           <div className="grid shrink-0 gap-[4px]" style={{ gridTemplateColumns: "repeat(20, 8px)" }} aria-hidden="true">
             {Array.from({ length: 100 }).map((_, i) => (
               <motion.span
                 key={i}
                 className="h-2 w-2 rounded-full"
-                style={{ background: i < 85 ? TIER_COLORS.green : TIER_COLORS.amber }}
+                style={{ background: i < 81 ? TIER_COLORS.green : TIER_COLORS.amber }}
                 initial={{ scale: 0 }}
                 whileInView={{ scale: 1 }}
                 viewport={{ once: true }}
@@ -474,10 +482,15 @@ export function Demo() {
               />
             ))}
           </div>
-          <p className="max-w-xl text-[clamp(1.05rem,1.6vw,1.3rem)] font-medium leading-snug text-bone">
-            In testing, about <strong className="text-leaf">85 of every 100</strong> borderline children got their answer at home
-            instead of waiting in a clinic queue.
-          </p>
+          <div>
+            <p className="max-w-xl text-[clamp(1.05rem,1.6vw,1.3rem)] font-medium leading-snug text-bone">
+              On held-out testing ({claims.module_a_test_n.display}), <strong className="text-leaf">{claims.module_a_refer_recall.display}</strong> of true
+              Refer cases were identified ({claims.module_a_refer_breakdown.classified_as_refer} of {claims.module_a_refer_breakdown.true_refer_total}), with {claims.module_a_refer_specificity.display} specificity.
+            </p>
+            <p className="mt-2 text-[12px] font-semibold text-apricot tracking-wide">
+              {DISCLAIMER_STRIP}
+            </p>
+          </div>
         </div>
       </div>
     </section>

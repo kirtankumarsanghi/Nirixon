@@ -12,9 +12,45 @@ import type {
   TeacherAnswerRequest,
   TeacherAnswerResponse,
   TeacherItemsResponse,
+  WorkerContactRequest,
+  WorkerContactResponse,
+  WorkerSuggestion,
+  SandboxSimulateRequest,
+  HelpNearbyResponse,
+  LiveTaskDefinition,
+  TouchConfigResponse,
+  TouchTelemetrySubmission,
+  TouchTelemetryResponse,
+  WorkerRecord,
+  ChildRecord,
+  ChildRecordCreateRequest,
+  ReferralRecord,
+  ReferralCreateRequest,
+  ReferralUpdateRequest,
+  ReferralOutcomeRequest,
+  ReferralSummary,
+  TierCounts,
+  ChildContactResponse,
+  OneTouchReferralResponse,
+  RecordChildOutcomeRequest,
+  CHWSyncBatchRequest,
+  CHWSyncBatchResponse,
+  ConflictLogRecord,
+  CreateJointInviteRequest,
+  JointInviteResponse,
+  JointInvitesListResponse,
+  JointInvitePublicDetail,
+  SubmitJointResponseRequest,
+  SubmitJointResponseResponse,
+  JointMergeResponse,
+  AudioManifestResponse,
+  AudioItemQueryResponse,
+  AudioCoverageReport,
+  FacilitiesResponse,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const rawBase = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE = typeof rawBase === "string" ? rawBase.replace("://localhost:", "://127.0.0.1:") : "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
   status: number;
@@ -31,10 +67,23 @@ export class ApiError extends Error {
 type UnauthorizedHandler = () => void;
 
 let unauthorizedHandler: UnauthorizedHandler | null = null;
-let authToken: string | null = null;
+
+let authToken: string | null = (() => {
+  try {
+    return typeof localStorage !== "undefined" ? localStorage.getItem("nirixon_token") : null;
+  } catch {
+    return null;
+  }
+})();
 
 export function setAuthToken(token: string | null): void {
   authToken = token;
+  try {
+    if (typeof localStorage !== "undefined") {
+      if (token) localStorage.setItem("nirixon_token", token);
+      else localStorage.removeItem("nirixon_token");
+    }
+  } catch {}
 }
 
 export function getAuthToken(): string | null {
@@ -80,6 +129,10 @@ async function request<T>(
       const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
       if (res.status === 401) {
+        if (path === "/api/auth/login") {
+          const detail = await parseDetail(res);
+          throw new ApiError(401, detail || "Invalid email or password");
+        }
         unauthorizedHandler?.();
         throw new ApiError(401, "Unauthorized");
       }
@@ -164,12 +217,22 @@ export const api = {
     return request<ResultPayload>(`/api/screen/${sessionId}/result`);
   },
 
+  /** The caller's own completed screening sessions (history for Home/Growth/Share). */
+  getSessions(limit = 50): Promise<SessionSummary[]> {
+    return request<SessionSummary[]>(`/api/screen/sessions?limit=${limit}`);
+  },
+
   /** Module B: submit free-text observation for NLP domain routing. */
   submitIntake(sessionId: string, body: IntakeRequest): Promise<IntakeResponse> {
     return request<IntakeResponse>(`/api/screen/${sessionId}/intake`, {
       method: "POST",
       body: JSON.stringify(body),
     });
+  },
+
+  /** Module B: advance past an informational notice (safety helplines, recall help). */
+  nextAction(sessionId: string): Promise<ScreenActionResponse> {
+    return request<ScreenActionResponse>(`/api/screen/${sessionId}/next`);
   },
 
   /** Module B: submit recall-help domain selection. */
@@ -207,4 +270,409 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
+
+  /** Get suggested community healthcare workers (ASHA, Anganwadi, DEIC, RBSK). */
+  getWorkers(sessionId: string): Promise<WorkerSuggestion[]> {
+    return request<WorkerSuggestion[]>(`/api/screen/${sessionId}/workers`);
+  },
+
+  /** Log request to connect with a healthcare or community worker. */
+  contactWorker(
+    sessionId: string,
+    body: WorkerContactRequest,
+  ): Promise<WorkerContactResponse> {
+    return request<WorkerContactResponse>(
+      `/api/screen/${sessionId}/contact_worker`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  /** Module A: Get normative provisional reference ranges for touch motor tasks. */
+  getTouchConfig(): Promise<TouchConfigResponse> {
+    return request<TouchConfigResponse>("/api/screen/touch-config");
+  },
+
+  /** Module A: Get live direct observation task definitions for an age bracket. */
+  getLiveTasks(bracket: string): Promise<LiveTaskDefinition[]> {
+    return request<LiveTaskDefinition[]>(`/api/screen/live-tasks/${bracket}`);
+  },
+
+  /** Module A: Get live tasks for an active screening session's child age bracket. */
+  getSessionLiveTasks(sessionId: string): Promise<LiveTaskDefinition[]> {
+    return request<LiveTaskDefinition[]>(`/api/screen/${sessionId}/live-tasks`);
+  },
+
+  /** Module A (24m+): Submit exploratory touch motor telemetry (tap, trace, drag). */
+  submitTouchTelemetry(
+    sessionId: string,
+    body: TouchTelemetrySubmission,
+  ): Promise<TouchTelemetryResponse> {
+    return request<TouchTelemetryResponse>(
+      `/api/screen/${sessionId}/touch-telemetry`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+  },
 };
+
+export const screenApi = api;
+
+export const sandboxApi = {
+  simulate(
+    sessionId: string,
+    body: SandboxSimulateRequest,
+  ): Promise<ResultPayload> {
+    return request<ResultPayload>(`/api/sandbox/${sessionId}/simulate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+};
+
+export const helpApi = {
+  getNearby(params: {
+    pin?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    age?: number | null;
+    age_years?: number | null;
+    limit?: number;
+  }): Promise<HelpNearbyResponse> {
+    const query = new URLSearchParams();
+    if (params.pin) query.set("pin", params.pin);
+    if (params.lat != null) query.set("lat", String(params.lat));
+    if (params.lng != null) query.set("lng", String(params.lng));
+    if (params.age != null) query.set("age", String(params.age));
+    if (params.age_years != null) query.set("age_years", String(params.age_years));
+    if (params.limit != null) query.set("limit", String(params.limit));
+    return request<HelpNearbyResponse>(`/api/help/nearby?${query.toString()}`);
+  },
+};
+
+export const facilitiesApi = {
+  /**
+   * Public, read-only reference data: nearest hospitals/clinics for a PIN.
+   * `ageGroup` ranks developmental/early-intervention services first.
+   */
+  get(
+    pin: string,
+    opts: { ageGroup?: "0-5" | "6-12"; limit?: number } = {},
+  ): Promise<FacilitiesResponse> {
+    const q = new URLSearchParams({ pin });
+    if (opts.ageGroup) q.set("age_group", opts.ageGroup);
+    if (opts.limit != null) q.set("limit", String(opts.limit));
+    return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
+  },
+};
+
+export const referralApi = {
+  getMe(): Promise<WorkerRecord> {
+    return request<WorkerRecord>("/api/chw/workers/me");
+  },
+  getWorkers(): Promise<WorkerRecord[]> {
+    return request<WorkerRecord[]>("/api/chw/workers");
+  },
+  getChildren(filters?: {
+    tier?: string;
+    village_ward?: string;
+    age_group?: string;
+    overdue_only?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ChildRecord[]> {
+    const q = new URLSearchParams();
+    if (filters?.tier) q.set("tier", filters.tier);
+    if (filters?.village_ward) q.set("village_ward", filters.village_ward);
+    if (filters?.age_group) q.set("age_group", filters.age_group);
+    if (filters?.overdue_only) q.set("overdue_only", "true");
+    if (filters?.search) q.set("search", filters.search);
+    if (filters?.limit != null) q.set("limit", String(filters.limit));
+    if (filters?.offset != null) q.set("offset", String(filters.offset));
+    const qs = q.toString();
+    return request<ChildRecord[]>(`/api/chw/children${qs ? `?${qs}` : ""}`);
+  },
+  getTierCounts(village_ward?: string): Promise<TierCounts> {
+    const qs = village_ward ? `?village_ward=${encodeURIComponent(village_ward)}` : "";
+    return request<TierCounts>(`/api/chw/tier-counts${qs}`);
+  },
+  markContacted(childId: string): Promise<ChildContactResponse> {
+    return request<ChildContactResponse>(`/api/chw/children/${encodeURIComponent(childId)}/contact`, {
+      method: "POST",
+    });
+  },
+  oneTouchReferral(childId: string): Promise<OneTouchReferralResponse> {
+    return request<OneTouchReferralResponse>(`/api/chw/children/${encodeURIComponent(childId)}/one-touch-referral`, {
+      method: "POST",
+    });
+  },
+  recordChildOutcome(childId: string, data: RecordChildOutcomeRequest): Promise<ReferralRecord> {
+    return request<ReferralRecord>(`/api/chw/children/${encodeURIComponent(childId)}/outcome`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  getChild(id: string): Promise<ChildRecord> {
+    return request<ChildRecord>(`/api/chw/children/${encodeURIComponent(id)}`);
+  },
+  createChild(data: ChildRecordCreateRequest): Promise<ChildRecord> {
+    return request<ChildRecord>("/api/chw/children", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  deleteChild(id: string): Promise<{ deleted: boolean; message: string }> {
+    return request<{ deleted: boolean; message: string }>(`/api/chw/children/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+  getReferrals(): Promise<ReferralRecord[]> {
+    return request<ReferralRecord[]>("/api/referrals");
+  },
+  getReferral(id: string): Promise<ReferralRecord> {
+    return request<ReferralRecord>(`/api/referrals/${encodeURIComponent(id)}`);
+  },
+  createReferral(data: ReferralCreateRequest): Promise<ReferralRecord> {
+    return request<ReferralRecord>("/api/referrals", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  updateReferral(id: string, data: ReferralUpdateRequest): Promise<ReferralRecord> {
+    return request<ReferralRecord>(`/api/referrals/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+  recordOutcome(id: string, data: ReferralOutcomeRequest): Promise<ReferralRecord> {
+    return request<ReferralRecord>(`/api/referrals/${encodeURIComponent(id)}/outcome`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  getSummary(id: string): Promise<ReferralSummary> {
+    return request<ReferralSummary>(`/api/referrals/${encodeURIComponent(id)}/summary`);
+  },
+  async getSummaryText(id: string): Promise<string> {
+    const token = getAuthToken();
+    const headers: Record<string, string> = { Accept: "text/plain" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/api/referrals/${encodeURIComponent(id)}/summary?format=text`, {
+      headers,
+    });
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return res.text();
+  },
+  getSummaryPdfUrl(id: string): string {
+    return `${API_BASE}/api/referrals/${encodeURIComponent(id)}/summary/pdf`;
+  },
+  deleteReferral(id: string): Promise<{ deleted: boolean; message: string }> {
+    return request<{ deleted: boolean; message: string }>(`/api/referrals/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+  syncBatch(data: CHWSyncBatchRequest): Promise<CHWSyncBatchResponse> {
+    return request<CHWSyncBatchResponse>("/api/chw/sync", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  getConflicts(): Promise<ConflictLogRecord[]> {
+    return request<ConflictLogRecord[]>("/api/chw/conflicts");
+  },
+};
+
+export const shareApi = {
+  /** Generate an expiring, single-use invite link for a secondary caregiver (max 3). */
+  createInvite(
+    sessionId: string,
+    body: CreateJointInviteRequest,
+  ): Promise<JointInviteResponse> {
+    return request<JointInviteResponse>(`/api/share/session/${sessionId}/invite`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** List active and completed invites for a session. */
+  listInvites(sessionId: string): Promise<JointInvitesListResponse> {
+    return request<JointInvitesListResponse>(`/api/share/session/${sessionId}/invites`);
+  },
+
+  /** Public endpoint: Get only the question items to answer (zero child data). */
+  getInviteQuestions(token: string): Promise<JointInvitePublicDetail> {
+    return request<JointInvitePublicDetail>(`/api/share/invite/${token}`);
+  },
+
+  /** Public endpoint: Submit independent responses with role label only (no account). */
+  submitResponse(
+    token: string,
+    body: SubmitJointResponseRequest,
+  ): Promise<SubmitJointResponseResponse> {
+    return request<SubmitJointResponseResponse>(`/api/share/invite/${token}/respond`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  /** Retrieve existing joint concordance calculation. */
+  getConcordance(sessionId: string): Promise<JointMergeResponse> {
+    return request<JointMergeResponse>(`/api/share/session/${sessionId}/concordance`);
+  },
+
+  /** Compute joint concordance and apply combination rule. */
+  merge(
+    sessionId: string,
+    body?: { role_label?: string; answers?: Record<string, number> },
+  ): Promise<JointMergeResponse> {
+    return request<JointMergeResponse>(`/api/share/session/${sessionId}/merge`, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+
+  /** Permanently delete screening session and all cascading respondent answers. */
+  deleteSession(sessionId: string): Promise<{ status: string; session_id: string; message: string }> {
+    return request<{ status: string; session_id: string; message: string }>(
+      `/api/share/session/${sessionId}`,
+      { method: "DELETE" },
+    );
+  },
+
+  /** Audio Narration APIs */
+  getAudioManifest(includeUnreviewed = false): Promise<AudioManifestResponse> {
+    const query = includeUnreviewed ? "?include_unreviewed=true" : "";
+    return request<AudioManifestResponse>(`/api/audio/manifest${query}`);
+  },
+
+  getAudioItem(itemId: string, language = "en"): Promise<AudioItemQueryResponse> {
+    return request<AudioItemQueryResponse>(
+      `/api/audio/item/${encodeURIComponent(itemId)}?language=${encodeURIComponent(language)}`,
+    );
+  },
+
+  getAudioCoverageReport(): Promise<AudioCoverageReport> {
+    return request<AudioCoverageReport>("/api/audio/report");
+  },
+};
+
+export interface SessionSummary {
+  id: string;
+  status: string;
+  module: "A" | "B";
+  corrected_age_months: number | null;
+  age_bracket: string;
+  completed_at: string | null;
+  started_at: string | null;
+  child_name: string | null;
+  final_classification: string | null;
+  probabilities: Record<string, number>;
+  safety_override_triggered: boolean;
+  domain_classifications: Record<string, string>;
+  domain_scores: Record<string, number>;
+  /** Module B: per-domain details (state, score, irt_theta). */
+  domain_details: Record<string, Record<string, unknown>>;
+}
+
+export interface GrowthVisit {
+  id: string;
+  child_id: string;
+  age_bracket: string;
+  birth_year_month: string | null;
+  chronological_age_months: number;
+  developmental_age_months: number;
+  visit_date: string;
+  domain_scores: Record<string, number>;
+  tier: string;
+  created_at: string;
+}
+
+export interface GrowthAnalysis {
+  child_id: string;
+  total_visits: number;
+  is_plateau_detected: boolean;
+  plateau_summary: string;
+  sync_enabled: boolean;
+  trajectory: { chronological_age: number; developmental_age: number; visit_date: string; tier: string }[];
+  intervals: {
+    visit_index: number;
+    prev_chronological_age: number;
+    curr_chronological_age: number;
+    chronological_gain: number;
+    developmental_gain: number;
+    gain_ratio: number | null;
+    is_plateau: boolean;
+    message: string;
+  }[];
+}
+
+export const growthApi = {
+  getStatus(): Promise<{ sync_enabled: boolean; privacy_model: string }> {
+    return request<{ sync_enabled: boolean; privacy_model: string }>("/api/growth/status");
+  },
+  getVisits(childId: string): Promise<GrowthVisit[]> {
+    return request<GrowthVisit[]>(`/api/growth/visits/${encodeURIComponent(childId)}`);
+  },
+  getAnalysis(childId: string): Promise<GrowthAnalysis> {
+    return request<GrowthAnalysis>(`/api/growth/analysis/${encodeURIComponent(childId)}`);
+  },
+};
+
+export interface EvidenceClassMetrics {
+  precision: number;
+  recall: number;
+  f1: number;
+  support: number;
+}
+
+export interface EvidenceResponse {
+  generated_at: string;
+  disclaimer: string;
+  module_a: {
+    model_name: string;
+    n_test: number;
+    confusion_matrix: number[][];
+    confusion_matrix_labels: string[];
+    macro_f1: number;
+    macro_auroc: number;
+    macro_auprc: number;
+    accuracy: number;
+    refer_recall: number;
+    refer_precision: number;
+    refer_specificity: number;
+    monitor_recall: number;
+    typical_recall: number;
+    class_metrics: Record<string, EvidenceClassMetrics>;
+    latency_p50_ms: number;
+    latency_p95_ms: number;
+    latency_p99_ms: number;
+  };
+  module_b: {
+    n_test: number;
+    safety_recall: number;
+    safety_precision: number;
+    n_safety: number;
+    any_true_domain_hit_rate: number;
+    domain_micro_precision: number;
+    domain_micro_recall: number;
+    domain_micro_f1: number;
+    ml_only_safety_recall: number;
+    handwritten_notes: number;
+    handwritten_any_domain_hit_rate: number | null;
+    handwritten_micro_f1: number | null;
+  };
+  dataset_note: string;
+}
+
+export const evidenceApi = {
+  get(): Promise<EvidenceResponse> {
+    return request<EvidenceResponse>("/api/evidence");
+  },
+};
+
+

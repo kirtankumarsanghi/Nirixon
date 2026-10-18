@@ -1,77 +1,54 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { AlertCircle, Check, Info, ShieldAlert } from "lucide-react";
 import { PHOTOS } from "../data";
-import { EASE, Kicker, MaskedHeadline, RingText, RollingText } from "../components/editorial";
+import { EASE, Kicker, MaskedHeadline, RingText } from "../components/editorial";
 import { EvaluatorNote, TIER_COLORS, ViewSwitcher } from "../components/ViewContext";
 import { cn } from "../utils/cn";
+import claimsRegister from "../claims_register.json";
 
-type Mode = "nirixon" | "paper";
+const claims = claimsRegister.claims;
+const DISCLAIMER_STRIP = claimsRegister.metadata.disclaimer;
 
-const STATS = [
-  {
-    id: "questions",
-    label: "Half the questions",
-    n: "12–18",
-    p: "30–36",
-    unit: "questions per check",
-    plainN: "Personalized. We skip what doesn’t apply to your child.",
-    plainP: "The same fixed list for every child.",
-    evaluator:
-      "Adaptive tree pruning, minimum 8 and maximum 18 items across 6 domains, with peer-median imputation for unasked items. The paper tool (ASQ-3) uses 30–36 fixed items.",
-  },
-  {
-    id: "time",
-    label: "Time to finish",
-    n: "<5",
-    p: "10+",
-    unit: "minutes",
-    plainN: "A full check, scored the moment an answer changes.",
-    plainP: "Then scored by hand afterwards.",
-    evaluator: "12–18 adaptive items with instant scoring (model inference 14.3 ms p50) versus 30–36 fixed items scored manually.",
-  },
-  {
-    id: "precision",
-    label: "Right when it says “see a doctor”",
-    n: "9/10",
-    p: "<4/10",
-    unit: "referrals that are correct",
-    plainN: "Families sent to a doctor are the ones who need one.",
-    plainP: "Most families sent to a doctor didn’t need to go.",
-    evaluator: "Refer precision 87.4–94.5% vs 38.5% for the ASQ-3 rule baseline. AUPRC 0.891 vs 0.119.",
-  },
-  {
-    id: "false",
-    label: "Few false worries",
-    n: "1/100",
-    p: "12/100",
-    unit: "healthy children wrongly flagged",
-    plainN: "Out of 100 healthy children, we wrongly worry about 1.",
-    plainP: "Out of 100 healthy children, paper worries about 12.",
-    evaluator: "Specificity 99.1% vs 88.1%. Macro AUROC 0.978.",
-  },
-];
+type Mode = "nirixon" | "literature";
 
 /* ================================================================== */
-/*  [03] Key results — one switch flips every number                   */
+/*  [03] Key results — Verified against saved evaluation outputs       */
 /* ================================================================== */
 
 export function Proof() {
   const [mode, setMode] = useState<Mode>("nirixon");
-  const paper = mode === "paper";
+  const isLiterature = mode === "literature";
+
+  const matrix = claims.module_a_confusion_matrix.value;
+  const matrixLabels = claims.module_a_confusion_matrix.labels;
+  const referBreakdown = claims.module_a_refer_breakdown;
 
   return (
     <section id="proof" className="relative py-20 md:py-28" aria-labelledby="proof-title">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <Kicker index="03">Key results</Kicker>
+        {/* Results Disclaimer Strip */}
+        <div className="mb-8 flex items-center gap-3 rounded-xl border border-bone/20 bg-bone/5 px-4 py-3 text-[13px] text-bone/90">
+          <Info className="h-4 w-4 shrink-0 text-apricot" />
+          <p className="font-semibold tracking-wide">{DISCLAIMER_STRIP}</p>
+        </div>
+
+        <Kicker index="03">Key results · Verified evaluation metrics</Kicker>
 
         <div className="mt-8 grid gap-10 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
           <div>
-            <MaskedHeadline id="proof-title" lines={[{ text: "Check your child’s" }, { text: "development in" }]} className="text-[clamp(2.3rem,5vw,4.4rem)]" />
+            <MaskedHeadline
+              id="proof-title"
+              lines={[{ text: "Evaluated on held-out data." }, { text: "Verified by code." }]}
+              className="text-[clamp(2.3rem,5vw,4.4rem)]"
+            />
             <motion.p
               aria-hidden="true"
               className="img-text mt-1 font-display uppercase leading-[0.82] tracking-[-0.01em] transition-[filter] duration-700 text-[clamp(4.2rem,13.5vw,12rem)]"
-              style={{ backgroundImage: `url(${PHOTOS.childrenPlaying})`, filter: paper ? "grayscale(1) contrast(0.85)" : "none" }}
+              style={{
+                backgroundImage: `url(${PHOTOS.childrenPlaying})`,
+                filter: isLiterature ? "grayscale(1) contrast(0.85)" : "none",
+              }}
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-10% 0px" }}
@@ -89,8 +66,8 @@ export function Proof() {
 
           <div className="lg:pb-5">
             <p className="text-[16px] leading-relaxed text-fog md:text-[17px]">
-              Most children are cleared at home. Only those who need a doctor are sent to one, and a safety rule that no AI
-              score can override watches every answer.
+              Every metric below is loaded directly from saved benchmark and evaluation outputs in the codebase.
+              Clinical validation in pediatric clinics is pending.
             </p>
             <p className="mt-7 text-[10.5px] font-bold uppercase tracking-[0.2em] text-faint">Switch view</p>
             <ViewSwitcher variant="text" className="mt-2" />
@@ -99,97 +76,402 @@ export function Proof() {
 
         {/* The flip */}
         <div className="mt-16 flex flex-col gap-5 border-t-2 border-bone pt-6 md:flex-row md:items-center md:justify-between">
-          <p className="max-w-sm text-[13.5px] leading-relaxed text-fog">
-            Flip the switch to see the same measures for the paper checklist (ASQ-3) used today.
+          <p className="max-w-md text-[13.5px] leading-relaxed text-fog">
+            Toggle between the empirical Nirixon evaluation metrics and the qualitative comparison with traditional paper tools citing published literature.
           </p>
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               onClick={() => setMode("nirixon")}
               data-cursor="Nirixon"
-              className={cn("font-display text-[clamp(1.25rem,2.4vw,1.9rem)] uppercase tracking-wide transition-colors duration-300", !paper ? "text-apricot" : "text-bone/30 hover:text-bone/60")}
+              className={cn(
+                "font-display text-[clamp(1.25rem,2.4vw,1.9rem)] uppercase tracking-wide transition-colors duration-300",
+                !isLiterature ? "text-apricot" : "text-bone/30 hover:text-bone/60",
+              )}
             >
-              Nirixon
+              Evaluation outputs
             </button>
             <button
               type="button"
               role="switch"
-              aria-checked={paper}
-              aria-label="Show paper checklist numbers"
-              onClick={() => setMode(paper ? "nirixon" : "paper")}
+              aria-checked={isLiterature}
+              aria-label="Show literature review comparison"
+              onClick={() => setMode(isLiterature ? "nirixon" : "literature")}
               data-cursor="Flip"
               className="relative h-9 w-[76px] shrink-0 rounded-full border-2 border-bone"
             >
               <motion.span
                 className="absolute top-1 h-6 w-6 rounded-full"
-                animate={{ left: paper ? 44 : 4, backgroundColor: paper ? "var(--text-muted)" : "var(--color-apricot)" }}
+                animate={{
+                  left: isLiterature ? 44 : 4,
+                  backgroundColor: isLiterature ? "var(--text-muted)" : "var(--color-apricot)",
+                }}
                 transition={{ type: "spring", stiffness: 500, damping: 34 }}
               />
             </button>
             <button
               type="button"
-              onClick={() => setMode("paper")}
-              data-cursor="Paper"
-              className={cn("font-display text-[clamp(1.25rem,2.4vw,1.9rem)] uppercase tracking-wide transition-colors duration-300", paper ? "text-bone" : "text-bone/30 hover:text-bone/60")}
+              onClick={() => setMode("literature")}
+              data-cursor="Literature"
+              className={cn(
+                "font-display text-[clamp(1.25rem,2.4vw,1.9rem)] uppercase tracking-wide transition-colors duration-300",
+                isLiterature ? "text-bone" : "text-bone/30 hover:text-bone/60",
+              )}
             >
-              Paper checklist
+              Literature review
             </button>
           </div>
         </div>
 
-        <div className="grid gap-x-12 lg:grid-cols-[0.72fr_1.28fr]">
-          {/* Reserved left lane for the persistent traveling portrait (arch shape) */}
-          <div className="relative hidden py-8 lg:flex lg:flex-col lg:justify-end min-h-[520px]">
-            {/* Reserved space ensures text never renders in this lane */}
-            <div data-portrait-lane="proof" className="proof-portrait-lane relative w-full min-h-[380px] flex-1" />
-            <p className="mt-3 text-[10.5px] font-bold uppercase tracking-[0.18em] text-faint">Dhari, Gujarat</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2">
-            {STATS.map((s, i) => (
+        <div className="mt-10">
+          <AnimatePresence mode="wait">
+            {!isLiterature ? (
               <motion.div
-                key={s.id}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-8% 0px" }}
-                transition={{ duration: 0.8, delay: (i % 2) * 0.1, ease: EASE }}
-                className={cn("border-b border-bone/15 py-8", i % 2 === 1 ? "sm:border-l sm:pl-8" : "sm:pr-8")}
+                key="nirixon-metrics"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-12"
               >
-                <div className="flex items-start justify-between gap-3 text-[11px] font-bold uppercase tracking-[0.16em]">
-                  <span className="font-mono tracking-normal text-apricot">({String(i + 1).padStart(2, "0")})</span>
-                  <span className="max-w-[70%] text-right text-faint">{s.label}</span>
+                {/* PROMINENT CARD: Refer Recall & Missed Case Breakdown */}
+                <div className="rounded-2xl border-2 border-apricot/40 bg-apricot/10 p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-apricot">
+                      Primary Safety Metric · Module A (Ages 0–5)
+                    </span>
+                    <span className="rounded-full border border-apricot/50 px-3 py-0.5 font-mono text-[11px] text-apricot">
+                      Held-out n={claims.module_a_test_n.value}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+                    <div>
+                      <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-faint">
+                        {claims.module_a_refer_recall.label}
+                      </p>
+                      <p className="mt-2 font-display text-[clamp(3.8rem,8vw,6.8rem)] leading-none text-apricot">
+                        {claims.module_a_refer_recall.display}
+                      </p>
+                      <p className="mt-3 text-[14.5px] leading-relaxed text-bone/90">
+                        High recall on the high-risk Refer cohort ensures children who require clinical evaluation are captured early.
+                      </p>
+                      <p className="mt-2 text-[12px] font-mono text-faint">
+                        Source: {claims.module_a_refer_recall.source_file}
+                      </p>
+                    </div>
+
+                    {/* Breakdown of the 111 true Refer cases */}
+                    <div className="rounded-xl border border-bone/20 bg-void/50 p-5 sm:p-6">
+                      <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-bone">
+                        True Refer Cohort Breakdown ({referBreakdown.true_refer_total} total cases)
+                      </p>
+                      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+                        <div className="rounded-lg border border-leaf/40 bg-leaf/10 p-3">
+                          <p className="font-display text-[2rem] leading-none text-leaf">
+                            {referBreakdown.classified_as_refer}
+                          </p>
+                          <p className="mt-1 text-[11px] font-bold text-bone">Classified Refer</p>
+                          <p className="text-[10px] text-leaf font-mono">{claims.module_a_refer_recall.display} captured</p>
+                        </div>
+                        <div className="rounded-lg border border-gold/40 bg-gold/10 p-3">
+                          <p className="font-display text-[2rem] leading-none text-gold">
+                            {referBreakdown.missed_as_monitor}
+                          </p>
+                          <p className="mt-1 text-[11px] font-bold text-bone">Classified Monitor</p>
+                          <p className="text-[10px] text-faint">Triaged for watch</p>
+                        </div>
+                        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3">
+                          <p className="font-display text-[2rem] leading-none text-red-400">
+                            {referBreakdown.missed_as_typical}
+                          </p>
+                          <p className="mt-1 text-[11px] font-bold text-bone">Classified Typical</p>
+                          <p className="text-[10px] text-red-400 font-mono">Missed cases</p>
+                        </div>
+                      </div>
+                      <p className="mt-4 text-[12.5px] leading-relaxed text-fog">
+                        <strong>Clinical triage safety:</strong> Of the 21 cases not flagged as Refer on first pass,
+                        18 were triaged into <em>Monitor</em> for targeted follow-up. Only 3 true Refer cases were classified as Typical.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className={cn("mt-6 font-display leading-[0.85] tracking-tight transition-colors duration-500 text-[clamp(3.6rem,7.2vw,6.4rem)]", paper ? "text-faint" : "text-bone")}>
-                  <RollingText value={paper ? s.p : s.n} />
-                </p>
-                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-faint">{s.unit}</p>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={mode}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.3 }}
-                    className="mt-4 text-[15px] leading-relaxed text-bone/80"
-                  >
-                    {paper ? s.plainP : s.plainN}
-                  </motion.p>
-                </AnimatePresence>
-                <p className="mt-2 text-[12.5px] text-faint">
-                  {paper ? (
-                    <>
-                      Nirixon: <strong className="text-apricot">{s.n}</strong>
-                    </>
-                  ) : (
-                    <>
-                      Paper checklist: <span className="line-through decoration-apricot/70">{s.p}</span>
-                    </>
-                  )}
-                </p>
-                <EvaluatorNote>{s.evaluator}</EvaluatorNote>
+
+                {/* Grid of Other Module A metrics */}
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="border border-bone/15 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                      {claims.module_a_accuracy.label}
+                    </p>
+                    <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
+                      {claims.module_a_accuracy.display}
+                    </p>
+                    <p className="mt-2 text-[12.5px] text-fog">Held-out test set accuracy across 3 tiers.</p>
+                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_accuracy.source_file}</p>
+                  </div>
+
+                  <div className="border border-bone/15 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                      {claims.module_a_macro_auroc.label}
+                    </p>
+                    <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
+                      {claims.module_a_macro_auroc.display}
+                    </p>
+                    <p className="mt-2 text-[12.5px] text-fog">Macro F1: {claims.module_a_macro_f1.display}</p>
+                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_macro_auroc.source_file}</p>
+                  </div>
+
+                  <div className="border border-bone/15 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                      {claims.module_a_refer_precision.label}
+                    </p>
+                    <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
+                      {claims.module_a_refer_precision.display}
+                    </p>
+                    <p className="mt-2 text-[12.5px] text-fog">
+                      Refer Specificity: {claims.module_a_refer_specificity.display}
+                    </p>
+                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_refer_precision.source_file}</p>
+                  </div>
+
+                  <div className="border border-bone/15 p-6">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                      Inference Latency (n={claims.latency_p50.sample_size})
+                    </p>
+                    <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
+                      {claims.latency_p50.display}
+                    </p>
+                    <p className="mt-2 text-[12.5px] text-fog">
+                      p95: {claims.latency_p95.display} (TreeSHAP explanations)
+                    </p>
+                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.latency_p50.source_file}</p>
+                  </div>
+                </div>
+
+                {/* 3x3 Confusion Matrix */}
+                <div className="border border-bone/15 p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-display text-[1.4rem] uppercase tracking-wide text-bone">
+                      Module A Confusion Matrix (3×3 Held-Out Test)
+                    </h3>
+                    <span className="font-mono text-[11px] text-faint">
+                      Rows: True Cohort · Columns: Predicted Tier · n={claims.module_a_test_n.value}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 overflow-x-auto">
+                    <table className="w-full min-w-[500px] text-left text-[14px]">
+                      <thead>
+                        <tr className="border-b border-bone/20 text-[11px] font-bold uppercase tracking-[0.18em] text-faint">
+                          <th className="py-3 pr-4">True \ Predicted</th>
+                          {matrixLabels.map((col) => (
+                            <th key={col} className="px-4 py-3 text-center">
+                              {col}
+                            </th>
+                          ))}
+                          <th className="py-3 pl-4 text-right">Row Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-bone/10 font-mono">
+                        {matrix.map((row, rIdx) => {
+                          const total = row.reduce((a, b) => a + b, 0);
+                          return (
+                            <tr key={matrixLabels[rIdx]}>
+                              <td className="py-3.5 pr-4 font-sans font-bold text-bone">
+                                {matrixLabels[rIdx]}
+                              </td>
+                              {row.map((val, cIdx) => (
+                                <td
+                                  key={cIdx}
+                                  className={cn(
+                                    "px-4 py-3.5 text-center font-bold",
+                                    rIdx === cIdx
+                                      ? "bg-bone/10 text-apricot"
+                                      : val > 0
+                                        ? "text-bone/70"
+                                        : "text-bone/20",
+                                  )}
+                                >
+                                  {val}
+                                </td>
+                              ))}
+                              <td className="py-3.5 pl-4 text-right text-fog">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-4 text-[12px] text-faint">
+                    {claims.module_a_confusion_matrix.display}. Evaluated on synthetic data generated from CDC milestones and WHO standards.
+                  </p>
+                </div>
+
+                {/* Module B Router & Safety Evaluation */}
+                <div className="border border-bone/15 p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-display text-[1.4rem] uppercase tracking-wide text-bone">
+                      Module B NLP Router & Safety Recall (Ages 5–12)
+                    </h3>
+                    <span className="font-mono text-[11px] text-faint">
+                      Source: {claims.module_b_safety_recall.source_file}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 grid gap-6 sm:grid-cols-3">
+                    <div className="border-l-2 border-apricot pl-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                        {claims.module_b_safety_recall.label}
+                      </p>
+                      <p className="mt-1 font-display text-[2.6rem] leading-none text-apricot">
+                        {claims.module_b_safety_recall.display}
+                      </p>
+                      <p className="mt-2 text-[12.5px] text-fog">
+                        Tested on {claims.module_b_safety_recall.sample_size} crisis phrases with zero misses.
+                      </p>
+                    </div>
+
+                    <div className="border-l-2 border-leaf pl-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                        {claims.module_b_any_hit_rate.label}
+                      </p>
+                      <p className="mt-1 font-display text-[2.6rem] leading-none text-leaf">
+                        {claims.module_b_any_hit_rate.display}
+                      </p>
+                      <p className="mt-2 text-[12.5px] text-fog">
+                        Evaluated across {claims.module_b_any_hit_rate.sample_size} held-out test scenarios.
+                      </p>
+                    </div>
+
+                    <div className="border-l-2 border-lagoon pl-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
+                        Handwritten Clinical Notes
+                      </p>
+                      <p className="mt-1 font-display text-[2.6rem] leading-none text-lagoon">
+                        {claims.module_b_handwritten_eval.notes_n} notes
+                      </p>
+                      <p className="mt-2 text-[12.5px] text-fog">
+                        {claims.module_b_handwritten_eval.safety_recall}% safety recall, {claims.module_b_handwritten_eval.any_hit_rate}% any-domain hit rate, {claims.module_b_handwritten_eval.micro_f1}% micro F1 on clinical handwriting.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Safety Hybrid Proof */}
+                  <div className="mt-6 rounded-xl border border-bone/15 bg-bone/5 p-4">
+                    <div className="flex items-center gap-2 text-[13px] font-bold text-bone">
+                      <ShieldAlert className="h-4 w-4 text-apricot" />
+                      Safety Rule + ML Classifier Hybrid Rationale
+                    </div>
+                    <p className="mt-2 text-[13px] leading-relaxed text-fog">
+                      In router evaluations, the ML classifier alone achieved only <strong>{claims.module_b_safety_hybrid_proof.classifier_only_safety_recall}% safety recall</strong> on crisis phrases.
+                      By combining deterministic rule scanning with multi-label logistic regression, the hybrid architecture achieves{" "}
+                      <strong>{claims.module_b_safety_hybrid_proof.hybrid_safety_recall}% safety recall</strong> while delivering <strong>{claims.module_b_safety_hybrid_proof.hybrid_domain_recall}% domain recall</strong> (F1: {claims.module_b_domain_f1.display})
+                      and {claims.module_b_questions_range.display}.
+                    </p>
+                  </div>
+                </div>
+
+                {/* LIMITATIONS PANEL (Requirement 6) */}
+                <div className="rounded-2xl border-2 border-bone/25 bg-void p-6 sm:p-8">
+                  <div className="flex items-center gap-2.5 text-apricot">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <h3 className="font-display text-[1.3rem] uppercase tracking-wide text-bone">
+                      Transparency & Clinical Limitations
+                    </h3>
+                  </div>
+
+                  <div className="mt-5 grid gap-6 md:grid-cols-3 text-[13.5px] leading-relaxed text-fog">
+                    <div>
+                      <p className="font-bold text-bone">1. Synthetic Evaluation Data</p>
+                      <p className="mt-1">
+                        All performance metrics shown were computed on synthetic clinical datasets (held-out test n={claims.module_a_test_n.value} for Module A,
+                        test n={claims.module_b_any_hit_rate.sample_size} for Module B). Real-world prospective clinical validation is pending institutional IRB review.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-bone">2. Moderate NLP Domain Precision</p>
+                      <p className="mt-1">
+                        Module B domain precision is moderate ({claims.module_b_domain_precision.display} micro-precision). The model intentionally trades precision for higher
+                        sensitivity ({claims.module_b_domain_recall.display} recall) to avoid missing subtle parent-reported concerns before adaptive items begin.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-bone">3. Screening Aid, Not Diagnosis</p>
+                      <p className="mt-1">
+                        Nirixon provides triage suggestions to guide caregivers and community health workers. It does not replace
+                        comprehensive clinical diagnosis by a registered developmental pediatrician.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
-            ))}
-          </div>
+            ) : (
+              /* LITERATURE COMPARISON PANEL (Requirement 5) */
+              <motion.div
+                key="literature-comparison"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-8"
+              >
+                <div className="border border-bone/20 bg-bone/5 p-6 sm:p-8">
+                  <h3 className="font-display text-[1.5rem] uppercase tracking-wide text-bone">
+                    Qualitative Comparison with Conventional Paper Screening
+                  </h3>
+                  <p className="mt-2 text-[14px] text-faint">
+                    Synthesized from clinical pilot protocol review and published developmental screening literature (CDC, WHO, AAP).
+                  </p>
+
+                  <div className="mt-6 grid gap-6 md:grid-cols-2">
+                    <div className="border border-bone/15 p-5">
+                      <p className="font-bold uppercase tracking-wide text-faint text-[12px]">Traditional Paper Checklists (e.g., ASQ-3, Denver II)</p>
+                      <ul className="mt-4 space-y-3 text-[14px] text-fog">
+                        <li className="flex items-start gap-2">
+                          <span className="text-faint">•</span>
+                          <span><strong>Static Universal Item Sets:</strong> Administers 30–36 fixed questions per check regardless of whether skills are far ahead or behind.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-faint">•</span>
+                          <span><strong>Administrative Burden:</strong> Requires 10–15+ minutes of caregiver time and subsequent manual scoring by clinical staff.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-faint">•</span>
+                          <span><strong>Clinic Flooding:</strong> Published reviews note high false-referral rates on borderline items, crowding tertiary queues.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-faint">•</span>
+                          <span><strong>No Algorithmic Safety Net:</strong> Relies solely on manual review to catch regression or isolated domain failure.</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="border border-apricot/30 bg-apricot/5 p-5">
+                      <p className="font-bold uppercase tracking-wide text-apricot text-[12px]">Nirixon Adaptive Digital Screener</p>
+                      <ul className="mt-4 space-y-3 text-[14px] text-bone/90">
+                        <li className="flex items-start gap-2">
+                          <span className="text-apricot">•</span>
+                          <span><strong>Adaptive Pruning:</strong> Dynamically branches through {claims.module_a_questions_range.display} (Module A) or {claims.module_b_questions_range.display} (Module B).</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-apricot">•</span>
+                          <span><strong>Instant Scoring:</strong> Real-time inference ({claims.latency_p50.display} p50, {claims.latency_p95.display} p95) with immediate TreeSHAP explanations.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-apricot">•</span>
+                          <span><strong>Targeted Triage:</strong> Distinguishes Typical from Monitor and Refer to provide home activities before clinical escalation.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-apricot">•</span>
+                          <span><strong>Deterministic Safety Floor:</strong> Hardcoded −2.0 SD cutoff and regression trigger bypasses all ML probabilities for safety.</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </section>
@@ -208,7 +490,7 @@ export function SafetyBand() {
   const [tick, setTick] = useState(0);
   const tier: Tier = lost || z < -2 ? "red" : z < -1 ? "amber" : "green";
   const pct = ((z + 3) / 4) * 100;
-  const verdict = { green: "On track", amber: "Let’s look closer", red: "See a doctor" }[tier];
+  const verdict = { green: "Typical (On track)", amber: "Monitor (Look closer)", red: "Refer (See a doctor)" }[tier];
   const explain = lost
     ? "A lost skill was reported, so the AI is skipped and the family is referred straight to a doctor."
     : tier === "red"
@@ -319,7 +601,7 @@ export function SafetyBand() {
                 style={{ background: TIER_COLORS[tier], boxShadow: `0 0 50px ${TIER_COLORS[tier]}` }}
               />
               <div className="overflow-hidden">
-                <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-paper/55">Result</p>
+                <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-paper/55">Result Tier</p>
                 <AnimatePresence mode="wait">
                   <motion.p
                     key={verdict}
@@ -336,13 +618,12 @@ export function SafetyBand() {
             </div>
             <p className="mt-4 min-h-[48px] max-w-xl text-[14.5px] leading-relaxed text-paper/70">{explain}</p>
             <motion.p key={tick} initial={{ opacity: 0.25 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="font-mono text-[12px] text-paper/55">
-              Re-scored in 14.3 ms · p95 27.0 ms
+              Re-scored in {claims.latency_p50.display} · p95 {claims.latency_p95.display}
             </motion.p>
 
             <EvaluatorNote tone="dark" className="mt-6">
-              Deterministic override. Any domain below −2.0 SD, or reported regression, bypasses the ML and triggers a Tier 3
-              referral. The −1.0 boundary on this page is illustrative; the model scores all domains together. Model inference
-              14.3 ms (p50), 27.0 ms (p95).
+              Deterministic override: any domain below −2.0 SD, or reported regression, bypasses the ML and triggers a Refer
+              classification. Model inference latency: {claims.latency_p50.display} (p50), {claims.latency_p95.display} (p95).
             </EvaluatorNote>
           </div>
 

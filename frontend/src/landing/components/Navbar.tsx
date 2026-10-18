@@ -16,7 +16,7 @@ const LINKS = [
 /** URL of the real screening app (frontend dev server or deployed URL). */
 const SCREENING_APP_URL =
   (import.meta.env.VITE_SCREENING_APP_URL as string | undefined) ??
-  "/screen";
+  "#/login";
 
 
 export default function Navbar() {

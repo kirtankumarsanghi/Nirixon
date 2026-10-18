@@ -1,0 +1,19 @@
+{
+  "name": "Nirixon — Frontline Worker Triage",
+  "short_name": "Nirixon CHW",
+  "description": "Offline-first developmental screening, triage, and referral coordination for community health workers (ASHA / Anganwadi / ANM)",
+  "start_url": "/deferred/chw-referral",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1329",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

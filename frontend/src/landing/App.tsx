@@ -39,7 +39,15 @@ export default function App() {
       if (!anchor) return;
       const id = anchor.getAttribute("href");
       if (!id || id === "#") return;
-      const target = document.querySelector(id);
+      // Route-style hashes (e.g. "#/login") are app navigation, not in-page scroll
+      // anchors. Let the browser update the hash so the app router can handle them.
+      if (id.startsWith("#/")) return;
+      let target: Element | null = null;
+      try {
+        target = document.querySelector(id);
+      } catch {
+        target = null;
+      }
       if (!target) return;
       e.preventDefault();
       if (lenis) lenis.scrollTo(target as HTMLElement, { offset: id === "#top" ? 0 : -70, duration: 1.3 });

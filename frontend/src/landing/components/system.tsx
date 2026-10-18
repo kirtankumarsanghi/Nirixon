@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { motion, useInView } from "framer-motion";
 import { cn } from "../utils/cn";
 
@@ -80,10 +80,10 @@ export function LogoWordmark({ className }: { className?: string }) {
 }
 
 /** App icon — the symbol on a tile. Tile + glyph invert with the theme via CSS variables. */
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, style }: { className?: string; style?: CSSProperties }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   return (
-    <span className={cn("logo-mark relative inline-flex flex-none overflow-hidden rounded-[23%]", className)} aria-hidden>
+    <span className={cn("logo-mark relative inline-flex flex-none overflow-hidden rounded-[23%]", className)} style={style} aria-hidden>
       <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
         <defs>
           <linearGradient id={`nxt${uid}`} x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">

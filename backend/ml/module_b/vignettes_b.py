@@ -1,11 +1,19 @@
-"""Gold-Standard Clinical Vignette Validation for Module B.
+"""Scripted Module B smoke check — NOT a validation of the NLP router.
 
-Codifies 10 textbook pediatric clinical phenotypes from DSM-5 / ICD-11
-casebooks and audits the end-to-end Module B pipeline (Intake -> Router ->
-Bayesian CAT -> Differential Masking -> Triage Tier) against senior
-pediatrician expectations.
+CAREFUL: this is a plumbing check, not evidence of accuracy.
 
-Run: python backend/ml/module_b/vignettes_b.py
+Each vignette's answers are chosen *from the vignette's own expected diagnosis*
+(see the `ans` branch keyed on `v["id"]` below). The engine is therefore told the
+answer that implies the label and then "correctly" reproduces that label. It also
+cannot measure the NLP router, because the answers never depend on what the
+router inferred from the note.
+
+Do not cite this script's concordance as model quality. Router quality lives in
+`ml/artifacts/module_b_router/router_metrics.json` (and `data/claims_register.json`),
+and the honest independent set is `ml/module_b/handwritten_eval_b.csv`.
+`tests/test_module_b_api.py` is the behavioural regression suite.
+
+Run: python ml/module_b/vignettes_b.py
 """
 
 from __future__ import annotations
@@ -16,8 +24,8 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.core.module_b.engine_b import Engine
 from app.core.module_b.screen_bridge import build_result_payload
+from app.core.module_b.service import module_b_service
 
 VIGNETTES = [
     {
@@ -115,16 +123,26 @@ VIGNETTES = [
 
 def audit_vignettes() -> None:
     print("\n" + "=" * 90)
-    print(
-        "      NIRIXON MODULE B: GOLD-STANDARD DSM-5 / ICD-11 CLINICAL VIGNETTE AUDIT"
-    )
+    print("      MODULE B SCRIPTED SMOKE CHECK (answers are scripted — NOT validation)")
     print("=" * 90)
+    print(
+        "Answers are chosen from each vignette's expected diagnosis, so a MATCH only"
+    )
+    print(
+        "shows the engine reproduces the label it was given. It says nothing about"
+    )
+    print(
+        "the NLP router or real-world accuracy. See router_metrics.json instead."
+    )
+    print("-" * 90)
     print(
         f"{'ID':<4} | {'Phenotype':<30} | {'Expected Tier':<22} | {'Engine Tier':<22} | {'Status'}"
     )
     print("-" * 90)
 
-    engine = Engine()
+    # Use the app's singleton so the intake note really goes through the router.
+    module_b_service.load()
+    engine = module_b_service.engine
     passed = 0
 
     for v in VIGNETTES:
@@ -197,11 +215,21 @@ def audit_vignettes() -> None:
 
     print("-" * 90)
     print(
-        f"TOTAL CONCORDANCE: {passed}/{len(VIGNETTES)} ({passed/len(VIGNETTES)*100:.1f}%)"
+        f"SCRIPTED CONCORDANCE: {passed}/{len(VIGNETTES)} ({passed/len(VIGNETTES)*100:.1f}%)"
     )
     print(
-        "CONCLUSION: The Module B pipeline exhibits 100% concordance with textbook DSM-5 clinical profiles."
+        "INTERPRETATION: plumbing check only. The answers encode the expected label,"
     )
+    print(
+        "so this cannot evidence diagnostic accuracy and must not be reported as such."
+    )
+    if passed != len(VIGNETTES):
+        print(
+            "NOTE: a MISMATCH above means the engine did not reproduce a scripted label —"
+        )
+        print(
+            "      investigate the engine, not the router."
+        )
     print("=" * 90 + "\n")
 
 

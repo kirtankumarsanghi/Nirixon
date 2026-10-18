@@ -1,3 +1,7 @@
+import claimsRegister from "./claims_register.json";
+
+export const claims = claimsRegister.claims;
+
 /* ------------------------------------------------------------------ */
 /*  Media (stock footage, URL-based)                                   */
 /* ------------------------------------------------------------------ */
@@ -13,7 +17,7 @@ export const MEDIA = {
 
 /* ------------------------------------------------------------------ */
 /*  Portal destinations — the Planet-Jumping state chain, re-themed:   */
-/*  Early (0–5) -> Scholar (6–12) -> Triage (terminal)                  */
+/*  Early (0–5) -> Scholar (5–12) -> Triage (terminal)                  */
 /* ------------------------------------------------------------------ */
 
 export type StateId = "early" | "scholar" | "triage";
@@ -42,8 +46,8 @@ export const STATES: Record<StateId, PortalState> = {
     bg: "earlyBg",
     accent: "#e58a52",
     facts: [
-      ["Age band:", "0–60 months · 6 areas of development."],
-      ["Session:", "12–18 questions · under 5 minutes."],
+      ["Age band:", "0–60 months (0–5 yrs) · 6 areas."],
+      ["Adaptive flow:", `${claims.module_a_questions_range.display} · under 5 minutes.`],
       ["Language:", "English, Hindi or Hinglish."],
       ["Built on:", "CDC milestones · WHO motor standards."],
     ],
@@ -58,8 +62,8 @@ export const STATES: Record<StateId, PortalState> = {
     bg: "scholarBg",
     accent: "#84b8c6",
     facts: [
-      ["Age band:", "6–12 years · 8 areas of functioning."],
-      ["Intake:", "Your own words, typed or spoken."],
+      ["Age band:", "5–12 years (60–144 mo) · 8 areas."],
+      ["Adaptive flow:", `${claims.module_b_questions_range.display} · NLP intake routing.`],
       ["Settings:", "Home and school answers compared."],
       ["Includes:", "Vision & hearing, attention, reading."],
     ],
@@ -75,10 +79,10 @@ export const STATES: Record<StateId, PortalState> = {
     bg: "triageBg",
     accent: "#7fb069",
     facts: [
-      ["Result:", "On track · Look closer · See a doctor."],
-      ["Precision:", "~9 in 10 “see a doctor” calls correct."],
-      ["False worry:", "~1 in 100 healthy children."],
-      ["Safety rule:", "Rule-based override, always on."],
+      ["Backend tiers:", "Typical · Monitor · Refer."],
+      ["Refer precision:", `${claims.module_a_refer_precision.display} on held-out test.`],
+      ["Refer specificity:", `${claims.module_a_refer_specificity.display} (n=${claims.module_a_test_n.value}).`],
+      ["Safety floor:", "Deterministic override, always on."],
     ],
   },
 };
@@ -87,10 +91,10 @@ export const CHAIN: StateId[] = ["early", "scholar", "triage"];
 
 /* Sidebar journey rail — destination rows are navigable */
 export const JOURNEY: { label: string; state?: StateId }[] = [
-  { label: "Early · 0–60 months", state: "early" },
+  { label: "Early · 0–60 months (0–5 yrs)", state: "early" },
   { label: "6 Areas of Development" },
   { label: "English · Hindi · Hinglish" },
-  { label: "Scholar · 6–12 yrs", state: "scholar" },
+  { label: "Scholar · 5–12 yrs", state: "scholar" },
   { label: "Home + School Compared" },
   { label: "Vision & Hearing" },
   { label: "Triage · 3 Results", state: "triage" },
@@ -178,14 +182,14 @@ export const SHOWCASE = [
     id: "early",
     num: "[01]",
     name: "Nirixon Early",
-    band: "Ages 0–60 months",
+    band: "Ages 0–60 months (0–5 yrs)",
     headline: "6 areas of development, checked in under 5 minutes",
     tagline: "CDC milestones · WHO motor standards",
     img: PHOTOS.early,
     accent: "#b04f1f",
     facts: [
       ["Age band", "0–60 months"],
-      ["Questions", "12–18, personalized"],
+      ["Questions", claims.module_a_questions_range.display],
       ["Age brackets", "17"],
       ["Basis", "CDC 75th percentile"],
     ] as [string, string][],
@@ -205,14 +209,14 @@ export const SHOWCASE = [
     id: "scholar",
     num: "[02]",
     name: "Nirixon Scholar",
-    band: "Ages 6–12",
+    band: "Ages 5–12",
     headline: "8 areas of functioning, home and school together",
     tagline: "Parent + teacher · Your own words",
     img: PHOTOS.scholar,
     accent: "#2f6d81",
     facts: [
-      ["Age band", "6–12 years"],
-      ["Intake", "Typed or spoken"],
+      ["Age band", "5–12 years (60–144 mo)"],
+      ["Questions", claims.module_b_questions_range.display],
       ["Languages", "English · Hindi · Hinglish"],
       ["Settings", "Home + school"],
     ] as [string, string][],
@@ -234,27 +238,28 @@ export const SHOWCASE = [
 
 export const TIERS = [
   {
-    tier: "Tier 1",
-    name: "Community Care",
+    tier: "Typical",
+    name: "Typical (On Track)",
     tone: "#7fb069",
     description:
-      "Children on track stay out of hospital queues. Guided home activities, monitoring cadence and community health-worker follow-up.",
-    stat: "Keeps ~60% of screens at community level",
+      "Children on track receive age-appropriate developmental enrichment and home practice activities.",
+    stat: "Guided home activities",
   },
   {
-    tier: "Tier 2",
-    name: "Targeted Support",
+    tier: "Monitor",
+    name: "Monitor (Targeted Watch)",
     tone: "#d9a44a",
     description:
-      "Borderline profiles receive a structured intervention plan, therapy referral and automatic re-screening in 6–8 weeks.",
-    stat: "Closes the gap before it widens",
+      "Borderline profiles receive structured follow-up items, home stimulation activities, and re-screening.",
+    stat: "Active developmental follow-up",
   },
   {
-    tier: "Tier 3",
-    name: "Specialist Pathway",
+    tier: "Refer",
+    name: "Refer (Clinical Pathway)",
     tone: "#e58a52",
     description:
-      "High-risk children reach specialists with a warm referral bundle — complete adaptive item trace, triangulated evidence, flagged concerns.",
-    stat: "Only ~15% ever need this chair",
+      "High-risk indicators or safety-floor triggers route directly to paediatric specialists and local DEIC centres.",
+    stat: "Prompt clinical evaluation",
   },
 ];
+

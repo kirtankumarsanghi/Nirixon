@@ -1,0 +1,223 @@
+{
+  "metadata": {
+    "title": "Nirixon Claims Register",
+    "generated_from": [
+      "backend/ml/artifacts/metrics.json",
+      "backend/ml/artifacts/latency_benchmark.json",
+      "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "backend/ml/module_b/handwritten_eval_b.csv"
+    ],
+    "disclaimer": "Evaluated on synthetic data. Clinical validation pending. Screening aid, not a diagnosis."
+  },
+  "claims": {
+    "module_a_accuracy": {
+      "value": 94.9,
+      "label": "Test Accuracy",
+      "display": "94.9%",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_macro_f1": {
+      "value": 0.9,
+      "label": "Macro F1",
+      "display": "0.900",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_macro_auroc": {
+      "value": 0.977,
+      "label": "Macro AUROC",
+      "display": "0.977",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_refer_precision": {
+      "value": 87.4,
+      "label": "Refer Precision",
+      "display": "87.4%",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_refer_recall": {
+      "value": 81.1,
+      "label": "Refer Recall",
+      "display": "81.1%",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_refer_specificity": {
+      "value": 99.1,
+      "label": "Refer Specificity",
+      "display": "99.1%",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_refer_auprc": {
+      "value": 0.891,
+      "label": "Refer AUPRC",
+      "display": "0.891",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_test_n": {
+      "value": 1600,
+      "label": "Module A Test Set Size",
+      "display": "1,600 held-out cases",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_confusion_matrix": {
+      "value": [
+        [
+          1142,
+          25,
+          3
+        ],
+        [
+          23,
+          286,
+          10
+        ],
+        [
+          3,
+          18,
+          90
+        ]
+      ],
+      "labels": [
+        "Typical",
+        "Monitor",
+        "Refer"
+      ],
+      "label": "Test Confusion Matrix (Rows: True, Cols: Pred)",
+      "display": "Typical: 1142/1170 | Monitor: 286/319 | Refer: 90/111",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 1600
+    },
+    "module_a_refer_breakdown": {
+      "true_refer_total": 111,
+      "classified_as_refer": 90,
+      "missed_as_monitor": 18,
+      "missed_as_typical": 3,
+      "label": "True Refer Cohort Classification",
+      "display": "90 correctly flagged as Refer (81.1%), 18 classified as Monitor, 3 classified as Typical",
+      "source_file": "backend/ml/artifacts/metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 111
+    },
+    "latency_p50": {
+      "value": 14.3,
+      "label": "Inference Latency (p50)",
+      "display": "14.3 ms",
+      "source_file": "backend/ml/artifacts/latency_benchmark.json",
+      "data_type": "synthetic",
+      "sample_size": 200
+    },
+    "latency_p95": {
+      "value": 27.0,
+      "label": "Inference Latency (p95)",
+      "display": "27.0 ms",
+      "source_file": "backend/ml/artifacts/latency_benchmark.json",
+      "data_type": "synthetic",
+      "sample_size": 200
+    },
+    "module_a_questions_range": {
+      "min": 8,
+      "max": 18,
+      "label": "Module A Questions Range",
+      "display": "8\u201318 adaptive items",
+      "source_file": "backend/app/core/adaptive_tree.py",
+      "data_type": "code_specification",
+      "sample_size": 8000
+    },
+    "module_b_questions_range": {
+      "min": 8,
+      "max": 20,
+      "label": "Module B Questions Range",
+      "display": "8\u201320 adaptive items",
+      "source_file": "backend/app/core/module_b/engine_b.py",
+      "data_type": "code_specification",
+      "sample_size": 2412
+    },
+    "module_b_domain_precision": {
+      "value": 49.6,
+      "label": "Module B Domain Micro Precision",
+      "display": "49.6%",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 5700
+    },
+    "module_b_domain_recall": {
+      "value": 67.4,
+      "label": "Module B Domain Micro Recall",
+      "display": "67.4%",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 5700
+    },
+    "module_b_domain_f1": {
+      "value": 57.1,
+      "label": "Module B Domain Micro F1",
+      "display": "57.1%",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 5700
+    },
+    "module_b_any_hit_rate": {
+      "value": 74.8,
+      "label": "Module B Any-True-Domain Hit Rate",
+      "display": "74.8%",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 5700
+    },
+    "module_b_safety_recall": {
+      "value": 100.0,
+      "label": "Module B Safety Recall (Crisis Phrases)",
+      "display": "100%",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 138
+    },
+    "module_b_handwritten_eval": {
+      "notes_n": 76,
+      "safety_recall": 100.0,
+      "any_hit_rate": 80.4,
+      "micro_f1": 66.7,
+      "label": "Module B Independent Handwritten Evaluation",
+      "display": "76 clinical notes: 100% safety recall, 80.4% any-domain hit rate, 66.7% F1",
+      "source_file": "backend/ml/module_b/handwritten_eval_b.csv",
+      "data_type": "clinical_handwritten",
+      "sample_size": 76
+    },
+    "module_b_safety_hybrid_proof": {
+      "rules_only_safety_recall": 100.0,
+      "rules_only_domain_recall": 33.1,
+      "classifier_only_safety_recall": 12.3,
+      "hybrid_safety_recall": 100.0,
+      "hybrid_domain_recall": 67.4,
+      "label": "Safety Recall: Rules vs ML vs Hybrid Blend",
+      "display": "Rules 100% (domain recall 33.1%) | ML Classifier 12.3% | Hybrid Blend 100% (domain recall 67.4%)",
+      "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
+      "data_type": "synthetic",
+      "sample_size": 5700
+    },
+    "acquiescence_guard_threshold": {
+      "value": 60,
+      "label": "Acquiescence Guard Threshold",
+      "display": "60%",
+      "source_file": "backend/app/core/triage_guard.py",
+      "data_type": "code_specification",
+      "sample_size": 1
+    }
+  }
+}

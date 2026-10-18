@@ -8,19 +8,33 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 
 from app.auth import hash_password
 from app.config import get_settings
-from app.db.models import User
+from app.db.models import User, Worker
 from app.db.session import get_engine, get_session_factory, init_db
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.ml.inference_service import inference_service, inference_service_b
-from app.routers import auth, predict, sandbox, screen, share
+from app.core.find_help.router import router as find_help_router
+from app.routers import (
+    audio,
+    auth,
+    evidence,
+    growth,
+    help,
+    predict,
+    referrals,
+    sandbox,
+    screen,
+    share,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +64,95 @@ async def _seed_user() -> None:
             )
             await session.commit()
             logger.info("Seeded parent user %s", settings.seed_user_email)
+
+        # Seed clinician user for clinician sandbox / what-if simulations
+        result_clinician = await session.execute(
+            select(User).where(User.email == "clinician@example.com")
+        )
+        if result_clinician.scalar_one_or_none() is None:
+            session.add(
+                User(
+                    email="clinician@example.com",
+                    hashed_password=hash_password("changeme"),
+                    role="internal",
+                )
+            )
+            await session.commit()
+            logger.info("Seeded clinician user clinician@example.com")
+
+        # Seed CHW user & worker profile (Ward 12)
+        res_chw = await session.execute(select(User).where(User.email == "chw@example.com"))
+        if res_chw.scalar_one_or_none() is None:
+            chw_user = User(
+                email="chw@example.com",
+                hashed_password=hash_password("changeme"),
+                role="chw",
+            )
+            session.add(chw_user)
+            await session.flush()
+            session.add(
+                Worker(
+                    user_id=chw_user.id,
+                    name="Sunita Devi (ASHA)",
+                    role="chw",
+                    area="Ward 12",
+                    phone="9876500001",
+                )
+            )
+            await session.commit()
+            logger.info("Seeded CHW user chw@example.com for Ward 12")
+
+        # Seed Supervisor user & worker profile (Ward 12)
+        res_sup = await session.execute(select(User).where(User.email == "supervisor@example.com"))
+        if res_sup.scalar_one_or_none() is None:
+            sup_user = User(
+                email="supervisor@example.com",
+                hashed_password=hash_password("changeme"),
+                role="supervisor",
+            )
+            session.add(sup_user)
+            await session.flush()
+            session.add(
+                Worker(
+                    user_id=sup_user.id,
+                    name="Rekha Sharma (Supervisor)",
+                    role="supervisor",
+                    area="Ward 12",
+                    phone="9876500002",
+                )
+            )
+            await session.commit()
+            logger.info("Seeded Supervisor user supervisor@example.com")
+
+        # Seed second CHW in another area (Ward 15) for testing area isolation
+        res_chw15 = await session.execute(select(User).where(User.email == "chw_ward15@example.com"))
+        if res_chw15.scalar_one_or_none() is None:
+            chw15_user = User(
+                email="chw_ward15@example.com",
+                hashed_password=hash_password("changeme"),
+                role="chw",
+            )
+            session.add(chw15_user)
+            await session.flush()
+            session.add(
+                Worker(
+                    user_id=chw15_user.id,
+                    name="Anjali Kumari (ASHA)",
+                    role="chw",
+                    area="Ward 15",
+                    phone="9876500003",
+                )
+            )
+            await session.commit()
+            logger.info("Seeded CHW user chw_ward15@example.com for Ward 15")
+
+        # Load help centres from data file if empty
+        try:
+            from app.core.help_service import ensure_help_centres_loaded
+
+            await ensure_help_centres_loaded(session)
+        except Exception:
+            logger.exception("Failed to load help centres data at startup")
 
 
 @asynccontextmanager
@@ -115,20 +218,37 @@ async def lifespan(app: FastAPI):
         _health["module_b_engine_loaded"] = False
         _health["module_b_engine_error"] = str(exc)
 
-    if settings.redis_url:
-        _health["redis_ok"] = False  # RedisSessionRepo not implemented
-        logger.warning(
-            "REDIS_URL is set but RedisSessionRepo is not implemented yet. "
-            "SESSION_REPO_BACKEND=memory is single-worker only."
-        )
+    if settings.session_repo_backend == "redis" or settings.redis_url:
+        redis_target = settings.redis_url or "redis://localhost:6379/0"
+        try:
+            import redis
+
+            r = redis.Redis.from_url(
+                redis_target, socket_timeout=2.0, socket_connect_timeout=2.0
+            )
+            ping_ok = bool(r.ping())
+            _health["redis_ok"] = ping_ok
+            _health["redis_error"] = None
+            r.close()
+            logger.info("Redis health check passed for %s (ping=%s)", redis_target, ping_ok)
+        except Exception as exc:  # noqa: BLE001
+            _health["redis_ok"] = False
+            _health["redis_error"] = str(exc)
+            logger.warning("Redis health check failed for %s: %s", redis_target, exc)
     else:
         _health["redis_ok"] = None
+        _health["redis_error"] = None
 
-    if settings.session_repo_backend == "memory":
+    if settings.session_repo_backend == "redis":
+        logger.info(
+            "SESSION_REPO_BACKEND=redis — RedisSessionRepo active. "
+            "Multi-worker Uvicorn clustering and multi-replica horizontal scaling enabled."
+        )
+    else:
         logger.warning(
             "SESSION_REPO_BACKEND=memory — InMemorySessionRepo is a "
-            "single-process/single-worker constraint. Do not run multiple "
-            "Uvicorn workers or replicas until RedisSessionRepo lands."
+            "single-process/single-worker constraint. Set SESSION_REPO_BACKEND=redis "
+            "with REDIS_URL for multi-worker production deployments."
         )
 
     yield
@@ -155,12 +275,24 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
 
     app.include_router(auth.router)
     app.include_router(screen.router)
+    app.include_router(growth.router)
     app.include_router(predict.router)
     app.include_router(sandbox.router)
     app.include_router(share.router)
+    app.include_router(help.router)
+    app.include_router(referrals.router)
+    app.include_router(audio.router)
+    app.include_router(evidence.router)
+    # Public, read-only facility reference data (its own SQLite, no patient data).
+    app.include_router(find_help_router)
+
+    static_audio_dir = Path(__file__).resolve().parent.parent / "static" / "audio"
+    if static_audio_dir.exists():
+        app.mount("/audio", StaticFiles(directory=str(static_audio_dir)), name="audio")
 
     @app.get("/health")
     async def health():
+        current_settings = get_settings()
         db_ok = False
         try:
             engine = get_engine()
@@ -201,14 +333,19 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
                 },
             },
             "redis": {
-                "configured": settings.redis_url is not None,
+                "configured": (
+                    current_settings.redis_url is not None
+                    or current_settings.session_repo_backend == "redis"
+                ),
                 "ok": _health.get("redis_ok"),
+                "error": _health.get("redis_error"),
                 "note": (
-                    "RedisSessionRepo not implemented; "
-                    "InMemorySessionRepo is single-worker only"
+                    "RedisSessionRepo active for distributed multi-worker sessions"
+                    if current_settings.session_repo_backend == "redis"
+                    else "InMemorySessionRepo is active (single-worker only)"
                 ),
             },
-            "session_repo": settings.session_repo_backend,
+            "session_repo": current_settings.session_repo_backend,
         }
 
     @app.get("/live")

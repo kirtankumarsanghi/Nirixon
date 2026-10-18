@@ -46,4 +46,4 @@ act_043,emotion_school,5,8,any,Morning goodbye routine,5,home,"Use the same shor
 act_044,emotion_school,9,12,any,Worry time,10,home,"Set 10 minutes a day to write or draw worries, pick one, and plan one small step. Outside that time, park worries on paper.",,pending_expert_review
 act_045,emotion_school,9,12,any,Predictable routine,0,home,"Keep sleep, meal and homework times steady; limit screens at night; build in one daily play or exercise slot.",,pending_expert_review
 act_046,emotion_school,5,12,monitor,Notice and praise coping,0,home,Notice and praise the moments the child handles a hard feeling well. Keep a short note of triggers and times.,,pending_expert_review
-act_047,emotion_school,5,12,refer,Talk to a counsellor,0,school|health,"Speak with the school counsellor, a paediatrician or a child mental-health service. Kiran (1800-599-0019, free) can help you find support.",,pending_expert_review
+act_047,emotion_school,5,12,refer,Talk to a counsellor,0,school|health,"Speak with the school counsellor, a paediatrician or a child mental-health service. Kiran mental health helpline (toll-free) can help you find support.",,pending_expert_review

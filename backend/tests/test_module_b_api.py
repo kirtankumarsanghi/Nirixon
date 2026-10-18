@@ -606,3 +606,36 @@ async def test_module_b_multi_informant_teacher_concordance(api_env):
     concordance = submit_data["concordance_classification"]
     assert concordance.get("attention") == "concordant_high"
     assert any("DSM-5 Criterion C met" in c for c in submit_data["caveats"])
+
+
+@pytest.mark.asyncio
+async def test_module_b_result_read_paths_keep_domain_details(api_env):
+    """A finished Module B check-in must still report its areas when re-opened.
+
+    The completion response always carried `domain_details`; the read endpoints
+    (GET /{id}/result and GET /{id}) used to drop it, so a parent reopening the
+    check-in saw no areas at all.
+    """
+    client = api_env["client"]
+    token = await _login(client)
+    headers = _auth(token)
+
+    session_id, _, _, completed = await _drive_session(
+        client,
+        token,
+        text="He cannot sit still in class and forgets his notebook every day",
+        months=108,
+        answer_fn=_likert_high_for("attention"),
+    )
+    assert completed["domain_details"], "completion payload should carry areas"
+
+    r = await client.get(f"/api/screen/{session_id}/result", headers=headers)
+    assert r.status_code == 200, r.text
+    read_details = r.json()["domain_details"]
+    assert set(read_details) == set(completed["domain_details"])
+    assert isinstance(read_details["attention"]["irt_theta"], (int, float))
+
+    r = await client.get(f"/api/screen/{session_id}", headers=headers)
+    assert r.status_code == 200, r.text
+    session_details = r.json()["result"]["domain_details"]
+    assert set(session_details) == set(completed["domain_details"])
