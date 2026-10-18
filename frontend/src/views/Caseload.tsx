@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, MapPinned, ScanLine, Search, Send, UsersRound } from "lucide-react";
+import { ChevronDown, ChevronRight, CalendarClock, CalendarPlus, MapPinned, ScanLine, Search, Send, UsersRound } from "lucide-react";
 import { ChildDrawer } from "../components/ChildDrawer";
 import { Btn, Chip, CountUp, Display, Eyebrow, Page, Reveal } from "../components/ui";
 import { AGE_BANDS, SECTORS, STATUS_META, ageBand, evaluate, type Child, type ChildStatus, type Sector } from "../lib/model";
 import { ROLES } from "../lib/roles";
+import { downloadIcs, remindersIcs } from "../lib/ics";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -58,6 +59,34 @@ export function Caseload() {
     [children]
   );
   const queued = children.filter((c) => c.handoff === "queued");
+
+  const followUps = useMemo(
+    () =>
+      children
+        .filter((c) => c.followUpDueAt)
+        .map((c) => ({ child: c, due: new Date(c.followUpDueAt as string) }))
+        .filter(({ due }) => !Number.isNaN(due.getTime()))
+        .sort((a, b) => a.due.getTime() - b.due.getTime())
+        .slice(0, 5),
+    [children],
+  );
+
+  const reminderFor = ({ child: c, due }: { child: Child; due: Date }) => ({
+    uid: `${c.id}-followup`,
+    title: `Nirixon follow-up · ${c.id}`,
+    date: due,
+    description: `${c.ageMonths} months · sector ${c.sector} · home-visit follow-up.`,
+  });
+
+  const addReminder = (entry: { child: Child; due: Date }) => {
+    downloadIcs(`nirixon-followup-${entry.child.id.slice(0, 8)}`, remindersIcs([reminderFor(entry)]));
+    showToast("Calendar reminder downloaded");
+  };
+
+  const exportReminders = () => {
+    downloadIcs("nirixon-followups", remindersIcs(followUps.map(reminderFor)));
+    showToast(`${followUps.length} reminders exported`);
+  };
 
   /* ------------------------------ actions ------------------------------ */
   const screen = (c: Child) => {
@@ -386,6 +415,39 @@ export function Caseload() {
               )}
             </div>
           </Reveal>
+
+          <Reveal delay={200}>
+            <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <Eyebrow index="05" tone="muted">Follow-ups</Eyebrow>
+                <Btn size="xs" variant="light" onClick={exportReminders} disabled={followUps.length === 0}>
+                  <CalendarPlus className="size-3.5" /> Export .ics
+                </Btn>
+              </div>
+              {followUps.length === 0 ? (
+                <p className="mt-5 text-[13px] leading-relaxed text-ink-2">No follow-ups scheduled yet.</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-line">
+                  {followUps.map((entry) => (
+                    <li key={entry.child.id} className="flex items-center gap-3 py-3">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sand">
+                        <CalendarClock className="size-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-mono text-[12px] font-semibold">{entry.child.id}</span>
+                        <span className="block text-[11.5px] text-muted">
+                          due {entry.due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        </span>
+                      </span>
+                      <Btn size="xs" variant="light" onClick={() => addReminder(entry)}>
+                        Add
+                      </Btn>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Reveal>
         </div>
       </div>
 
@@ -393,7 +455,7 @@ export function Caseload() {
       <Reveal className="mt-14">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Eyebrow index="05">Child registry</Eyebrow>
+            <Eyebrow index="06">Child registry</Eyebrow>
             <h2 className="mt-3 font-display text-[clamp(36px,4.6vw,64px)] leading-none uppercase">
               {filtered.length} <span className="text-sea">matching</span>
             </h2>

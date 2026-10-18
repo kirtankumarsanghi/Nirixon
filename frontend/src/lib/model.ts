@@ -309,6 +309,8 @@ export interface Child {
   visits: number;
   lastVisitDays: number | null;
   handoff: "none" | "queued" | "done";
+  /** Next follow-up due (ISO), from the child record; drives calendar reminders. */
+  followUpDueAt?: string | null;
 }
 
 export const AGE_BANDS = ["0–12m", "12–24m", "24–36m", "36–48m", "48–60m", "60–84m", "84–108m", "108–144m"];

@@ -190,6 +190,7 @@ export function childRecordToChild(rec: ChildRecord): Child {
     regression: false,
     visits: rec.contact_count ?? 0,
     lastVisitDays: daysSince(rec.last_contacted_at ?? rec.last_screened_at),
+    followUpDueAt: rec.follow_up_due_at ?? null,
     handoff: "none",
   };
 }

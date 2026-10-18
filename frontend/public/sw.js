@@ -139,3 +139,27 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// Web push (delivery requires a server-side sender — see README).
+self.addEventListener("push", (event) => {
+  let data = { title: "Nirixon", body: "A follow-up is due." };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (err) {
+    // Plain-text payload — keep the defaults.
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/favicon.svg",
+      badge: "/favicon.svg",
+      data: { url: "/#/chw/caseload" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/#/chw/caseload";
+  event.waitUntil(self.clients.openWindow(url));
+});
