@@ -87,7 +87,7 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
     photo: PHOTOS.motherInfant,
     alt: "An Indian mother holding her infant",
     title: "A 5-minute check, a plain result",
-    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio narration in Hindi & English at 0.8× or 1.0× speed (In build)"],
+    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio narration in Hindi & English at 0.8× or 1.0× speed (Live)"],
   },
   {
     id: "worker",
@@ -127,7 +127,7 @@ function Extra({ id }: { id: AudienceId }) {
       <div className="mt-5 space-y-2 text-[13.5px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
         <p className="flex items-center gap-3">
           <span className="text-paper font-semibold">Audio speed</span>
-          <span className="rounded bg-[#3d6b2d]/60 px-1.5 py-0.5 text-[10px] font-bold text-paper">In build</span>
+          <span className="rounded bg-[#3d6b2d]/60 px-1.5 py-0.5 text-[10px] font-bold text-paper">Live</span>
           {(["0.8", "1.0"] as const).map((s) => (
             <button
               key={s}
