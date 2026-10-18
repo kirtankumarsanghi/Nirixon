@@ -83,6 +83,27 @@ Every feature status in Nirixon strictly reflects the verification proven by the
 | **Find Help Directory** | Health Navigation | **Live · Verified** | `backend/tests/test_find_help.py`, `backend/tests/test_find_help_route.py`, `frontend/src/test/find-help.test.tsx` | Haversine distance lookup by 6-digit PIN code **or GPS coordinates** (both paths share the same age-stratified ranking), age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
 | **WhatsApp Community Bot / Messaging** | Messaging / Bot | **Coming next · Roadmap** | *In Architecture Design* | Gated for lightweight automated follow-up messages; currently preserved in "Coming next" status per safety governance requirements |
 
+### Evaluator quick start
+
+```bash
+# whole stack (Postgres + Redis + API + frontend)
+docker compose -f docker/docker-compose.yml up --build
+
+# or run locally
+cd backend  && uvicorn app.main:app --reload     # API docs at http://127.0.0.1:8000/docs
+cd frontend && npm install && npm run dev        # http://localhost:5173
+
+# optional: give a fresh workspace a populated demo ward
+cd backend && python scripts/seed_demo_data.py --ward "Ward 12" --count 40
+
+# regenerate API artifacts after route changes
+cd backend && python scripts/export_openapi.py   # docs/openapi.json + Postman collection
+```
+
+Demo accounts (password `changeme`): `parent@example.com`, `chw@example.com`,
+`supervisor@example.com`, `clinician@example.com`. Importable API artifacts live in
+`docs/openapi.json` and `docs/nirixon.postman_collection.json`; the live schema is always at `/openapi.json`.
+
 ---
 
 ## 🛡️ Core Clinical Architecture & Safety Invariants

@@ -1,0 +1,2066 @@
+{
+  "info": {
+    "name": "Nirixon API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Audio Item",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/audio/item/{item_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "audio",
+            "item",
+            ":item_id"
+          ]
+        },
+        "description": "Retrieves reviewed narration audio for a given question item.\nIf audio is missing or unreviewed, returns a graceful fallback_to_text payload.\nUnreviewed audio is NEVER served."
+      }
+    },
+    {
+      "name": "Get Audio Manifest",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/audio/manifest",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "audio",
+            "manifest"
+          ]
+        },
+        "description": "Returns the audio narration manifest.\nBy default, unreviewed files are strictly filtered out to guarantee clinical safety."
+      }
+    },
+    {
+      "name": "Get Audio Coverage Report",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/audio/report",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "audio",
+            "report"
+          ]
+        },
+        "description": "Generates a comprehensive coverage report across all question banks:\n- Lists items with reviewed audio in English and Hindi.\n- Lists items without audio (falling back to text).\n- Lists unreviewed items hidden from production."
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Create Child Record",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/children",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "children"
+          ]
+        },
+        "description": "Register an opt-in pseudonymous child record in the worker's area.\nConsent is required and recorded with a timestamp. Zero identifiable names/PII stored."
+      }
+    },
+    {
+      "name": "List Children",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/children",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "children"
+          ]
+        },
+        "description": "List children with mobile-first filters.\nACCEPTANCE CHECK: A worker sees only children in their own area."
+      }
+    },
+    {
+      "name": "Get Child Record",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/children/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "children",
+            ":child_id"
+          ]
+        },
+        "description": "Get a specific child record.\nACCEPTANCE CHECK: A worker cannot read another area's children (returns 403 Forbidden)."
+      }
+    },
+    {
+      "name": "Delete Child Record",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/children/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "children",
+            ":child_id"
+          ]
+        },
+        "description": "Permanently delete a child record and all associated referrals.\nEnforces caregiver right to erasure / removability."
+      }
+    },
+    {
+      "name": "Get Chw Analytics",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/analytics",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "analytics"
+          ]
+        },
+        "description": "Programme analytics: referral funnel, time-to-intervention medians and\nper-ward coverage. Scoped exactly like the tier counts."
+      }
+    },
+    {
+      "name": "Create Child Record",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children"
+          ]
+        },
+        "description": "Register an opt-in pseudonymous child record in the worker's area.\nConsent is required and recorded with a timestamp. Zero identifiable names/PII stored."
+      }
+    },
+    {
+      "name": "List Children",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children"
+          ]
+        },
+        "description": "List children with mobile-first filters.\nACCEPTANCE CHECK: A worker sees only children in their own area."
+      }
+    },
+    {
+      "name": "Get Child Record",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children",
+            ":child_id"
+          ]
+        },
+        "description": "Get a specific child record.\nACCEPTANCE CHECK: A worker cannot read another area's children (returns 403 Forbidden)."
+      }
+    },
+    {
+      "name": "Delete Child Record",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children",
+            ":child_id"
+          ]
+        },
+        "description": "Permanently delete a child record and all associated referrals.\nEnforces caregiver right to erasure / removability."
+      }
+    },
+    {
+      "name": "Mark Child Contacted",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children/{child_id}/contact",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children",
+            ":child_id",
+            "contact"
+          ]
+        },
+        "description": "Quick Action: Mark child as contacted/visited today.\nIncrements contact count and updates last_contacted_at timestamp."
+      }
+    },
+    {
+      "name": "One Touch Referral",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children/{child_id}/one-touch-referral",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children",
+            ":child_id",
+            "one-touch-referral"
+          ]
+        },
+        "description": "Quick Action: One-touch referral using requirement 6a minimal summary.\nCreates or reuses referral and immediately provides the 4-field minimal summary."
+      }
+    },
+    {
+      "name": "Record Child Outcome",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/children/{child_id}/outcome",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "children",
+            ":child_id",
+            "outcome"
+          ]
+        },
+        "description": "Quick Action: Record outcome notes for post-referral follow-up.\nUpdates referral status to 'outcome recorded' (or 'closed') and updates child follow-up."
+      }
+    },
+    {
+      "name": "List Conflicts",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/conflicts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "conflicts"
+          ]
+        },
+        "description": "List recent synchronization conflict logs for the worker."
+      }
+    },
+    {
+      "name": "Create Referral",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/referrals",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "referrals"
+          ]
+        },
+        "description": "Create a new referral for a child to a specialized clinical facility.\nInitial status is always 'created'.\nEnforces area isolation: worker can only refer children within their own area."
+      }
+    },
+    {
+      "name": "List Referrals",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/referrals",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "referrals"
+          ]
+        },
+        "description": "List referrals visible to the worker.\nScoped strictly to referrals for children in the worker's assigned area."
+      }
+    },
+    {
+      "name": "Record Referral Outcome",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/referrals/{referral_id}/outcome",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "referrals",
+            ":referral_id",
+            "outcome"
+          ]
+        },
+        "description": "Record post-referral follow-up outcome.\nACCEPTANCE CHECK: Enforces that child must have been seen before recording outcome.\nValidates status transition: seen -> outcome recorded (-> closed if close_referral=True)."
+      }
+    },
+    {
+      "name": "Sync Chw Batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/sync",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "sync"
+          ]
+        },
+        "description": "Idempotent batch synchronization endpoint for frontline offline-first operations.\nSupports screening sessions, referrals, child contacts, and clinical outcomes.\nEnforces idempotency keys, detects and logs conflicts, and guarantees exactly-once processing."
+      }
+    },
+    {
+      "name": "Get Tier Counts",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/tier-counts",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "tier-counts"
+          ]
+        },
+        "description": "Get aggregate child counts per triage tier and overdue follow-up counts for worker dashboard."
+      }
+    },
+    {
+      "name": "Create Worker",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/workers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "workers"
+          ]
+        },
+        "description": "Register a new community health worker (ASHA / Anganwadi / ANM / Supervisor)."
+      }
+    },
+    {
+      "name": "List Workers",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/workers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "workers"
+          ]
+        },
+        "description": "List workers. Supervisors see all; CHWs see workers in their area."
+      }
+    },
+    {
+      "name": "Get Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/chw/workers/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "chw",
+            "workers",
+            "me"
+          ]
+        },
+        "description": "Get the currently authenticated worker's profile and assigned area."
+      }
+    },
+    {
+      "name": "Get Evidence",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/evidence",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "evidence"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Facilities",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/facilities",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "facilities"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Compute Growth Analysis",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/analysis/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "analysis",
+            ":child_id"
+          ]
+        },
+        "description": "Compute developmental age vs chronological age trajectory and evaluate the\nPlateau Rule across consecutive visits."
+      }
+    },
+    {
+      "name": "Delete Child Growth Data",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/data/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "data",
+            ":child_id"
+          ]
+        },
+        "description": "Permanently delete all server-stored growth data for a pseudonymous child ID.\nEnforces parent right to erasure."
+      }
+    },
+    {
+      "name": "Export Child Growth Data",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/export/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "export",
+            ":child_id"
+          ]
+        },
+        "description": "Generate a full, portable JSON export of the child's visit trajectory.\nContains zero personally identifiable names or contact info."
+      }
+    },
+    {
+      "name": "Get Sync Status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "status"
+          ]
+        },
+        "description": "Check whether optional server sync is enabled in this deployment."
+      }
+    },
+    {
+      "name": "Save Growth Visit",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/visits",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "visits"
+          ]
+        },
+        "description": "Save an opt-in pseudonymous growth visit snapshot.\nRejects immediately if server sync is disabled by configuration."
+      }
+    },
+    {
+      "name": "List Growth Visits",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/growth/visits/{child_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "growth",
+            "visits",
+            ":child_id"
+          ]
+        },
+        "description": "List all recorded growth visits for a pseudonymous child ID,\nordered chronologically by visit date."
+      }
+    },
+    {
+      "name": "Get Nearby Help",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/help/nearby",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "help",
+            "nearby"
+          ]
+        },
+        "description": "Find nearest verified developmental centres (DEIC, RBSK, District Hospitals, Rehabilitation).\nSupports PIN or GPS coordinates. Applies strict age routing:\n- Under 6: DEICs and RBSK teams.\n- Ages 6 to 12: District Hospitals, Rehabilitation, School Resources (NOT DEICs).\n- If nothing found: returns national helplines and district health office guidance."
+      }
+    },
+    {
+      "name": "Predict",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/predict",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "predict"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Create Referral",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals"
+          ]
+        },
+        "description": "Create a new referral for a child to a specialized clinical facility.\nInitial status is always 'created'.\nEnforces area isolation: worker can only refer children within their own area."
+      }
+    },
+    {
+      "name": "List Referrals",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals"
+          ]
+        },
+        "description": "List referrals visible to the worker.\nScoped strictly to referrals for children in the worker's assigned area."
+      }
+    },
+    {
+      "name": "Get Referral",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id"
+          ]
+        },
+        "description": "Get a single referral by ID. Enforces area isolation."
+      }
+    },
+    {
+      "name": "Update Referral",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id"
+          ]
+        },
+        "description": "Update referral status and/or metadata.\nACCEPTANCE CHECK: Status transitions are strictly enforced:\ncreated -> sent -> seen -> outcome recorded -> closed."
+      }
+    },
+    {
+      "name": "Update Referral",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id"
+          ]
+        },
+        "description": "Update referral status and/or metadata.\nACCEPTANCE CHECK: Status transitions are strictly enforced:\ncreated -> sent -> seen -> outcome recorded -> closed."
+      }
+    },
+    {
+      "name": "Delete Referral",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id"
+          ]
+        },
+        "description": "Permanently delete a referral record.\nEnforces caregiver/patient right to erasure."
+      }
+    },
+    {
+      "name": "Record Referral Outcome",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}/outcome",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id",
+            "outcome"
+          ]
+        },
+        "description": "Record post-referral follow-up outcome.\nACCEPTANCE CHECK: Enforces that child must have been seen before recording outcome.\nValidates status transition: seen -> outcome recorded (-> closed if close_referral=True)."
+      }
+    },
+    {
+      "name": "Get Referral Summary",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}/summary",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id",
+            "summary"
+          ]
+        },
+        "description": "Generate a one-page referral summary as printable PDF or shareable text,\nwith the minimum data needed.\n\nACCEPTANCE CHECK:\nThe summary contains ONLY the listed fields:\n- age_bracket\n- tier\n- domains_of_concern\n- safety_rule_trigger"
+      }
+    },
+    {
+      "name": "Get Referral Summary Pdf",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}/summary/pdf",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id",
+            "summary",
+            "pdf"
+          ]
+        },
+        "description": "Download one-page printable referral summary PDF."
+      }
+    },
+    {
+      "name": "Get Referral Summary Text",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/referrals/{referral_id}/summary/text",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "referrals",
+            ":referral_id",
+            "summary",
+            "text"
+          ]
+        },
+        "description": "Download one-page shareable referral summary as plain text."
+      }
+    },
+    {
+      "name": "Simulate Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/sandbox/{session_id}/simulate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "sandbox",
+            ":session_id",
+            "simulate"
+          ]
+        },
+        "description": "Clinician sandbox: what-if re-scoring of a completed session.\nTakes optional model_name, answer_overrides, domain_scores, and age override."
+      }
+    },
+    {
+      "name": "Get Live Tasks For Bracket Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/live-tasks/{bracket}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "live-tasks",
+            ":bracket"
+          ]
+        },
+        "description": "Retrieve live observational task definitions for an age bracket."
+      }
+    },
+    {
+      "name": "List Sessions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/sessions",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "sessions"
+          ]
+        },
+        "description": "List the caller's own completed screening sessions, newest first.\n\nPowers the parent history (Home / Growth / Share). Scoped to the caller so\nother parents' sessions are never returned. Returns the authoritative\nclassification plus the real per-domain scores for Module A."
+      }
+    },
+    {
+      "name": "Start Screen",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/start",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "start"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Get Teacher Assessment Items",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/teacher/{invite_code}/items",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "teacher",
+            ":invite_code",
+            "items"
+          ]
+        },
+        "description": "Fetch an expedited 8-domain classroom behavior rating battery for the school teacher."
+      }
+    },
+    {
+      "name": "Submit Teacher Assessment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/teacher/{invite_code}/submit",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "teacher",
+            ":invite_code",
+            "submit"
+          ]
+        },
+        "description": "Submit teacher classroom ratings and calculate multi-informant DSM-5 Criterion C concordance."
+      }
+    },
+    {
+      "name": "Get Touch Config",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/touch-config",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            "touch-config"
+          ]
+        },
+        "description": "Return provisional normative reference ranges for touch micro-tasks."
+      }
+    },
+    {
+      "name": "Get Session",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Submit Answer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/answer",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "answer"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Get Next Screen Action",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/b/next",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "b",
+            "next"
+          ]
+        },
+        "description": "Module B: advance to next action after an informational notice."
+      }
+    },
+    {
+      "name": "Submit Recall Choice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/b/recall",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "b",
+            "recall"
+          ]
+        },
+        "description": "Module B: apply selected domain chips from recall help."
+      }
+    },
+    {
+      "name": "Get B Result",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/b/result",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "b",
+            "result"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Contact Worker",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/contact_worker",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "contact_worker"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Submit Intake",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/intake",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "intake"
+          ]
+        },
+        "description": "Module B only. Submit the free-text observation from a parent or teacher.\nReturns the NLP-detected domains and the next action for the frontend.\n\nIf recall_help_needed is True, the frontend should render a chip grid.\nIf rule_out_flagged is True, the frontend should show a specialist-referral\nmessage and not proceed to adaptive questions."
+      }
+    },
+    {
+      "name": "Get Session Live Tasks",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/live-tasks",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "live-tasks"
+          ]
+        },
+        "description": "Retrieve live observational tasks applicable to the current screening session."
+      }
+    },
+    {
+      "name": "Get Next Screen Action",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/next",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "next"
+          ]
+        },
+        "description": "Module B: advance to next action after an informational notice."
+      }
+    },
+    {
+      "name": "Get Next Screen Action",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/next",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "next"
+          ]
+        },
+        "description": "Module B: advance to next action after an informational notice."
+      }
+    },
+    {
+      "name": "Submit Recall Choice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/recall",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "recall"
+          ]
+        },
+        "description": "Module B: apply selected domain chips from recall help."
+      }
+    },
+    {
+      "name": "Create Reflex Branch Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/reflex_branch",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "reflex_branch"
+          ]
+        },
+        "description": "Reflex-Branches an ambiguous/borderline Module A session directly into Module B.\nCreates a linked Module B micro-testing session for the child without requiring\nthe caregiver to re-enter demographic information."
+      }
+    },
+    {
+      "name": "Get Result",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/result",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "result"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Submit Teacher Form",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/teacher",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "teacher"
+          ]
+        },
+        "description": "Module B only. Submit teacher-reported answers for cross-context\nconsistency scoring. Does not affect the adaptive question flow.\n\nConsistency score of <0.6 triggers a divergence flag per domain in the\nresults view. Teacher answers are stored on the session but never surfaced\nto the teacher themselves."
+      }
+    },
+    {
+      "name": "Get Teacher Items",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/teacher-items",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "teacher-items"
+          ]
+        },
+        "description": "Module B only. Return school-facing items matched to the parent's answers\nso the teacher form shares item IDs for consistency scoring."
+      }
+    },
+    {
+      "name": "Generate Teacher Invite",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/teacher_invite",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "teacher_invite"
+          ]
+        },
+        "description": "Generate or retrieve a secure multi-informant teacher invite token for DSM-5 Criterion C concordance."
+      }
+    },
+    {
+      "name": "Submit Touch Telemetry",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/touch-telemetry",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "touch-telemetry"
+          ]
+        },
+        "description": "Ingest exploratory touch micro-task telemetry (24+ months).\n\nEXPLORATORY GUARANTEE:\n- Scalar metrics only (reaction time, accuracy %, jitter px). No images/video.\n- Stored for clinician review with reference ranges marked provisional.\n- NEVER fed into the screening model or safety floor rule."
+      }
+    },
+    {
+      "name": "List Suggested Workers",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/screen/{session_id}/workers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "screen",
+            ":session_id",
+            "workers"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Get Invite Questions",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/invite/{token}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "invite",
+            ":token"
+          ]
+        },
+        "description": "CRITICAL PRIVACY GUARANTEE:\nValidates token and returns ONLY the questionnaire items to answer.\nNO child name, NO child ref, NO birthdate, NO scores, NO previous caregiver answers."
+      }
+    },
+    {
+      "name": "Submit Joint Response",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/invite/{token}/respond",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "invite",
+            ":token",
+            "respond"
+          ]
+        },
+        "description": "Submit independent observations as a secondary respondent.\nEnforces single-use token; marks token used and saves answers with role label only (NO names)."
+      }
+    },
+    {
+      "name": "Delete Screening Session Data",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/session/{session_id}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "session",
+            ":session_id"
+          ]
+        },
+        "description": "Permanently delete a screening session.\nCascades and deletes all answers, invites, respondent answers, and results."
+      }
+    },
+    {
+      "name": "Get Session Concordance",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/session/{session_id}/concordance",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "session",
+            ":session_id",
+            "concordance"
+          ]
+        },
+        "description": "Retrieve existing concordance analysis and disagreements for clinician review."
+      }
+    },
+    {
+      "name": "Create Joint Invite",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/session/{session_id}/invite",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "session",
+            ":session_id",
+            "invite"
+          ]
+        },
+        "description": "Generate an expiring, single-use invite link for a secondary caregiver (max 3 per screening)."
+      }
+    },
+    {
+      "name": "List Joint Invites",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/session/{session_id}/invites",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "session",
+            ":session_id",
+            "invites"
+          ]
+        },
+        "description": "List all invite links and their status for a session."
+      }
+    },
+    {
+      "name": "Merge Shared Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/share/session/{session_id}/merge",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "share",
+            "session",
+            ":session_id",
+            "merge"
+          ]
+        },
+        "description": "Perform concordance index calculation and apply the combination rule:\n1. Primary caregiver answers feed the statistical ML model.\n2. Most concerning answer across ALL respondents feeds the safety rule.\n3. Returns concordance score, disagreements, and clinical follow-up prompts."
+      }
+    },
+    {
+      "name": "Create Worker",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/workers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "workers"
+          ]
+        },
+        "description": "Register a new community health worker (ASHA / Anganwadi / ANM / Supervisor)."
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": ""
+      }
+    },
+    {
+      "name": "Live",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/live",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "live"
+          ]
+        },
+        "description": "Basic liveness — process is up, independent of DB/artifacts."
+      }
+    }
+  ]
+}
