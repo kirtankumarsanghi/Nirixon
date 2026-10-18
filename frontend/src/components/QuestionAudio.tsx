@@ -79,8 +79,28 @@ export function QuestionAudio({
   }
 
   const serverAudio = Boolean(entry?.has_audio && entry.audio?.audio_url);
-  const speakText = entry?.text ?? (lang === "en" ? text : undefined);
-  const canSpeak = !serverAudio && Boolean(speakText) && speechAvailable();
+
+  // Reviewed clip wins. Otherwise speak: Hindi text when the bank has it
+  // (Module A), else the English source — Module B's bank is English-only, so we
+  // read it in English and tag the control rather than showing nothing at all.
+  const hindiText = lang === "hi" ? (entry?.text ?? undefined) : undefined;
+  const englishText = text ?? entry?.text ?? undefined;
+  let speakText: string | undefined;
+  let speechLang: "en" | "hi" = lang;
+  if (!serverAudio) {
+    if (lang === "hi") {
+      if (hindiText) {
+        speakText = hindiText;
+      } else if (englishText) {
+        speakText = englishText;
+        speechLang = "en";
+      }
+    } else {
+      speakText = englishText;
+    }
+  }
+  const englishFallback = !serverAudio && lang === "hi" && speechLang === "en";
+  const canSpeak = Boolean(speakText) && speechAvailable();
 
   if (!serverAudio && !canSpeak) return null;
 
@@ -111,8 +131,8 @@ export function QuestionAudio({
       return;
     }
     const utterance = new SpeechSynthesisUtterance(speakText as string);
-    utterance.lang = lang === "hi" ? "hi-IN" : "en-IN";
-    const voice = pickVoice(lang);
+    utterance.lang = speechLang === "hi" ? "hi-IN" : "en-IN";
+    const voice = pickVoice(speechLang);
     if (voice) utterance.voice = voice;
     utterance.rate = rate;
     utterance.onend = () => setPlaying(false);
@@ -130,12 +150,26 @@ export function QuestionAudio({
       <button
         type="button"
         onClick={() => void toggle()}
-        aria-label={playing ? "Pause question audio" : "Play question audio"}
+        aria-label={
+          playing
+            ? "Pause question audio"
+            : englishFallback
+              ? "Play question audio in English — Hindi is not available for this question"
+              : "Play question audio"
+        }
         aria-pressed={playing}
         className="grid size-8 place-items-center rounded-full border border-line-2 transition-colors hover:bg-sand"
       >
         {playing ? <Pause className="size-3.5" /> : <Volume2 className="size-3.5" />}
       </button>
+      {englishFallback && (
+        <span
+          title="हिन्दी ऑडियो इस प्रश्न के लिए उपलब्ध नहीं है — अंग्रेज़ी में सुनाया जाएगा"
+          className="rounded-full border border-line-2 px-1.5 py-0.5 font-mono text-[9px] font-bold text-muted"
+        >
+          EN
+        </span>
+      )}
       <button
         type="button"
         onClick={() => setRate((r) => (r === 1 ? 0.8 : 1))}
