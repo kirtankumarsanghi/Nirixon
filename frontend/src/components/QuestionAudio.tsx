@@ -20,20 +20,23 @@ function pickVoice(lang: "en" | "hi"): SpeechSynthesisVoice | undefined {
  *
  * 1. If the server has a reviewed clip (Module A, mandatory flags) it plays that
  *    MP3 — including the validated Hindi transcript.
- * 2. Otherwise it reads the exact on-screen question with the browser's speech
- *    synthesis (the full adaptive Module B bank is far too large to pre-record,
- *    and its source text is English-only). Speed applies to both paths.
+ * 2. Otherwise it speaks: the Hindi rendition when one exists (Module A manifest
+ *    text, or the translated Module B map), else the English on-screen question.
+ *    Speed applies to every path.
  */
 export function QuestionAudio({
   itemId,
   lang,
   text,
+  hindiText,
   className,
 }: {
   itemId: string;
   lang: "en" | "hi";
   /** The question currently on screen; used when no pre-recorded clip exists. */
   text?: string;
+  /** Hindi rendition of the question, when the bank provides one (Module B). */
+  hindiText?: string;
   className?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -80,17 +83,17 @@ export function QuestionAudio({
 
   const serverAudio = Boolean(entry?.has_audio && entry.audio?.audio_url);
 
-  // Reviewed clip wins. Otherwise speak: Hindi text when the bank has it
-  // (Module A), else the English source — Module B's bank is English-only, so we
-  // read it in English and tag the control rather than showing nothing at all.
-  const hindiText = lang === "hi" ? (entry?.text ?? undefined) : undefined;
+  // Reviewed clip wins. Otherwise speak the Hindi rendition when one exists
+  // (Module A manifest text or the translated Module B map); otherwise fall back
+  // to the English source and tag the control rather than showing nothing.
+  const hindiSource = lang === "hi" ? (entry?.text ?? hindiText) : undefined;
   const englishText = text ?? entry?.text ?? undefined;
   let speakText: string | undefined;
   let speechLang: "en" | "hi" = lang;
   if (!serverAudio) {
     if (lang === "hi") {
-      if (hindiText) {
-        speakText = hindiText;
+      if (hindiSource) {
+        speakText = hindiSource;
       } else if (englishText) {
         speakText = englishText;
         speechLang = "en";

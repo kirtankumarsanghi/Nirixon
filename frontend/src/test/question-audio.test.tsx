@@ -147,4 +147,33 @@ describe("QuestionAudio", () => {
     expect(speak.mock.calls[0][0].lang).toBe("en-IN");
     expect(screen.getByText("EN")).toBeTruthy();
   });
+
+  it("speaks the Hindi rendition when the bank provides one", async () => {
+    const speak = stubSpeech();
+
+    vi.mocked(shareApi.getAudioItem).mockResolvedValue({
+      item_id: "att_start.P.5-7.a0",
+      has_audio: false,
+      fallback_to_text: true,
+      reason: "Item not present in audio manifest",
+      text: null,
+      audio: null,
+      available_languages: [],
+    });
+
+    render(
+      <QuestionAudio
+        itemId="att_start.P.5-7.a0"
+        lang="hi"
+        text="Your child needs repeated reminders."
+        hindiText="आपके बच्चे को बार-बार याद दिलाने की जरूरत है।"
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /play question audio/i }));
+    await waitFor(() => expect(speak).toHaveBeenCalled());
+    expect(speak.mock.calls[0][0].text).toBe("आपके बच्चे को बार-बार याद दिलाने की जरूरत है।");
+    expect(speak.mock.calls[0][0].lang).toBe("hi-IN");
+    expect(screen.queryByText("EN")).toBeNull();
+  });
 });
