@@ -483,7 +483,7 @@ export function Caseload() {
                           due {entry.due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </span>
                       </span>
-                      <Btn size="xs" variant="light" onClick={() => addReminder(entry)}>
+                      <Btn size="xs" variant="light" onClick={() => addReminder(entry)} aria-label={`Add calendar reminder for ${entry.child.id}`}>
                         Add
                       </Btn>
                     </li>

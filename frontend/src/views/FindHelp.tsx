@@ -270,6 +270,7 @@ export function FindHelp() {
                 {SAMPLE_PINS.map((s) => (
                   <button
                     key={s.pin}
+                    aria-label={`Try sample PIN ${s.label} ${s.pin}`}
                     onClick={() => {
                       setPin(s.pin);
                       void search(s.pin);
