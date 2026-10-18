@@ -4,6 +4,7 @@ import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { QuestionAudio } from "../components/QuestionAudio";
 import { caregiverPlanBody, printSheet } from "../lib/printSheet";
+import { loadModuleBHindi } from "../lib/moduleBHi";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
@@ -130,6 +131,18 @@ export function CheckIn() {
   const [recallPicked, setRecallPicked] = useState<string[]>([]);
   const [safetyMessage, setSafetyMessage] = useState("");
   const [helplines, setHelplines] = useState<Record<string, string>>({});
+  const [moduleBHi, setModuleBHi] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    if (module !== "B") return;
+    let cancelled = false;
+    void loadModuleBHindi().then((map) => {
+      if (!cancelled) setModuleBHi(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [module]);
 
   useEffect(() => () => setCheckInTarget(null), [setCheckInTarget]);
 
@@ -989,7 +1002,14 @@ export function CheckIn() {
                   <p className="text-[12px] text-muted">{targetChild ? targetChild.id : name || "Sample child"} · {age} months · Module {module}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                  {question && <QuestionAudio itemId={question.item_id} lang={lang} text={qText} />}
+                  {question && (
+                    <QuestionAudio
+                      itemId={question.item_id}
+                      lang={lang}
+                      text={qText}
+                      hindiText={moduleBHi?.[question.item_id]}
+                    />
+                  )}
                   <button
                     onClick={() => setLang(lang === "en" ? "hi" : "en")}
                     className="rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
