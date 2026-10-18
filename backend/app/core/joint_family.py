@@ -54,7 +54,10 @@ def get_most_concerning_value(item_id: str, values: list[int]) -> tuple[int, int
     if not values:
         return (0, 0)
 
-    if item_id in ("regression_flag", "family_history_flag") or item_id in RULE_OUT_ITEM_IDS:
+    if (
+        item_id in ("regression_flag", "family_history_flag")
+        or item_id in RULE_OUT_ITEM_IDS
+    ):
         max_val = max(values)
         idx = values.index(max_val)
         return (max_val, idx)
@@ -65,7 +68,9 @@ def get_most_concerning_value(item_id: str, values: list[int]) -> tuple[int, int
     return (min_val, idx)
 
 
-def generate_follow_up_prompt(item_id: str, domain: str, discrepancy_roles: list[str]) -> str:
+def generate_follow_up_prompt(
+    item_id: str, domain: str, discrepancy_roles: list[str]
+) -> str:
     """Generates an actionable follow-up prompt for clinicians to probe during consultations."""
     roles_str = " and ".join(discrepancy_roles)
     if item_id == "regression_flag":
@@ -86,13 +91,9 @@ def generate_follow_up_prompt(item_id: str, domain: str, discrepancy_roles: list
             f"(e.g. playground/running vs structured tasks at home)."
         )
     if "problem" in domain_lower or "cognit" in domain_lower:
-        return (
-            f"Ask what physical prompts or toy materials were used when {roles_str} observed the child."
-        )
+        return f"Ask what physical prompts or toy materials were used when {roles_str} observed the child."
     if "social" in domain_lower or "personal" in domain_lower:
-        return (
-            f"Probe social engagement routines and stranger anxiety differences observed between {roles_str}."
-        )
+        return f"Probe social engagement routines and stranger anxiety differences observed between {roles_str}."
 
     return (
         f"Ask caregivers to compare routines and environmental factors that might account for "
@@ -159,7 +160,10 @@ def compute_joint_concordance(
             disagreements=[],
         )
 
-    roles = [str(r.get("role_label", f"Respondent {i+1}")) for i, r in enumerate(respondent_submissions)]
+    roles = [
+        str(r.get("role_label", f"Respondent {i+1}"))
+        for i, r in enumerate(respondent_submissions)
+    ]
     item_records: list[ItemConcordance] = []
     disagreements: list[ItemDisagreement] = []
 
@@ -240,13 +244,21 @@ def compute_joint_concordance(
                     max_delta=max_delta,
                     most_concerning_answer=most_conc_val,
                     most_concerning_role=most_conc_role,
-                    follow_up_prompt=generate_follow_up_prompt(item_id, domain, discrepancy_roles),
+                    follow_up_prompt=generate_follow_up_prompt(
+                        item_id, domain, discrepancy_roles
+                    ),
                 )
             )
 
     n_items = len(item_records)
-    overall_concordance = round(total_concordance_sum / n_items, 4) if n_items > 0 else 1.0
-    exact_agreement_pct = round((total_exact_match_ratio_sum / n_items) * 100.0, 1) if n_items > 0 else 100.0
+    overall_concordance = (
+        round(total_concordance_sum / n_items, 4) if n_items > 0 else 1.0
+    )
+    exact_agreement_pct = (
+        round((total_exact_match_ratio_sum / n_items) * 100.0, 1)
+        if n_items > 0
+        else 100.0
+    )
 
     return ConcordanceAnalysis(
         overall_concordance=overall_concordance,

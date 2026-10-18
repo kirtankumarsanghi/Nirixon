@@ -54,7 +54,12 @@ type Placed = {
   ty: number;
 };
 
-const CHAR_W = 7;
+/** Labels are rendered in JetBrains Mono, whose advance width is ~0.6em; the
+ *  collision box width derives from the font size + tracking rather than a
+ *  standalone magic number, so it cannot drift from the rendered text. */
+const LABEL_SIZE = 10;
+const LABEL_TRACKING = 1; // SVG letter-spacing, px
+const CHAR_W = LABEL_SIZE * 0.6 + LABEL_TRACKING;
 const LABEL_PAD = 5;
 const LABEL_H = 14;
 const LABEL_GAP = 12;
@@ -144,11 +149,11 @@ function RadarMap({ list, hover, onHover }: { list: Facility[]; hover: number | 
               x={p.tx}
               y={p.ty}
               textAnchor={p.anchor}
-              fontSize="10"
+              fontSize={LABEL_SIZE}
               fontFamily="JetBrains Mono, monospace"
               fontWeight="600"
               fill={on ? "#21160b" : "#fff4dc"}
-              letterSpacing="1"
+              letterSpacing={LABEL_TRACKING}
             >
               {p.text}
             </text>

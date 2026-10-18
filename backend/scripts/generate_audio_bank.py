@@ -280,7 +280,9 @@ def estimate_duration_ms(text: str, language: str) -> int:
     return max(3200, min(5600, base_ms))
 
 
-def generate_synthesized_wav(filepath: Path, duration_ms: int, pitch_base: float = 180.0) -> None:
+def generate_synthesized_wav(
+    filepath: Path, duration_ms: int, pitch_base: float = 180.0
+) -> None:
     """
     Generates a high-quality 16-bit PCM Mono WAV file with multi-harmonic speech formants
     and smooth cadence envelopes so it sounds melodic and natural when played in the browser.
@@ -302,7 +304,9 @@ def generate_synthesized_wav(filepath: Path, duration_ms: int, pitch_base: float
         local_t = (i % pulse_length) / pulse_length
 
         # Syllable rise-decay envelope
-        syllable_envelope = math.sin(math.pi * local_t) ** 1.5 if local_t < 0.85 else 0.0
+        syllable_envelope = (
+            math.sin(math.pi * local_t) ** 1.5 if local_t < 0.85 else 0.0
+        )
 
         # Overall sentence envelope (soft lead-in and gentle fade out)
         global_fade = 1.0
@@ -363,7 +367,7 @@ def generate_audio_bank() -> dict:
         en_text = item["en"]
         en_duration = estimate_duration_ms(en_text, "en")
         en_filename = f"{item_id}.wav"
-        
+
         # Write to frontend public directory
         fe_en_path = FRONTEND_AUDIO_DIR / "en" / en_filename
         generate_synthesized_wav(fe_en_path, en_duration, pitch_base=175.0)

@@ -1078,7 +1078,11 @@ async def list_sessions(
     summaries: list[SessionSummary] = []
     for row in rows:
         rr = row.risk_result
-        answers = row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+        answers = (
+            row.state_json.get("answers", {})
+            if isinstance(row.state_json, dict)
+            else {}
+        )
         scores = _module_a_domain_scores(answers) if row.module == "A" else {}
         summaries.append(
             SessionSummary(
@@ -1092,7 +1096,9 @@ async def list_sessions(
                 child_name=row.child_name,
                 final_classification=rr.final_classification if rr else None,
                 probabilities=dict(rr.probabilities or {}) if rr else {},
-                safety_override_triggered=bool(rr.safety_override_triggered) if rr else False,
+                safety_override_triggered=(
+                    bool(rr.safety_override_triggered) if rr else False
+                ),
                 domain_classifications=(
                     dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
                 ),

@@ -98,7 +98,12 @@ def compare_touch_metric_to_reference(
 ) -> dict[str, Any]:
     """Compare an observed scalar telemetry metric against provisional ranges."""
     b_key = get_touch_bracket_key(age_months)
-    ranges = PROVISIONAL_TOUCH_CONFIG["brackets"].get(b_key, {}).get(task_type, {}).get(metric_name, {})
+    ranges = (
+        PROVISIONAL_TOUCH_CONFIG["brackets"]
+        .get(b_key, {})
+        .get(task_type, {})
+        .get(metric_name, {})
+    )
     if not ranges:
         return {"status": "unconfigured", "reference": None, "bracket": b_key}
 

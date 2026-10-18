@@ -57,7 +57,9 @@ class CoveredItemReportEntry(BaseModel):
 
 
 class AudioCoverageReport(BaseModel):
-    report_title: str = "Nirixon Audio Narration Coverage & Clinical Verification Report"
+    report_title: str = (
+        "Nirixon Audio Narration Coverage & Clinical Verification Report"
+    )
     generated_at: str
     total_system_items: int
     covered_items_count: int

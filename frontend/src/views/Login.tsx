@@ -40,7 +40,7 @@ function CircleBadge() {
 }
 
 export function Login() {
-  const { login, signIn, theme, toggleTheme } = useApp();
+  const { signIn, signInAs, theme, toggleTheme } = useApp();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -114,6 +114,17 @@ export function Login() {
     }
   };
 
+  /** Open a role's workspace, authenticating as its demo account first. */
+  const enter = async (r: Role, v?: View) => {
+    setError("");
+    try {
+      await signInAs(r, v);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
+      document.getElementById("signin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const ready = email.length > 0 && pw.length > 0;
 
   return (
@@ -154,7 +165,7 @@ export function Login() {
         ]}
         active={tab}
         onTab={scrollTo}
-        onCta={() => login("parent", "checkin")}
+        onCta={() => void enter("parent", "checkin")}
         onMenu={() => setMenu(true)}
         onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         theme={theme}
@@ -166,12 +177,12 @@ export function Login() {
         photo={PHOTO.blocksGirl}
         eyebrow="Nirixon · demo workspace"
         title="Every child. The next step."
-        subtitle="Four connected workspaces, one set of synthetic records. Pick a door and walk through."
+        subtitle="Four connected workspaces, one shared set of records. Pick a door and walk through."
         items={[
           { label: "Sign in", hint: "Access", onClick: () => scrollTo("signin") },
           { label: "Four roles", hint: "Pick a workspace", onClick: () => scrollTo("roles") },
           { label: "Walkthrough", hint: "For evaluators", onClick: () => scrollTo("walkthrough") },
-          { label: "Start check-in", hint: "Try it now", onClick: () => login("parent", "checkin") },
+          { label: "Start check-in", hint: "Try it now", onClick: () => void enter("parent", "checkin") },
         ]}
       />
 
@@ -414,7 +425,7 @@ export function Login() {
                           tabIndex={on ? 0 : -1}
                           onClick={(e) => {
                             e.stopPropagation();
-                            login(r);
+                            void enter(r);
                           }}
                         >
                           Enter workspace <ArrowUpRight className="size-4" />
@@ -454,7 +465,7 @@ export function Login() {
                 <li className="border-b border-line-2">
                   <button
                     type="button"
-                    onClick={() => login(s.role, s.view)}
+                    onClick={() => void enter(s.role, s.view)}
                     className="group grid w-full grid-cols-[48px_1fr_auto] items-center gap-4 py-7 text-left transition-all duration-300 hover:bg-card hover:px-4 sm:grid-cols-[72px_220px_1fr_auto] sm:gap-8"
                   >
                     <span className="font-mono text-[13px] font-semibold text-rust">{s.n}</span>
@@ -501,7 +512,7 @@ export function Login() {
               </li>
             ))}
             <li>
-              <button type="button" onClick={() => login("parent", "checkin")} className="text-[14px] font-semibold transition-colors hover:text-rust">
+              <button type="button" onClick={() => void enter("parent", "checkin")} className="text-[14px] font-semibold transition-colors hover:text-rust">
                 Start check-in
               </button>
             </li>
@@ -517,7 +528,7 @@ export function Login() {
           </ul>
         </div>
         <p className="mx-auto mt-8 max-w-[1360px] px-5 font-mono text-[10.5px] tracking-[0.16em] text-muted uppercase lg:px-8">
-          All records in this demo are synthetic · Nothing leaves your browser · Screening aid, not a diagnosis
+          Demo workspace · records served by the Nirixon API · Screening aid, not a diagnosis
         </p>
       </footer>
     </div>

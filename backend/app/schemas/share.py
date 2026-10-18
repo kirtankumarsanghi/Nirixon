@@ -56,6 +56,7 @@ class JointInvitePublicDetail(BaseModel):
     A token exposes ONLY the items to answer and the role, nothing else about the child.
     NO child name, NO child ref, NO birthdate, NO primary caregiver details.
     """
+
     valid: bool
     role_label: str
     expires_at: datetime
@@ -107,6 +108,7 @@ class JointItemConcordancePayload(BaseModel):
 
 class ShareMergeRequest(BaseModel):
     """Optional payload to trigger or supply merged answers."""
+
     answers: dict[str, int] = Field(
         default_factory=dict,
         description="Optional additional respondent answers to merge.",

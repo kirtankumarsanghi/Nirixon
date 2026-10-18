@@ -18,11 +18,11 @@ from sqlalchemy import select, text
 
 from app.auth import hash_password
 from app.config import get_settings
+from app.core.find_help.router import router as find_help_router
 from app.db.models import User, Worker
 from app.db.session import get_engine, get_session_factory, init_db
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.ml.inference_service import inference_service, inference_service_b
-from app.core.find_help.router import router as find_help_router
 from app.routers import (
     audio,
     auth,
@@ -81,7 +81,9 @@ async def _seed_user() -> None:
             logger.info("Seeded clinician user clinician@example.com")
 
         # Seed CHW user & worker profile (Ward 12)
-        res_chw = await session.execute(select(User).where(User.email == "chw@example.com"))
+        res_chw = await session.execute(
+            select(User).where(User.email == "chw@example.com")
+        )
         if res_chw.scalar_one_or_none() is None:
             chw_user = User(
                 email="chw@example.com",
@@ -103,7 +105,9 @@ async def _seed_user() -> None:
             logger.info("Seeded CHW user chw@example.com for Ward 12")
 
         # Seed Supervisor user & worker profile (Ward 12)
-        res_sup = await session.execute(select(User).where(User.email == "supervisor@example.com"))
+        res_sup = await session.execute(
+            select(User).where(User.email == "supervisor@example.com")
+        )
         if res_sup.scalar_one_or_none() is None:
             sup_user = User(
                 email="supervisor@example.com",
@@ -125,7 +129,9 @@ async def _seed_user() -> None:
             logger.info("Seeded Supervisor user supervisor@example.com")
 
         # Seed second CHW in another area (Ward 15) for testing area isolation
-        res_chw15 = await session.execute(select(User).where(User.email == "chw_ward15@example.com"))
+        res_chw15 = await session.execute(
+            select(User).where(User.email == "chw_ward15@example.com")
+        )
         if res_chw15.scalar_one_or_none() is None:
             chw15_user = User(
                 email="chw_ward15@example.com",
@@ -230,7 +236,9 @@ async def lifespan(app: FastAPI):
             _health["redis_ok"] = ping_ok
             _health["redis_error"] = None
             r.close()
-            logger.info("Redis health check passed for %s (ping=%s)", redis_target, ping_ok)
+            logger.info(
+                "Redis health check passed for %s (ping=%s)", redis_target, ping_ok
+            )
         except Exception as exc:  # noqa: BLE001
             _health["redis_ok"] = False
             _health["redis_error"] = str(exc)

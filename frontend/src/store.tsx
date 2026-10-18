@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { CheckIn, Child, Scores } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
-import { api, referralApi, setAuthToken } from "./api/client";
+import { api, onUnauthorized, referralApi, setAuthToken } from "./api/client";
+import type { ChildRecord } from "./api/types";
 import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
 
 /** Map a backend role string onto a design role id. Backend uses "internal"
@@ -25,6 +26,8 @@ interface AppCtx {
   login: (role: Role, view?: View) => void;
   /** Authenticate against the backend and enter the workspace. */
   signIn: (email: string, password: string) => Promise<void>;
+  /** Authenticate as a role's demo account and open one of its views. */
+  signInAs: (role: Role, view?: View) => Promise<void>;
   logout: () => void;
   go: (view: View) => void;
   switchRole: (role: Role) => void;
@@ -64,6 +67,20 @@ interface AppCtx {
 
 const Ctx = createContext<AppCtx | null>(null);
 
+/** Children for the active ward. Pages past the API's 500-row cap so a large
+ *  caseload is never silently truncated (with a bound on runaway paging). */
+async function fetchAllChildren(): Promise<ChildRecord[]> {
+  const page = 500;
+  const ceiling = 10_000;
+  const all: ChildRecord[] = [];
+  for (let offset = 0; offset < ceiling; offset += page) {
+    const recs = await referralApi.getChildren({ limit: page, offset });
+    all.push(...recs);
+    if (recs.length < page) break;
+  }
+  return all;
+}
+
 interface HistState {
   idx?: number;
   prevApp?: boolean;
@@ -75,8 +92,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [errorFor, setErrorFor] = useState<{ key: string; message: string } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [checkInTarget, setCheckInTarget] = useState<string | null>(null);
   const [whatIfSeed, setWhatIfSeed] = useState<WhatIfSeed | null>(null);
@@ -140,8 +157,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   useEffect(() => {
     if (activeRole === null) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    setErrorFor(null);
     (async () => {
       try {
         if (activeRole === "parent" || activeRole === "clinician") {
@@ -149,19 +165,23 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
           if (!cancelled) setCheckIns(sessionsToCheckIns(sessions));
         }
         if (activeRole === "chw" || activeRole === "supervisor" || activeRole === "clinician") {
-          const recs = await referralApi.getChildren({ limit: 500 });
+          const recs = await fetchAllChildren();
           if (!cancelled) setChildren(recs.map(childRecordToChild));
         }
+        if (!cancelled) setLoadedKey(activeRole);
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setErrorFor({ key: activeRole, message: e instanceof Error ? e.message : "Failed to load data" });
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [activeRole, reloadKey]);
+
+  // Derived (not effect-set) so a workspace shows its loading state on the very
+  // first paint instead of flashing the empty state before its fetch lands.
+  const error = activeRole !== null && errorFor?.key === activeRole ? errorFor.message : null;
+  const loading = activeRole !== null && loadedKey !== activeRole && error === null;
 
   const navigate = useCallback((wanted: Route, replace = false) => {
     const next = parseHash(toHash(wanted)); // normalise
@@ -197,6 +217,29 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     },
     [navigate],
   );
+
+  /** Sign in as a role's demo account, then open its workspace. Throws on failure
+   *  so callers (e.g. the login screen) can surface the error. */
+  const signInAs = useCallback(
+    async (wanted: Role, view?: View) => {
+      const res = await api.login({ email: ROLES[wanted].email, password: "changeme" });
+      setAuthToken(res.access_token);
+      // Never show one workspace's data in another while its fetch is in flight.
+      setChildren([]);
+      setCheckIns([]);
+      navigate({ screen: "app", role: wanted, view: view ?? ROLES[wanted].home });
+    },
+    [navigate],
+  );
+
+  // Any 401 inside the workspace means the token is gone/expired — drop it and
+  // return to sign-in instead of firing more doomed requests.
+  useEffect(() => {
+    onUnauthorized(() => {
+      setAuthToken(null);
+      if (route.screen === "app") navigate({ screen: "login" }, true);
+    });
+  }, [navigate, route.screen]);
 
   /** Apply an optimistic caseload change, persist it, and roll back on failure. */
   const mutateChild = useCallback(
@@ -245,11 +288,19 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       screen: route.screen,
       role,
       view,
-      login: (r, v) => navigate({ screen: "app", role: r, view: v ?? ROLES[r].home }),
+      login: (r, v) => {
+        void signInAs(r, v).catch((e) => showToast(e instanceof Error ? e.message : "Could not open that workspace — is the backend running?"));
+      },
+      signInAs,
       signIn,
-      logout: () => navigate({ screen: "landing" }),
+      logout: () => {
+        setAuthToken(null);
+        navigate({ screen: "landing" });
+      },
       go: (v) => navigate({ screen: "app", role, view: v }),
-      switchRole: (r) => navigate({ screen: "app", role: r, view: ROLES[r].home }),
+      switchRole: (r) => {
+        void signInAs(r).catch((e) => showToast(e instanceof Error ? e.message : "Could not switch workspace — is the backend running?"));
+      },
       back: () => {
         if (histState().prevApp === true) window.history.back();
         else navigate({ screen: "app", role, view: ROLES[role].home }, true);
@@ -278,7 +329,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       error,
       reload: () => setReloadKey((k) => k + 1),
     };
-  }, [route, navigate, signIn, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error, referChild, contactChild, outcomeChild]);
+  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error, referChild, contactChild, outcomeChild]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }

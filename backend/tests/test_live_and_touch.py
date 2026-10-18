@@ -118,7 +118,11 @@ class TestLiveElicitationData:
             assert t.what_to_observe, "Task must have clear observation cues"
             assert len(t.response_options) == 3, "Task must have 3 response options"
             values = [opt.value for opt in t.response_options]
-            assert set(values) == {0, 1, 2}, "Options must map to 0, 1, 2 milestone score values"
+            assert set(values) == {
+                0,
+                1,
+                2,
+            }, "Options must map to 0, 1, 2 milestone score values"
 
     def test_tasks_filtered_by_bracket(self):
         tasks_2mo = get_tasks_for_bracket("2mo")
@@ -130,7 +134,9 @@ class TestTouchConfig:
     def test_touch_config_is_marked_provisional(self):
         assert PROVISIONAL_TOUCH_CONFIG["status"] == "provisional"
         assert "provisional" in PROVISIONAL_TOUCH_CONFIG["version"].lower()
-        assert "not clinically validated" in PROVISIONAL_TOUCH_CONFIG["disclaimer"].lower()
+        assert (
+            "not clinically validated" in PROVISIONAL_TOUCH_CONFIG["disclaimer"].lower()
+        )
         assert PROVISIONAL_TOUCH_CONFIG["min_age_months"] == 24.0
 
     def test_touch_comparison_helper(self):
@@ -239,9 +245,12 @@ async def test_observed_answer_stored_separately_and_affects_same_item(env):
     # Verify database persistence: Answer rows have source column recorded
     async with session_factory() as db:
         from sqlalchemy import select
+
         db_answers = (
-            await db.execute(select(Answer).where(Answer.session_id == session_id))
-        ).scalars().all()
+            (await db.execute(select(Answer).where(Answer.session_id == session_id)))
+            .scalars()
+            .all()
+        )
         by_item = {a.item_id: a for a in db_answers}
 
         assert by_item["GM03"].response_value == 2
@@ -330,17 +339,33 @@ async def test_result_is_identical_with_and_without_touch_data(env):
     result_with_touch = await run_session_answers(touch_submission=touch_payload)
 
     # 3. VERIFY IDENTICAL CLINICAL OUTCOMES
-    assert result_without_touch["final_classification"] == result_with_touch["final_classification"]
-    assert result_without_touch["ml_classification"] == result_with_touch["ml_classification"]
-    assert result_without_touch["ml_score"] == pytest.approx(result_with_touch["ml_score"], abs=1e-5)
-    assert result_without_touch["probabilities"] == pytest.approx(result_with_touch["probabilities"], abs=1e-5)
-    assert result_without_touch["safety_override_triggered"] == result_with_touch["safety_override_triggered"]
+    assert (
+        result_without_touch["final_classification"]
+        == result_with_touch["final_classification"]
+    )
+    assert (
+        result_without_touch["ml_classification"]
+        == result_with_touch["ml_classification"]
+    )
+    assert result_without_touch["ml_score"] == pytest.approx(
+        result_with_touch["ml_score"], abs=1e-5
+    )
+    assert result_without_touch["probabilities"] == pytest.approx(
+        result_with_touch["probabilities"], abs=1e-5
+    )
+    assert (
+        result_without_touch["safety_override_triggered"]
+        == result_with_touch["safety_override_triggered"]
+    )
     assert result_without_touch["override_rule"] == result_with_touch["override_rule"]
     assert result_without_touch["triage_tier"] == result_with_touch["triage_tier"]
 
     # Touch data is attached for clinician view only with exploratory notice
     assert len(result_with_touch["touch_telemetry"]) == 3
-    assert result_with_touch["touch_telemetry_notice"] == "Exploratory, not used in the result."
+    assert (
+        result_with_touch["touch_telemetry_notice"]
+        == "Exploratory, not used in the result."
+    )
 
 
 # ---------------------------------------------------------------------------

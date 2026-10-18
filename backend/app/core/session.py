@@ -175,7 +175,9 @@ class ScreeningSession:
             "teacher_answers": self.teacher_answers.copy(),
             "microtask_telemetry": dict(self.microtask_telemetry),
             "touch_telemetry": [dict(t) for t in self.touch_telemetry],
-            "joint_respondent_answers": [dict(j) for j in self.joint_respondent_answers],
+            "joint_respondent_answers": [
+                dict(j) for j in self.joint_respondent_answers
+            ],
             "joint_concordance": (
                 dict(self.joint_concordance) if self.joint_concordance else None
             ),

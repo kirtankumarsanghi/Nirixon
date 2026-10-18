@@ -206,9 +206,9 @@ async def test_worker_cannot_read_another_areas_children(referral_env):
 
     # 3. Direct read by ID: Worker 1 CANNOT read Child 2 (Ward 15) -> 403 Forbidden
     r_foreign = await client.get("/api/chw/children/child-ward15-002", headers=h12)
-    assert r_foreign.status_code == 403, (
-        f"Expected 403 Forbidden for cross-area access, got {r_foreign.status_code}: {r_foreign.text}"
-    )
+    assert (
+        r_foreign.status_code == 403
+    ), f"Expected 403 Forbidden for cross-area access, got {r_foreign.status_code}: {r_foreign.text}"
 
     # Worker 2 CANNOT read Child 1 (Ward 12) -> 403 Forbidden
     r_foreign2 = await client.get("/api/chw/children/child-ward12-001", headers=h15)
@@ -223,9 +223,9 @@ async def test_worker_cannot_read_another_areas_children(referral_env):
         "domains_of_concern": ["motor"],
     }
     r_cross_refer = await client.post("/api/referrals", json=ref_payload, headers=h12)
-    assert r_cross_refer.status_code == 403, (
-        f"Expected 403 Forbidden when referring child from another area, got {r_cross_refer.status_code}"
-    )
+    assert (
+        r_cross_refer.status_code == 403
+    ), f"Expected 403 Forbidden when referring child from another area, got {r_cross_refer.status_code}"
 
 
 @pytest.mark.asyncio
@@ -263,9 +263,9 @@ async def test_status_transitions_are_enforced(referral_env):
         json={"status": "seen"},
         headers=h12,
     )
-    assert jump_seen.status_code == 400, (
-        f"Expected 400 for skipping 'sent', got {jump_seen.status_code}: {jump_seen.text}"
-    )
+    assert (
+        jump_seen.status_code == 400
+    ), f"Expected 400 for skipping 'sent', got {jump_seen.status_code}: {jump_seen.text}"
 
     # 3. INVALID TRANSITION: created -> outcome recorded -> 400
     jump_outcome = await client.patch(
@@ -322,7 +322,10 @@ async def test_status_transitions_are_enforced(referral_env):
     assert outcome_resp.status_code == 200, outcome_resp.text
     out_data = outcome_resp.json()
     assert out_data["status"] == "outcome recorded"
-    assert out_data["outcome_notes"] == "Child examined by pediatrician Dr. Sen. Speech therapy scheduled 2x weekly."
+    assert (
+        out_data["outcome_notes"]
+        == "Child examined by pediatrician Dr. Sen. Speech therapy scheduled 2x weekly."
+    )
     assert out_data["outcome_recorded_at"] is not None
 
     # 9. INVALID TRANSITION: outcome recorded -> seen -> 400
@@ -384,11 +387,16 @@ async def test_summary_contains_only_listed_fields(referral_env):
     summary_data = sum_resp.json()
 
     # CRITICAL ACCEPTANCE CHECK: Must contain ONLY the listed fields
-    expected_fields = {"age_bracket", "tier", "domains_of_concern", "safety_rule_trigger"}
+    expected_fields = {
+        "age_bracket",
+        "tier",
+        "domains_of_concern",
+        "safety_rule_trigger",
+    }
     actual_fields = set(summary_data.keys())
-    assert actual_fields == expected_fields, (
-        f"Summary contains unlisted fields! Expected {expected_fields}, got {actual_fields}"
-    )
+    assert (
+        actual_fields == expected_fields
+    ), f"Summary contains unlisted fields! Expected {expected_fields}, got {actual_fields}"
 
     # Verify content correctness
     assert summary_data["age_bracket"] == "18-24m"
@@ -572,7 +580,11 @@ async def _insert_children(db_factory, area: str, count: int) -> None:
                 contacts = 2 + (i % 4)
             elif mod in (4, 5, 6):
                 tier = "Tier 2: In-App Reflex Monitor"
-                domains = ["social_emotional"] if i % 2 == 0 else ["fine_motor", "communication"]
+                domains = (
+                    ["social_emotional"]
+                    if i % 2 == 0
+                    else ["fine_motor", "communication"]
+                )
                 safety = None
                 last_screened = now - timedelta(days=14 + (i % 40))
                 last_contacted = now - timedelta(days=3 + (i % 15))
@@ -584,7 +596,11 @@ async def _insert_children(db_factory, area: str, count: int) -> None:
                 contacts = 3 + (i % 5)
             elif mod in (7, 8):
                 tier = "Tier 3: Direct Referral"
-                domains = ["gross_motor", "communication"] if i % 2 == 0 else ["motor", "cognitive"]
+                domains = (
+                    ["gross_motor", "communication"]
+                    if i % 2 == 0
+                    else ["motor", "cognitive"]
+                )
                 safety = (
                     "Loss of motor milestones (SD <= -2.0)"
                     if i % 2 == 0
@@ -691,7 +707,9 @@ async def test_low_literacy_worker_dashboard_filter_actions(referral_env):
     assert search_res.status_code == 200
     s_list = search_res.json()
     assert len(s_list) > 0
-    assert all("001" in c["pseudonymous_id"] or "001" in c["village_ward"] for c in s_list)
+    assert all(
+        "001" in c["pseudonymous_id"] or "001" in c["village_ward"] for c in s_list
+    )
 
     # Pick a child to test quick actions
     target_child = children[0]
@@ -706,7 +724,9 @@ async def test_low_literacy_worker_dashboard_filter_actions(referral_env):
     assert c_data["last_contacted_at"] is not None
 
     # Quick Action: One-touch referral (uses 6a minimal summary)
-    ref_res = await client.post(f"/api/chw/children/{cid}/one-touch-referral", headers=h12)
+    ref_res = await client.post(
+        f"/api/chw/children/{cid}/one-touch-referral", headers=h12
+    )
     assert ref_res.status_code == 200
     one_touch = ref_res.json()
     assert "referral" in one_touch
@@ -808,9 +828,7 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
         },
     }
 
-    sync_batch = {
-        "operations": [offline_screening_op, offline_referral_op]
-    }
+    sync_batch = {"operations": [offline_screening_op, offline_referral_op]}
 
     # 4. RECONNECT: Initial sync
     sync_res_1 = await client.post("/api/chw/sync", json=sync_batch, headers=headers)
@@ -832,18 +850,30 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
 
     async with db_factory() as session:
         screen_rows = (
-            await session.execute(
-                select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+            (
+                await session.execute(
+                    select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+                )
             )
-        ).scalars().all()
-        assert len(screen_rows) == 1, f"Expected exactly 1 screening session, got {len(screen_rows)}"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(screen_rows) == 1
+        ), f"Expected exactly 1 screening session, got {len(screen_rows)}"
 
         ref_rows = (
-            await session.execute(
-                select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+            (
+                await session.execute(
+                    select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+                )
             )
-        ).scalars().all()
-        assert len(ref_rows) == 1, f"Expected exactly 1 referral record, got {len(ref_rows)}"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(ref_rows) == 1
+        ), f"Expected exactly 1 referral record, got {len(ref_rows)}"
 
     # 5. RETRY 1: First sync retry with identical idempotency keys
     sync_res_2 = await client.post("/api/chw/sync", json=sync_batch, headers=headers)
@@ -860,18 +890,30 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
     # Confirm STILL exactly ONE record of each in database
     async with db_factory() as session:
         screen_rows_retry1 = (
-            await session.execute(
-                select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+            (
+                await session.execute(
+                    select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+                )
             )
-        ).scalars().all()
-        assert len(screen_rows_retry1) == 1, "Expected still exactly 1 screening after retry 1"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(screen_rows_retry1) == 1
+        ), "Expected still exactly 1 screening after retry 1"
 
         ref_rows_retry1 = (
-            await session.execute(
-                select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+            (
+                await session.execute(
+                    select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+                )
             )
-        ).scalars().all()
-        assert len(ref_rows_retry1) == 1, "Expected still exactly 1 referral after retry 1"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(ref_rows_retry1) == 1
+        ), "Expected still exactly 1 referral after retry 1"
 
     # 6. RETRY 2: Second sync retry with identical idempotency keys
     sync_res_3 = await client.post("/api/chw/sync", json=sync_batch, headers=headers)
@@ -888,17 +930,27 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
     # Confirm STILL exactly ONE record of each in database after two retries
     async with db_factory() as session:
         screen_rows_retry2 = (
-            await session.execute(
-                select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+            (
+                await session.execute(
+                    select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+                )
             )
-        ).scalars().all()
-        assert len(screen_rows_retry2) == 1, "Expected exactly 1 screening after retry 2"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(screen_rows_retry2) == 1
+        ), "Expected exactly 1 screening after retry 2"
 
         ref_rows_retry2 = (
-            await session.execute(
-                select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+            (
+                await session.execute(
+                    select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(ref_rows_retry2) == 1, "Expected exactly 1 referral after retry 2"
 
     # 7. CONFLICT HANDLING & CONFLICT LOG TEST:
@@ -916,7 +968,9 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
             }
         ]
     }
-    conflict_res = await client.post("/api/chw/sync", json=conflict_batch, headers=headers)
+    conflict_res = await client.post(
+        "/api/chw/sync", json=conflict_batch, headers=headers
+    )
     assert conflict_res.status_code == 200
     conf_data = conflict_res.json()
     assert conf_data["conflict_count"] == 1
@@ -928,5 +982,3 @@ async def test_offline_idempotent_sync_and_conflict_handling(referral_env):
     conflicts = conflicts_list_res.json()
     assert len(conflicts) >= 1
     assert any(c["entity_id"] == "non-existent-child-uuid" for c in conflicts)
-
-

@@ -55,9 +55,7 @@ class Settings(BaseSettings):
     session_redis_prefix: str = Field(
         default="nirixon:session:", alias="SESSION_REDIS_PREFIX"
     )
-    session_ttl_seconds: int = Field(
-        default=86400, alias="SESSION_TTL_SECONDS"
-    )
+    session_ttl_seconds: int = Field(default=86400, alias="SESSION_TTL_SECONDS")
 
     # ML artifacts
     ml_artifacts_dir: str = Field(

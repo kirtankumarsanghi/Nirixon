@@ -186,7 +186,9 @@ def test_concordance_maths_known_mad_and_scaling():
     # 3. Binary flag (regression_flag): primary = 0, secondary = 1 -> MAD = 1.0, scale = 1.0, score = 0.0
     analysis_flag = compute_joint_concordance(
         primary_answers={"regression_flag": 0},
-        respondent_submissions=[{"role_label": "Babysitter", "answers": {"regression_flag": 1}}],
+        respondent_submissions=[
+            {"role_label": "Babysitter", "answers": {"regression_flag": 1}}
+        ],
     )
     assert analysis_flag.overall_concordance == 0.0
     assert analysis_flag.exact_agreement_pct == 0.0
@@ -461,15 +463,23 @@ async def test_safety_rule_triggered_by_secondary_respondent(env):
     merge_data = merge_res.json()
 
     # Verify Combination Rule
-    assert merge_data["ml_classification"] == "Typical", "ML model must reflect primary answers only"
-    assert merge_data["safety_override_triggered"] is True, "Safety override must be triggered"
+    assert (
+        merge_data["ml_classification"] == "Typical"
+    ), "ML model must reflect primary answers only"
+    assert (
+        merge_data["safety_override_triggered"] is True
+    ), "Safety override must be triggered"
     assert merge_data["override_rule"] == "regression_flag"
-    assert merge_data["final_classification"] == "Refer", "Final triage must be escalated to Refer"
+    assert (
+        merge_data["final_classification"] == "Refer"
+    ), "Final triage must be escalated to Refer"
     assert "secondary_respondent (Father)" in merge_data["safety_source"]
 
     # Verify Disagreement & Clinician Follow-up
     disagreements = merge_data["disagreements"]
-    reg_disagreement = next((d for d in disagreements if d["item_id"] == "regression_flag"), None)
+    reg_disagreement = next(
+        (d for d in disagreements if d["item_id"] == "regression_flag"), None
+    )
     assert reg_disagreement is not None
     assert reg_disagreement["primary_answer"] == 0
     assert reg_disagreement["most_concerning_answer"] == 1
@@ -494,17 +504,36 @@ async def test_cascading_deletion_of_respondent_answers(env):
 
     await client.post(
         f"/api/share/invite/{token}/respond",
-        json={"role_label": "Grandmother", "answers": {"regression_flag": 0, "comm_24m_1": 2}},
+        json={
+            "role_label": "Grandmother",
+            "answers": {"regression_flag": 0, "comm_24m_1": 2},
+        },
     )
 
     # Verify tokens and answers exist in DB before deletion
     async with factory() as db:
         tokens_before = (
-            await db.execute(select(JointInviteToken).where(JointInviteToken.session_id == session_id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(JointInviteToken).where(
+                        JointInviteToken.session_id == session_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         answers_before = (
-            await db.execute(select(JointRespondentAnswer).where(JointRespondentAnswer.session_id == session_id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(JointRespondentAnswer).where(
+                        JointRespondentAnswer.session_id == session_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         assert len(tokens_before) == 1
         assert len(answers_before) == 1
 
@@ -519,11 +548,27 @@ async def test_cascading_deletion_of_respondent_answers(env):
             await db.execute(select(DbSession).where(DbSession.id == session_id))
         ).scalar_one_or_none()
         tokens_after = (
-            await db.execute(select(JointInviteToken).where(JointInviteToken.session_id == session_id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(JointInviteToken).where(
+                        JointInviteToken.session_id == session_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
         answers_after = (
-            await db.execute(select(JointRespondentAnswer).where(JointRespondentAnswer.session_id == session_id))
-        ).scalars().all()
+            (
+                await db.execute(
+                    select(JointRespondentAnswer).where(
+                        JointRespondentAnswer.session_id == session_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         assert session_after is None
         assert len(tokens_after) == 0

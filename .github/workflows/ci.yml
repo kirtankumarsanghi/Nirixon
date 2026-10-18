@@ -45,26 +45,17 @@ jobs:
         working-directory: backend/ml
         run: python train.py
 
-      - name: Stage 3 — Unit tests (no server required)
-        working-directory: backend
-        run: |
-          python -m pytest tests/test_adaptive_logic.py -v -k "not HTTP and not Sensitivity" --tb=short
-
-      - name: Stage 3 — HTTP integration tests (stub_api)
-        working-directory: backend
-        run: |
-          python -m uvicorn app.stub_api:app --port 8001 --log-level warning &
-          sleep 3
-          python -m pytest tests/test_adaptive_logic.py -v -k "HTTP or Sensitivity" --tb=short
-
-      - name: Stage 4 — API tests
+      - name: Backend tests (full suite)
         working-directory: backend
         env:
           JWT_SECRET: ci-test-secret-at-least-32-bytes-long
           RATE_LIMIT_ENABLED: "false"
           SESSION_REPO_BACKEND: memory
         run: |
-          python -m pytest tests/test_api.py -v --tb=short
+          # The adaptive-logic HTTP subset talks to the stub API on :8001.
+          python -m uvicorn app.stub_api:app --port 8001 --log-level warning &
+          sleep 3
+          python -m pytest tests/ -q --tb=short
 
   frontend:
     name: Stage 5 — Frontend

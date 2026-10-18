@@ -85,10 +85,14 @@ def compute_developmental_age(
 
     if domain_scores and isinstance(domain_scores, dict) and len(domain_scores) > 0:
         refer_count = sum(
-            1 for v in domain_scores.values() if str(v).lower() in ("refer", "worth_discussing", "2")
+            1
+            for v in domain_scores.values()
+            if str(v).lower() in ("refer", "worth_discussing", "2")
         )
         monitor_count = sum(
-            1 for v in domain_scores.values() if str(v).lower() in ("monitor", "keep_an_eye", "1")
+            1
+            for v in domain_scores.values()
+            if str(v).lower() in ("monitor", "keep_an_eye", "1")
         )
         total = len(domain_scores)
         deficit = (refer_count * 0.12 + monitor_count * 0.04) / total

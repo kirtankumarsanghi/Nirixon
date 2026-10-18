@@ -201,7 +201,9 @@ async def test_e2e_flow_1_module_a_screening(e2e_harness):
         "question_cap": 10,
         "consent_given": True,
     }
-    start_res = await client.post("/api/screen/start", headers=headers, json=start_payload)
+    start_res = await client.post(
+        "/api/screen/start", headers=headers, json=start_payload
+    )
     assert start_res.status_code == 200
     curr_data = start_res.json()
     session_id = curr_data["session_id"]
@@ -247,9 +249,7 @@ async def test_e2e_flow_2_module_b_screening(e2e_harness):
     - Diagnostic domain radar output.
     """
     client = e2e_harness["client"]
-    token = create_access_token(
-        subject="user-parent-1", role="parent"
-    )
+    token = create_access_token(subject="user-parent-1", role="parent")
     headers = {"Authorization": f"Bearer {token}"}
 
     # Start Module B directly
@@ -278,7 +278,9 @@ async def test_e2e_flow_2_module_b_screening(e2e_harness):
     assert intake_res.status_code == 200
     intake_data = intake_res.json()
     assert intake_data["next_action"] == "question"
-    assert any(d in intake_data["detected_domains"] for d in ("attention", "attention_work"))
+    assert any(
+        d in intake_data["detected_domains"] for d in ("attention", "attention_work")
+    )
 
     curr_q = intake_data["action"]["question"]
     completed = False
@@ -318,9 +320,7 @@ async def test_e2e_flow_3_safety_rule_bypass(e2e_harness):
     safety floor MUST immediately override any ML prediction and enforce Tier 3 / Refer.
     """
     client = e2e_harness["client"]
-    token = create_access_token(
-        subject="user-parent-1", role="parent"
-    )
+    token = create_access_token(subject="user-parent-1", role="parent")
     headers = {"Authorization": f"Bearer {token}"}
 
     start_res = await client.post(
@@ -378,9 +378,7 @@ async def test_e2e_flow_4_what_if_simulation(e2e_harness):
     client = e2e_harness["client"]
 
     # Create completed session under parent
-    p_token = create_access_token(
-        subject="user-parent-1", role="parent"
-    )
+    p_token = create_access_token(subject="user-parent-1", role="parent")
     start_res = await client.post(
         "/api/screen/start",
         headers={"Authorization": f"Bearer {p_token}"},
@@ -405,9 +403,7 @@ async def test_e2e_flow_4_what_if_simulation(e2e_harness):
         curr_data = ans_res.json()
 
     # Clinician token required for sandbox
-    doc_token = create_access_token(
-        subject="user-clinician-1", role="internal"
-    )
+    doc_token = create_access_token(subject="user-clinician-1", role="internal")
     doc_headers = {"Authorization": f"Bearer {doc_token}"}
 
     # Simulate: Override regression_flag to 1
@@ -445,14 +441,10 @@ async def test_e2e_flow_5_referral_creation_to_outcome(e2e_harness):
     - Area isolation (Ward 15 worker cannot read Ward 12 child).
     """
     client = e2e_harness["client"]
-    w12_token = create_access_token(
-        subject="user-chw-ward12", role="chw"
-    )
+    w12_token = create_access_token(subject="user-chw-ward12", role="chw")
     w12_headers = {"Authorization": f"Bearer {w12_token}"}
 
-    w15_token = create_access_token(
-        subject="user-chw-ward15", role="chw"
-    )
+    w15_token = create_access_token(subject="user-chw-ward15", role="chw")
     w15_headers = {"Authorization": f"Bearer {w15_token}"}
 
     # 1. Worker 12 creates child in Ward 12
@@ -501,12 +493,16 @@ async def test_e2e_flow_5_referral_creation_to_outcome(e2e_harness):
 
     # 4. Status transitions
     # Step 1: sent
-    s1 = await client.patch(f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "sent"})
+    s1 = await client.patch(
+        f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "sent"}
+    )
     assert s1.status_code == 200
     assert s1.json()["status"] == "sent"
 
     # Step 2: seen
-    s2 = await client.patch(f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "seen"})
+    s2 = await client.patch(
+        f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "seen"}
+    )
     assert s2.status_code == 200
     assert s2.json()["status"] == "seen"
 
@@ -524,7 +520,9 @@ async def test_e2e_flow_5_referral_creation_to_outcome(e2e_harness):
     assert s3.json()["status"] == "outcome recorded"
 
     # Step 4: closed
-    s4 = await client.patch(f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "closed"})
+    s4 = await client.patch(
+        f"/api/referrals/{ref_id}", headers=w12_headers, json={"status": "closed"}
+    )
     assert s4.status_code == 200
     assert s4.json()["status"] == "closed"
 
@@ -545,9 +543,7 @@ async def test_e2e_flow_6_offline_sync(e2e_harness):
     """
     client = e2e_harness["client"]
     db_factory = e2e_harness["session_factory"]
-    w12_token = create_access_token(
-        subject="user-chw-ward12", role="chw"
-    )
+    w12_token = create_access_token(subject="user-chw-ward12", role="chw")
     w12_headers = {"Authorization": f"Bearer {w12_token}"}
 
     # 1. Register child first on server (or via sync)
@@ -623,15 +619,27 @@ async def test_e2e_flow_6_offline_sync(e2e_harness):
     # Verify database has strictly ONE screening session and ONE referral record
     async with db_factory() as session:
         screen_rows = (
-            await session.execute(
-                select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+            (
+                await session.execute(
+                    select(DbScreening).where(DbScreening.idempotency_key == screen_key)
+                )
             )
-        ).scalars().all()
-        assert len(screen_rows) == 1, f"Expected exactly 1 screening session, got {len(screen_rows)}"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(screen_rows) == 1
+        ), f"Expected exactly 1 screening session, got {len(screen_rows)}"
 
         ref_rows = (
-            await session.execute(
-                select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+            (
+                await session.execute(
+                    select(DbReferral).where(DbReferral.idempotency_key == referral_key)
+                )
             )
-        ).scalars().all()
-        assert len(ref_rows) == 1, f"Expected exactly 1 referral record, got {len(ref_rows)}"
+            .scalars()
+            .all()
+        )
+        assert (
+            len(ref_rows) == 1
+        ), f"Expected exactly 1 referral record, got {len(ref_rows)}"
