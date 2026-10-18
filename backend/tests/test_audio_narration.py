@@ -143,19 +143,19 @@ def test_pregenerated_audio_files_exist_and_are_served():
     assert fe_audio_en.exists()
     assert fe_audio_hi.exists()
 
-    # Check GM01 wav file exists and has non-zero size
-    gm01_en = fe_audio_en / "GM01.wav"
-    gm01_hi = fe_audio_hi / "GM01.wav"
+    # Check GM01 narration exists and has non-zero size
+    gm01_en = fe_audio_en / "GM01.mp3"
+    gm01_hi = fe_audio_hi / "GM01.mp3"
     assert gm01_en.exists()
     assert gm01_hi.exists()
     assert gm01_en.stat().st_size > 10000
     assert gm01_hi.stat().st_size > 10000
 
     # Test static files serving via backend mount
-    res_en = client.get("/audio/narration/en/GM01.wav")
+    res_en = client.get("/audio/narration/en/GM01.mp3")
     assert res_en.status_code == 200
-    assert res_en.headers.get("content-type") in ("audio/x-wav", "audio/wav")
+    assert res_en.headers.get("content-type") in ("audio/mpeg", "audio/mp3")
 
-    res_hi = client.get("/audio/narration/hi/GM01.wav")
+    res_hi = client.get("/audio/narration/hi/GM01.mp3")
     assert res_hi.status_code == 200
-    assert res_hi.headers.get("content-type") in ("audio/x-wav", "audio/wav")
+    assert res_hi.headers.get("content-type") in ("audio/mpeg", "audio/mp3")
