@@ -989,7 +989,7 @@ export function CheckIn() {
                   <p className="text-[12px] text-muted">{targetChild ? targetChild.id : name || "Sample child"} · {age} months · Module {module}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                  {question && <QuestionAudio itemId={question.item_id} lang={lang} />}
+                  {question && <QuestionAudio itemId={question.item_id} lang={lang} text={qText} />}
                   <button
                     onClick={() => setLang(lang === "en" ? "hi" : "en")}
                     className="rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"

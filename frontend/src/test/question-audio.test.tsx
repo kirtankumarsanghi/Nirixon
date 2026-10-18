@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
@@ -48,6 +48,10 @@ describe("QuestionAudio", () => {
     vi.mocked(shareApi.getAudioItem).mockReset();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("shows a play control and speed toggle when reviewed audio exists", async () => {
     vi.mocked(shareApi.getAudioItem).mockResolvedValue(withAudio);
     render(<QuestionAudio itemId="GM01" lang="en" />);
@@ -69,5 +73,46 @@ describe("QuestionAudio", () => {
     render(<QuestionAudio itemId="GM01" lang="hi" />);
 
     await waitFor(() => expect(shareApi.getAudioItem).toHaveBeenCalledWith("GM01", "hi"));
+  });
+
+  it("reads the on-screen question when there is no reviewed clip", async () => {
+    class FakeUtterance {
+      text: string;
+      lang = "";
+      rate = 1;
+      voice: unknown;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    const speak = vi.fn();
+    vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+    vi.stubGlobal("speechSynthesis", { speak, cancel: vi.fn(), getVoices: () => [], speaking: false });
+
+    vi.mocked(shareApi.getAudioItem).mockResolvedValue({
+      item_id: "att_start.P.5-7.a0",
+      has_audio: false,
+      fallback_to_text: true,
+      reason: "Item not present in audio manifest",
+      text: null,
+      audio: null,
+      available_languages: [],
+    });
+
+    render(
+      <QuestionAudio
+        itemId="att_start.P.5-7.a0"
+        lang="en"
+        text="Your child needs repeated reminders before beginning a worksheet."
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /play question audio/i }));
+    await waitFor(() => expect(speak).toHaveBeenCalled());
+    expect(speak.mock.calls[0][0].text).toBe(
+      "Your child needs repeated reminders before beginning a worksheet.",
+    );
   });
 });
