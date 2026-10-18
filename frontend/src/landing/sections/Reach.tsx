@@ -96,7 +96,7 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
     photo: PHOTOS.ashaTall,
     alt: "A smiling Indian woman in traditional attire",
     title: "A whole village or ward, in one place",
-    points: ["Your full ward caseload in one view (Live)", "One-touch referral to DEIC (Live)", "Offline sync queue (In build)", "Battery-saving high-contrast display"],
+    points: ["Your full ward caseload in one view (Live)", "One-touch referral to DEIC (Live)", "Offline sync queue (Live)", "Battery-saving high-contrast display"],
   },
   {
     id: "clinician",
@@ -160,7 +160,7 @@ function Extra({ id }: { id: AudienceId }) {
       >
         {offline ? <WifiOff className="h-4 w-4 text-[#f0a77c]" /> : <Wifi className="h-4 w-4 text-[#9fd08f]" />}
         {offline ? "Offline — answers saved on phone" : "Back online — synced"}
-        <span className="text-[11px] font-semibold text-[#9fd08f]">(prototype)</span>
+        <span className="text-[11px] font-semibold text-[#9fd08f]">(IndexedDB)</span>
       </button>
     );
   }
