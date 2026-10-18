@@ -49,6 +49,7 @@ from app.core.referral_service import (
     normalize_status,
     validate_status_transition,
 )
+from app.core.triage_guard import ITEM_METADATA
 from app.db.models import (
     ChildRecord,
     ConflictLog,
@@ -58,7 +59,6 @@ from app.db.models import (
     User,
     Worker,
 )
-from app.core.triage_guard import ITEM_METADATA
 from app.db.session import get_db
 
 
@@ -76,7 +76,9 @@ def _module_a_domain_scores(answers: dict[str, Any]) -> dict[str, float]:
     return {d: totals[d] / (2.0 * counts[d]) for d in totals if counts.get(d, 0) > 0}
 
 
-async def _attach_latest_domain_scores(db: AsyncSession, children: list[ChildRecord]) -> None:
+async def _attach_latest_domain_scores(
+    db: AsyncSession, children: list[ChildRecord]
+) -> None:
     """Attach each child's latest completed Module A per-domain scores (else {})."""
     ids = [c.id for c in children]
     if not ids:
@@ -96,12 +98,18 @@ async def _attach_latest_domain_scores(db: AsyncSession, children: list[ChildRec
         if not cid or cid in latest:
             continue
         if row.module == "A":
-            answers = row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+            answers = (
+                row.state_json.get("answers", {})
+                if isinstance(row.state_json, dict)
+                else {}
+            )
             latest[cid] = _module_a_domain_scores(answers)
         else:
             latest[cid] = {}
     for child in children:
         setattr(child, "domain_scores", latest.get(child.id, {}))
+
+
 from app.schemas.referral import (
     ChildContactResponse,
     ChildRecordCreate,
@@ -167,7 +175,9 @@ def _referral_to_response(ref: Referral) -> ReferralResponse:
 
 
 async def get_current_worker(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)] = None,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer)
+    ] = None,
     x_worker_id: Annotated[str | None, Header(alias="X-Worker-ID")] = None,
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -197,7 +207,11 @@ async def get_current_worker(
 
         # Find worker linked to user
         stmt = select(Worker).where(
-            or_(Worker.user_id == user.id, Worker.id == user.id, Worker.name == user.email)
+            or_(
+                Worker.user_id == user.id,
+                Worker.id == user.id,
+                Worker.name == user.email,
+            )
         )
         w_res = await db.execute(stmt)
         worker = w_res.scalar_one_or_none()
@@ -242,6 +256,7 @@ async def get_current_worker(
 # -----------------------------------------------------------------------------
 # Worker Management Endpoints
 # -----------------------------------------------------------------------------
+
 
 @router.post(
     "/api/chw/workers",
@@ -288,7 +303,9 @@ async def list_workers(
     if worker.role == "supervisor" or worker.area.strip().lower() in ("all", "*"):
         stmt = select(Worker).order_by(Worker.name.asc())
     else:
-        stmt = select(Worker).where(Worker.area == worker.area).order_by(Worker.name.asc())
+        stmt = (
+            select(Worker).where(Worker.area == worker.area).order_by(Worker.name.asc())
+        )
     res = await db.execute(stmt)
     return list(res.scalars().all())
 
@@ -296,6 +313,7 @@ async def list_workers(
 # -----------------------------------------------------------------------------
 # Child Record Endpoints (Area-Isolated, Opt-in with Consent Recorded)
 # -----------------------------------------------------------------------------
+
 
 @router.post(
     "/api/chw/children",
@@ -341,10 +359,16 @@ async def create_child_record(
                 detail=f"Worker from area '{worker.area}' cannot register a child in area '{assigned_area}'.",
             )
 
-    pseudo_id = body.pseudonymous_id.strip() if body.pseudonymous_id else f"child-{_utcnow().strftime('%Y%m%d%H%M%S')}"
+    pseudo_id = (
+        body.pseudonymous_id.strip()
+        if body.pseudonymous_id
+        else f"child-{_utcnow().strftime('%Y%m%d%H%M%S')}"
+    )
 
     # Check for existing pseudonymous_id
-    existing_res = await db.execute(select(ChildRecord).where(ChildRecord.pseudonymous_id == pseudo_id))
+    existing_res = await db.execute(
+        select(ChildRecord).where(ChildRecord.pseudonymous_id == pseudo_id)
+    )
     if existing_res.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -374,10 +398,18 @@ async def create_child_record(
     response_model=list[ChildRecordResponse],
 )
 async def list_children(
-    tier: str | None = Query(None, description="Filter by tier ('Tier 1', 'Tier 2', 'Tier 3', 'Unscreened')"),
-    village_ward: str | None = Query(None, description="Filter by specific village or ward"),
-    age_group: str | None = Query(None, description="Filter by age bracket (e.g. '18-24m')"),
-    overdue_only: bool = Query(False, description="Filter only children with overdue follow-up"),
+    tier: str | None = Query(
+        None, description="Filter by tier ('Tier 1', 'Tier 2', 'Tier 3', 'Unscreened')"
+    ),
+    village_ward: str | None = Query(
+        None, description="Filter by specific village or ward"
+    ),
+    age_group: str | None = Query(
+        None, description="Filter by age bracket (e.g. '18-24m')"
+    ),
+    overdue_only: bool = Query(
+        False, description="Filter only children with overdue follow-up"
+    ),
     search: str | None = Query(None, description="Search by child ID or village"),
     limit: int = Query(500, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -414,7 +446,12 @@ async def list_children(
         elif "3" in t:
             conditions.append(ChildRecord.current_tier.like("Tier 3%"))
         elif "unscreened" in t.lower():
-            conditions.append(or_(ChildRecord.current_tier == "Unscreened", ChildRecord.current_tier.is_(None)))
+            conditions.append(
+                or_(
+                    ChildRecord.current_tier == "Unscreened",
+                    ChildRecord.current_tier.is_(None),
+                )
+            )
 
     if age_group and age_group.strip() and age_group.strip().lower() != "all":
         conditions.append(ChildRecord.age_bracket == age_group.strip())
@@ -463,7 +500,10 @@ async def get_child_record(
     ACCEPTANCE CHECK: A worker cannot read another area's children (returns 403 Forbidden).
     """
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == child_id.strip(), ChildRecord.pseudonymous_id == child_id.strip())
+        or_(
+            ChildRecord.id == child_id.strip(),
+            ChildRecord.pseudonymous_id == child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
@@ -494,7 +534,10 @@ async def delete_child_record(
     Enforces caregiver right to erasure / removability.
     """
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == child_id.strip(), ChildRecord.pseudonymous_id == child_id.strip())
+        or_(
+            ChildRecord.id == child_id.strip(),
+            ChildRecord.pseudonymous_id == child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
@@ -521,6 +564,7 @@ async def delete_child_record(
 # Referral Endpoints (Lifecycle, Status Transitions & Outcome Follow-Up)
 # -----------------------------------------------------------------------------
 
+
 @router.post(
     "/api/referrals",
     response_model=ReferralResponse,
@@ -543,13 +587,18 @@ async def create_referral(
     """
     # Lookup child by ID or pseudonymous ID
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == body.child_id.strip(), ChildRecord.pseudonymous_id == body.child_id.strip())
+        or_(
+            ChildRecord.id == body.child_id.strip(),
+            ChildRecord.pseudonymous_id == body.child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
 
     if not child or not child.opt_in:
-        raise HTTPException(status_code=404, detail="Child record not found or opt-in revoked")
+        raise HTTPException(
+            status_code=404, detail="Child record not found or opt-in revoked"
+        )
 
     # Enforce area access
     check_worker_area_access(worker, child)
@@ -563,8 +612,10 @@ async def create_referral(
 
     # Deduplicate if idempotency_key is provided
     if body.idempotency_key:
-        stmt_dedup = select(Referral).options(selectinload(Referral.child)).where(
-            Referral.idempotency_key == body.idempotency_key.strip()
+        stmt_dedup = (
+            select(Referral)
+            .options(selectinload(Referral.child))
+            .where(Referral.idempotency_key == body.idempotency_key.strip())
         )
         res_dedup = await db.execute(stmt_dedup)
         existing_ref = res_dedup.scalar_one_or_none()
@@ -628,7 +679,11 @@ async def get_referral(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single referral by ID. Enforces area isolation."""
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -658,7 +713,11 @@ async def update_referral(
     ACCEPTANCE CHECK: Status transitions are strictly enforced:
     created -> sent -> seen -> outcome recorded -> closed.
     """
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -723,7 +782,11 @@ async def record_referral_outcome(
     ACCEPTANCE CHECK: Enforces that child must have been seen before recording outcome.
     Validates status transition: seen -> outcome recorded (-> closed if close_referral=True).
     """
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -782,7 +845,11 @@ async def delete_referral(
     Permanently delete a referral record.
     Enforces caregiver/patient right to erasure.
     """
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -805,13 +872,16 @@ async def delete_referral(
 # Referral Summary Endpoints (Printable PDF, Shareable Text, Minimal JSON)
 # -----------------------------------------------------------------------------
 
+
 @router.get(
     "/api/referrals/{referral_id}/summary",
     response_model=ReferralSummary,
 )
 async def get_referral_summary(
     referral_id: str,
-    format: str = Query(default="json", description="Output format: 'json', 'pdf', or 'text'"),
+    format: str = Query(
+        default="json", description="Output format: 'json', 'pdf', or 'text'"
+    ),
     accept: str | None = Header(default=None),
     worker: Worker = Depends(get_current_worker),
     db: AsyncSession = Depends(get_db),
@@ -827,7 +897,11 @@ async def get_referral_summary(
     - domains_of_concern
     - safety_rule_trigger
     """
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -845,7 +919,9 @@ async def get_referral_summary(
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"inline; filename=referral_summary_{referral.id}.pdf"},
+            headers={
+                "Content-Disposition": f"inline; filename=referral_summary_{referral.id}.pdf"
+            },
         )
 
     if is_text:
@@ -867,7 +943,11 @@ async def get_referral_summary_pdf(
     db: AsyncSession = Depends(get_db),
 ):
     """Download one-page printable referral summary PDF."""
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -879,7 +959,9 @@ async def get_referral_summary_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=referral_summary_{referral.id}.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename=referral_summary_{referral.id}.pdf"
+        },
     )
 
 
@@ -890,7 +972,11 @@ async def get_referral_summary_text(
     db: AsyncSession = Depends(get_db),
 ):
     """Download one-page shareable referral summary as plain text."""
-    stmt = select(Referral).options(selectinload(Referral.child)).where(Referral.id == referral_id.strip())
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
     res = await db.execute(stmt)
     referral = res.scalar_one_or_none()
 
@@ -908,6 +994,7 @@ async def get_referral_summary_text(
 # =========================================================================
 # LOW-LITERACY WORKER DASHBOARD ENDPOINTS
 # =========================================================================
+
 
 @router.get(
     "/api/chw/tier-counts",
@@ -944,7 +1031,9 @@ async def get_tier_counts(
     t1 = sum(1 for c in records if (c.current_tier or "").startswith("Tier 1"))
     t2 = sum(1 for c in records if (c.current_tier or "").startswith("Tier 2"))
     t3 = sum(1 for c in records if (c.current_tier or "").startswith("Tier 3"))
-    unscreened = sum(1 for c in records if not c.current_tier or c.current_tier == "Unscreened")
+    unscreened = sum(
+        1 for c in records if not c.current_tier or c.current_tier == "Unscreened"
+    )
 
     def _is_overdue(dt: datetime | None) -> bool:
         if not dt:
@@ -979,7 +1068,10 @@ async def mark_child_contacted(
     Increments contact count and updates last_contacted_at timestamp.
     """
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == child_id.strip(), ChildRecord.pseudonymous_id == child_id.strip())
+        or_(
+            ChildRecord.id == child_id.strip(),
+            ChildRecord.pseudonymous_id == child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
@@ -994,7 +1086,11 @@ async def mark_child_contacted(
     child.contact_count = (child.contact_count or 0) + 1
 
     if child.follow_up_due_at:
-        dt = child.follow_up_due_at.replace(tzinfo=UTC) if child.follow_up_due_at.tzinfo is None else child.follow_up_due_at
+        dt = (
+            child.follow_up_due_at.replace(tzinfo=UTC)
+            if child.follow_up_due_at.tzinfo is None
+            else child.follow_up_due_at
+        )
         if dt < now:
             child.follow_up_due_at = now + timedelta(days=14)
 
@@ -1023,7 +1119,10 @@ async def one_touch_referral(
     Creates or reuses referral and immediately provides the 4-field minimal summary.
     """
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == child_id.strip(), ChildRecord.pseudonymous_id == child_id.strip())
+        or_(
+            ChildRecord.id == child_id.strip(),
+            ChildRecord.pseudonymous_id == child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
@@ -1044,9 +1143,16 @@ async def one_touch_referral(
     if existing_ref:
         referral = existing_ref
     else:
-        tier_val = child.current_tier if "Tier" in (child.current_tier or "") else "Tier 3: Direct Referral"
+        tier_val = (
+            child.current_tier
+            if "Tier" in (child.current_tier or "")
+            else "Tier 3: Direct Referral"
+        )
         domains = list(child.domains_flagged or ["gross_motor", "communication"])
-        safety = child.safety_rule_triggered or "Clinical delay flagged during CHW village check"
+        safety = (
+            child.safety_rule_triggered
+            or "Clinical delay flagged during CHW village check"
+        )
         referral = Referral(
             child_id=child.id,
             from_worker_id=worker.id,
@@ -1092,7 +1198,10 @@ async def record_child_outcome(
     Updates referral status to 'outcome recorded' (or 'closed') and updates child follow-up.
     """
     stmt = select(ChildRecord).where(
-        or_(ChildRecord.id == child_id.strip(), ChildRecord.pseudonymous_id == child_id.strip())
+        or_(
+            ChildRecord.id == child_id.strip(),
+            ChildRecord.pseudonymous_id == child_id.strip(),
+        )
     )
     res = await db.execute(stmt)
     child = res.scalar_one_or_none()
@@ -1189,7 +1298,10 @@ async def sync_chw_batch(
 
         # Lookup child
         stmt_child = select(ChildRecord).where(
-            or_(ChildRecord.id == item.child_id.strip(), ChildRecord.pseudonymous_id == item.child_id.strip())
+            or_(
+                ChildRecord.id == item.child_id.strip(),
+                ChildRecord.pseudonymous_id == item.child_id.strip(),
+            )
         )
         res_child = await db.execute(stmt_child)
         child = res_child.scalar_one_or_none()
@@ -1217,7 +1329,10 @@ async def sync_chw_batch(
                     status="conflict",
                     entity_id=None,
                     message="Child record not found on server or opt-in was revoked.",
-                    conflict_detail={"resolution": "rejected", "reason": "Child deleted or not found."},
+                    conflict_detail={
+                        "resolution": "rejected",
+                        "reason": "Child deleted or not found.",
+                    },
                 )
             )
             continue
@@ -1240,7 +1355,9 @@ async def sync_chw_batch(
         # Handle Operation: SCREENING
         if op == "screening":
             # Check if screening with this idempotency key exists
-            stmt_s = select(ScreeningSession).where(ScreeningSession.idempotency_key == key)
+            stmt_s = select(ScreeningSession).where(
+                ScreeningSession.idempotency_key == key
+            )
             res_s = await db.execute(stmt_s)
             existing_s = res_s.scalar_one_or_none()
 
@@ -1379,8 +1496,12 @@ async def sync_chw_batch(
                 )
                 continue
 
-            to_facility = item.payload.get("to_facility", "District Early Intervention Centre (DEIC)").strip()
-            reason = item.payload.get("reason", "Developmental delay flagged in screening").strip()
+            to_facility = item.payload.get(
+                "to_facility", "District Early Intervention Centre (DEIC)"
+            ).strip()
+            reason = item.payload.get(
+                "reason", "Developmental delay flagged in screening"
+            ).strip()
             ref_tier = item.payload.get("tier", child.current_tier).strip()
 
             referral_id = _uuid()
@@ -1393,8 +1514,12 @@ async def sync_chw_batch(
                 reason=reason,
                 tier=ref_tier,
                 status=STATUS_CREATED,
-                domains_of_concern=item.payload.get("domains_of_concern", child.domains_flagged or []),
-                safety_rule_trigger=item.payload.get("safety_rule_trigger", child.safety_rule_triggered),
+                domains_of_concern=item.payload.get(
+                    "domains_of_concern", child.domains_flagged or []
+                ),
+                safety_rule_trigger=item.payload.get(
+                    "safety_rule_trigger", child.safety_rule_triggered
+                ),
                 created_at=item.client_timestamp or _utcnow(),
             )
             db.add(referral)
@@ -1500,7 +1625,9 @@ async def sync_chw_batch(
                     )
                 )
             else:
-                latest_ref.outcome_notes = item.payload.get("outcome_notes", "Clinical follow-up completed.")
+                latest_ref.outcome_notes = item.payload.get(
+                    "outcome_notes", "Clinical follow-up completed."
+                )
                 latest_ref.status = STATUS_OUTCOME_RECORDED
                 latest_ref.outcome_recorded_at = item.client_timestamp or _utcnow()
                 if item.payload.get("close_referral"):
@@ -1576,4 +1703,3 @@ async def list_conflicts(
     )
     res = await db.execute(stmt)
     return list(res.scalars().all())
-

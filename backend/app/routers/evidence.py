@@ -99,7 +99,11 @@ def _build_module_b(data: list[dict]) -> EvidenceModuleB:
     # from the held-out "test(all, unseen)" blend (hybrid) and clf (ML-only) rows.
     def find(name: str, mode: str) -> dict:
         for row in data:
-            if isinstance(row, dict) and row.get("name") == name and row.get("mode") == mode:
+            if (
+                isinstance(row, dict)
+                and row.get("name") == name
+                and row.get("mode") == mode
+            ):
                 return row
         return {}
 

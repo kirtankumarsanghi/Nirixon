@@ -138,6 +138,7 @@ def _evaluate_primary_prediction(core: CoreSession, db_row: DbSession) -> Any:
         override_rule=override_rule,
     )
 
+
 MAX_RESPONDENTS_PER_SESSION = 3
 
 
@@ -169,9 +170,15 @@ def _get_item_options(item: Any) -> list[JointQuestionOption]:
         ]
     # Default 3-point milestone scale
     return [
-        JointQuestionOption(value=0, label="Not Yet", description="Child does not do this yet"),
-        JointQuestionOption(value=1, label="Sometimes", description="Emerging / does this occasionally"),
-        JointQuestionOption(value=2, label="Consistently", description="Mastered / does this reliably"),
+        JointQuestionOption(
+            value=0, label="Not Yet", description="Child does not do this yet"
+        ),
+        JointQuestionOption(
+            value=1, label="Sometimes", description="Emerging / does this occasionally"
+        ),
+        JointQuestionOption(
+            value=2, label="Consistently", description="Mastered / does this reliably"
+        ),
     ]
 
 
@@ -192,7 +199,9 @@ async def create_joint_invite(
     stmt = (
         select(DbSession)
         .where(DbSession.id == session_id)
-        .options(selectinload(DbSession.joint_invites), selectinload(DbSession.joint_answers))
+        .options(
+            selectinload(DbSession.joint_invites), selectinload(DbSession.joint_answers)
+        )
     )
     result = await db.execute(stmt)
     db_row = result.scalar_one_or_none()
@@ -200,7 +209,11 @@ async def create_joint_invite(
         raise HTTPException(status_code=404, detail="Screening session not found")
 
     # Count existing valid or completed invites
-    active_invites = [inv for inv in db_row.joint_invites if not inv.is_used and _ensure_aware(inv.expires_at) > _utcnow()]
+    active_invites = [
+        inv
+        for inv in db_row.joint_invites
+        if not inv.is_used and _ensure_aware(inv.expires_at) > _utcnow()
+    ]
     total_respondents_or_invites = len(db_row.joint_answers) + len(active_invites)
 
     if total_respondents_or_invites >= MAX_RESPONDENTS_PER_SESSION:
@@ -245,7 +258,9 @@ async def list_joint_invites(
     stmt = (
         select(DbSession)
         .where(DbSession.id == session_id)
-        .options(selectinload(DbSession.joint_invites), selectinload(DbSession.joint_answers))
+        .options(
+            selectinload(DbSession.joint_invites), selectinload(DbSession.joint_answers)
+        )
     )
     result = await db.execute(stmt)
     db_row = result.scalar_one_or_none()
@@ -326,7 +341,9 @@ async def get_invite_questions(
 
     session = invite.session
     if session is None:
-        raise HTTPException(status_code=404, detail="Associated screening session not found.")
+        raise HTTPException(
+            status_code=404, detail="Associated screening session not found."
+        )
 
     core = repo.get(session.id)
     if core is None and session.state_json:
@@ -349,9 +366,12 @@ async def get_invite_questions(
     if len(item_ids) < 3:
         if core and core.module == "A":
             from data.generator.item_bank import get_items_for_bracket
+
             bracket = core.age_bracket if core.age_bracket != "Unknown" else "24m"
             bracket_items = get_items_for_bracket(bracket)
-            item_ids = ["regression_flag", "family_history_flag"] + [it.item_id for it in bracket_items[:6]]
+            item_ids = ["regression_flag", "family_history_flag"] + [
+                it.item_id for it in bracket_items[:6]
+            ]
         else:
             item_ids = ["regression_flag", "family_history_flag"]
 
@@ -372,14 +392,18 @@ async def get_invite_questions(
                 q_text = f"Developmental milestone item: {iid}"
                 domain = "general"
                 r_type = "frequency"
-            opts = [
-                JointQuestionOption(value=1, label="Yes"),
-                JointQuestionOption(value=0, label="No"),
-            ] if r_type == "yes_no" else [
-                JointQuestionOption(value=0, label="Not Yet"),
-                JointQuestionOption(value=1, label="Sometimes"),
-                JointQuestionOption(value=2, label="Consistently"),
-            ]
+            opts = (
+                [
+                    JointQuestionOption(value=1, label="Yes"),
+                    JointQuestionOption(value=0, label="No"),
+                ]
+                if r_type == "yes_no"
+                else [
+                    JointQuestionOption(value=0, label="Not Yet"),
+                    JointQuestionOption(value=1, label="Sometimes"),
+                    JointQuestionOption(value=2, label="Consistently"),
+                ]
+            )
         else:
             q_text = getattr(meta, "question_text", f"Item {iid}")
             domain = getattr(meta, "domain", "general")
@@ -463,12 +487,14 @@ async def submit_joint_response(
         core = CoreSession.from_dict(invite.session.state_json)
 
     if core is not None:
-        core.joint_respondent_answers.append({
-            "respondent_id": ans_row.id,
-            "role_label": clean_role,
-            "answers": body.answers,
-            "submitted_at": _utcnow().isoformat(),
-        })
+        core.joint_respondent_answers.append(
+            {
+                "respondent_id": ans_row.id,
+                "role_label": clean_role,
+                "answers": body.answers,
+                "submitted_at": _utcnow().isoformat(),
+            }
+        )
         repo.save(invite.session_id, core)
         if invite.session:
             invite.session.state_json = core.to_dict()
@@ -538,24 +564,30 @@ async def merge_shared_session(
                 submitted_at=_utcnow(),
             )
         )
-        core.joint_respondent_answers.append({
-            "role_label": role,
-            "answers": body.answers,
-            "submitted_at": _utcnow().isoformat(),
-        })
+        core.joint_respondent_answers.append(
+            {
+                "role_label": role,
+                "answers": body.answers,
+                "submitted_at": _utcnow().isoformat(),
+            }
+        )
 
     # Collect all respondent answers
     respondents_list: list[dict[str, Any]] = []
     # From DB
     for ans in db_row.joint_answers:
-        respondents_list.append({
-            "respondent_id": ans.id,
-            "role_label": ans.role_label,
-            "answers": dict(ans.answers),
-        })
+        respondents_list.append(
+            {
+                "respondent_id": ans.id,
+                "role_label": ans.role_label,
+                "answers": dict(ans.answers),
+            }
+        )
     # Merge with core memory if any
     for r in core.joint_respondent_answers:
-        if not any(rl.get("respondent_id") == r.get("respondent_id") for rl in respondents_list):
+        if not any(
+            rl.get("respondent_id") == r.get("respondent_id") for rl in respondents_list
+        ):
             respondents_list.append(r)
 
     # Primary answers
@@ -569,8 +601,8 @@ async def merge_shared_session(
     primary_prediction = _evaluate_primary_prediction(core, db_row)
 
     # 3. Apply Combination Rule: Most concerning answer feeds the safety rule
-    safety_override, override_rule, final_classification, safety_source = apply_joint_combination_rule(
-        core, respondents_list, primary_prediction
+    safety_override, override_rule, final_classification, safety_source = (
+        apply_joint_combination_rule(core, respondents_list, primary_prediction)
     )
 
     # Determine concordance qualitative level
@@ -656,7 +688,9 @@ async def get_session_concordance(
     repo: SessionRepository = Depends(get_session_repo),
 ):
     """Retrieve existing concordance analysis and disagreements for clinician review."""
-    return await merge_shared_session(session_id=session_id, body=None, db=db, repo=repo)
+    return await merge_shared_session(
+        session_id=session_id, body=None, db=db, repo=repo
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -136,9 +136,7 @@ async def init_db() -> None:
             for col_name, col_type in ref_cols:
                 if ref_columns and col_name not in ref_columns:
                     await conn.execute(
-                        text(
-                            f"ALTER TABLE referrals ADD COLUMN {col_name} {col_type}"
-                        )
+                        text(f"ALTER TABLE referrals ADD COLUMN {col_name} {col_type}")
                     )
 
             # Check answers table columns
@@ -146,7 +144,9 @@ async def init_db() -> None:
             ans_columns = {row[1] for row in res_ans.fetchall()}
             if ans_columns and "source" not in ans_columns:
                 await conn.execute(
-                    text("ALTER TABLE answers ADD COLUMN source VARCHAR(16) DEFAULT 'recall'")
+                    text(
+                        "ALTER TABLE answers ADD COLUMN source VARCHAR(16) DEFAULT 'recall'"
+                    )
                 )
 
             # Check risk_results table columns

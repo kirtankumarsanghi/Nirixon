@@ -90,7 +90,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Watch if your baby smiles responsively back at you (not just gas or random reflex).",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 4-6 months
     LiveTaskDefinition(
         task_id="live_GM02_roll_tummy",
@@ -122,7 +121,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Observe whether baby follows the toy with smooth head and eye movements all the way across.",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 6-9 months
     LiveTaskDefinition(
         task_id="live_GM03_sit_support",
@@ -154,7 +152,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Listen if your child repeats string of consonant syllables ('ba-ba', 'ga-ga', 'da-da').",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 9-12 months
     LiveTaskDefinition(
         task_id="live_GM04_pull_to_stand",
@@ -186,7 +183,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Observe if child reaches and lifts the washcloth to retrieve the hidden toy.",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 12-18 months
     LiveTaskDefinition(
         task_id="live_GM05_independent_steps",
@@ -218,7 +214,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Observe whether child independently picks up food and brings it accurately to their mouth to eat.",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 18-24 months
     LiveTaskDefinition(
         task_id="live_FM05_stack_blocks",
@@ -250,7 +245,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Observe if child kicks the ball forward with one foot without falling down or holding onto furniture.",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 24-36 months
     LiveTaskDefinition(
         task_id="live_FM06_tower_six",
@@ -272,7 +266,6 @@ LIVE_TASKS: list[LiveTaskDefinition] = [
         what_to_observe="Listen if child spontaneously joins two words together with distinct meanings (e.g., 'big ball', 'want juice', 'car go').",
         response_options=STANDARD_OPTIONS,
     ),
-
     # 36-60 months
     LiveTaskDefinition(
         task_id="live_CG05_shape_sorting",
@@ -311,7 +304,8 @@ def get_tasks_for_bracket(bracket: str) -> list[LiveTaskDefinition]:
     # Bracket fallback mapping if exact bracket string differs
     # (e.g. "6-12m" vs "6mo")
     return [
-        t for t in LIVE_TASKS
+        t
+        for t in LIVE_TASKS
         if any(token in b_clean for token in (t.age_bracket.lower(), t.domain.lower()))
     ] or list(LIVE_TASKS[:4])
 

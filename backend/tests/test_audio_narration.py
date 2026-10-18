@@ -29,7 +29,10 @@ def test_every_item_has_reviewed_audio_or_text_fallback():
     report = report_res.json()
 
     assert report["total_system_items"] > 0
-    assert report["covered_items_count"] + report["uncovered_items_count"] == report["total_system_items"]
+    assert (
+        report["covered_items_count"] + report["uncovered_items_count"]
+        == report["total_system_items"]
+    )
 
     # Verify covered items have valid reviewed metadata
     for item in report["covered_items"]:
@@ -60,7 +63,10 @@ def test_every_item_has_reviewed_audio_or_text_fallback():
         data = res.json()
         assert data["has_audio"] is False
         assert data["fallback_to_text"] is True
-        assert "fallback" in data["reason"].lower() or "not present" in data["reason"].lower()
+        assert (
+            "fallback" in data["reason"].lower()
+            or "not present" in data["reason"].lower()
+        )
 
 
 def test_unreviewed_audio_is_never_served():
@@ -79,7 +85,9 @@ def test_unreviewed_audio_is_never_served():
     for item_id, lang_dict in manifest["items"].items():
         for lang, entry in lang_dict.items():
             assert entry["reviewed_by"] is not None and len(entry["reviewed_by"]) > 0
-            assert entry["reviewed_date"] is not None and len(entry["reviewed_date"]) > 0
+            assert (
+                entry["reviewed_date"] is not None and len(entry["reviewed_date"]) > 0
+            )
             assert entry["status"] == "reviewed"
 
     # 2. Direct query for unreviewed item must return fallback_to_text = True and has_audio = False
@@ -107,7 +115,9 @@ def test_audio_coverage_report_lists_items_without_audio():
     data = res.json()
 
     assert "uncovered_items" in data
-    assert len(data["uncovered_items"]) == 60  # All Module B school-age items pending review
+    assert (
+        len(data["uncovered_items"]) == 60
+    )  # All Module B school-age items pending review
 
     # Spot check Module B items are listed in uncovered with reasons
     uncovered_ids = [u["item_id"] for u in data["uncovered_items"]]

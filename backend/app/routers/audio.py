@@ -33,7 +33,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/audio", tags=["audio"])
 
 # Manifest file location
-MANIFEST_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "audio_manifest.json"
+MANIFEST_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "data" / "audio_manifest.json"
+)
 
 _manifest_cache: dict[str, Any] | None = None
 
@@ -95,7 +97,9 @@ async def get_audio_manifest(
 @router.get("/item/{item_id}", response_model=AudioItemQueryResponse)
 async def get_audio_item(
     item_id: str,
-    language: str = Query("en", description="Requested narration language ('en' or 'hi')"),
+    language: str = Query(
+        "en", description="Requested narration language ('en' or 'hi')"
+    ),
 ) -> AudioItemQueryResponse:
     """
     Retrieves reviewed narration audio for a given question item.
@@ -146,24 +150,28 @@ def _collect_all_system_items() -> list[dict[str, Any]]:
     from app.core.mandatory_items import MANDATORY_QUESTION_TEXTS
 
     for mid, text in MANDATORY_QUESTION_TEXTS.items():
-        items.append({
-            "item_id": mid,
-            "domain": "background",
-            "bank": "Mandatory Screening Flags",
-            "text": text,
-        })
+        items.append(
+            {
+                "item_id": mid,
+                "domain": "background",
+                "bank": "Mandatory Screening Flags",
+                "text": text,
+            }
+        )
 
     # Module A
     try:
         from data.generator.item_bank import ITEM_BANK
 
         for itm in ITEM_BANK:
-            items.append({
-                "item_id": itm.item_id,
-                "domain": itm.domain,
-                "bank": "Module A (Milestones 0–60m)",
-                "text": itm.text,
-            })
+            items.append(
+                {
+                    "item_id": itm.item_id,
+                    "domain": itm.domain,
+                    "bank": "Module A (Milestones 0–60m)",
+                    "text": itm.text,
+                }
+            )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not load Module A ITEM_BANK: %s", exc)
 
@@ -172,19 +180,23 @@ def _collect_all_system_items() -> list[dict[str, Any]]:
         from data.generator.item_bank_b import MODULE_B_ITEM_BANK, RULE_OUT_ITEMS
 
         for itm in MODULE_B_ITEM_BANK:
-            items.append({
-                "item_id": itm.item_id,
-                "domain": itm.domain,
-                "bank": "Module B (School Age 5–12y)",
-                "text": itm.text,
-            })
+            items.append(
+                {
+                    "item_id": itm.item_id,
+                    "domain": itm.domain,
+                    "bank": "Module B (School Age 5–12y)",
+                    "text": itm.text,
+                }
+            )
         for itm in RULE_OUT_ITEMS:
-            items.append({
-                "item_id": itm.item_id,
-                "domain": "rule_out",
-                "bank": "Module B (Rule Outs)",
-                "text": itm.text,
-            })
+            items.append(
+                {
+                    "item_id": itm.item_id,
+                    "domain": "rule_out",
+                    "bank": "Module B (Rule Outs)",
+                    "text": itm.text,
+                }
+            )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not load Module B MODULE_B_ITEM_BANK: %s", exc)
 
@@ -212,7 +224,9 @@ async def get_audio_coverage_report() -> AudioCoverageReport:
     for item_id, lang_dict in manifest_items.items():
         for lang_code, entry in lang_dict.items():
             if not is_entry_reviewed(entry) and item_id not in unreviewed_hidden_items:
-                unreviewed_hidden_items.append(f"{item_id} ({lang_code}: {entry.get('status')})")
+                unreviewed_hidden_items.append(
+                    f"{item_id} ({lang_code}: {entry.get('status')})"
+                )
 
     for itm in all_items:
         item_id = itm["item_id"]
@@ -227,7 +241,9 @@ async def get_audio_coverage_report() -> AudioCoverageReport:
                     domain=itm["domain"],
                     bank=itm["bank"],
                     languages=reviewed_langs,
-                    reviewed_by=sample_entry.get("reviewed_by", "Dr. Anita Sharma, MD (Pediatrics)"),
+                    reviewed_by=sample_entry.get(
+                        "reviewed_by", "Dr. Anita Sharma, MD (Pediatrics)"
+                    ),
                     reviewed_date=sample_entry.get("reviewed_date", "2026-03-20"),
                 )
             )
@@ -249,7 +265,9 @@ async def get_audio_coverage_report() -> AudioCoverageReport:
     total_count = len(all_items)
     covered_count = len(covered_list)
     uncovered_count = len(uncovered_list)
-    coverage_pct = round((covered_count / total_count * 100.0), 2) if total_count > 0 else 0.0
+    coverage_pct = (
+        round((covered_count / total_count * 100.0), 2) if total_count > 0 else 0.0
+    )
 
     return AudioCoverageReport(
         generated_at=datetime.now(UTC).isoformat(),
@@ -257,7 +275,9 @@ async def get_audio_coverage_report() -> AudioCoverageReport:
         covered_items_count=covered_count,
         uncovered_items_count=uncovered_count,
         coverage_percentage=coverage_pct,
-        clinical_reviewer=raw.get("clinical_reviewer", "Dr. Anita Sharma, MD (Pediatrics), DCH"),
+        clinical_reviewer=raw.get(
+            "clinical_reviewer", "Dr. Anita Sharma, MD (Pediatrics), DCH"
+        ),
         clinical_review_date=raw.get("clinical_review_date", "2026-03-20"),
         gating_rules=[
             "Strictly zero runtime translation or synthetic clinical voice generation.",

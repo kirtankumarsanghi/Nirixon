@@ -24,9 +24,7 @@ def generate_claims_register():
     router_metrics_path = (
         backend_dir / "ml" / "artifacts" / "module_b_router" / "router_metrics.json"
     )
-    handwritten_csv_path = (
-        backend_dir / "ml" / "module_b" / "handwritten_eval_b.csv"
-    )
+    handwritten_csv_path = backend_dir / "ml" / "module_b" / "handwritten_eval_b.csv"
 
     for p in (metrics_path, latency_path, router_metrics_path, handwritten_csv_path):
         if not p.exists():

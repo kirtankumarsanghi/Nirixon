@@ -19,10 +19,22 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class WorkerCreate(BaseModel):
     name: str = Field(..., description="Worker full name", examples=["Sunita Devi"])
-    role: str = Field(default="chw", description="Worker role ('chw' or 'supervisor')", examples=["chw"])
-    area: str = Field(..., description="Assigned village, ward, or catchment area", examples=["Ward 12"])
-    phone: str | None = Field(default=None, description="Optional contact number", examples=["9876500001"])
-    user_id: str | None = Field(default=None, description="Linked user ID if already created")
+    role: str = Field(
+        default="chw",
+        description="Worker role ('chw' or 'supervisor')",
+        examples=["chw"],
+    )
+    area: str = Field(
+        ...,
+        description="Assigned village, ward, or catchment area",
+        examples=["Ward 12"],
+    )
+    phone: str | None = Field(
+        default=None, description="Optional contact number", examples=["9876500001"]
+    )
+    user_id: str | None = Field(
+        default=None, description="Linked user ID if already created"
+    )
 
 
 class WorkerResponse(BaseModel):
@@ -104,6 +116,7 @@ class ChildRecordResponse(BaseModel):
     @classmethod
     def compute_is_overdue(cls, data: Any) -> Any:
         from datetime import UTC, datetime
+
         now = datetime.now(UTC)
         if isinstance(data, dict):
             due = data.get("follow_up_due_at")
@@ -145,10 +158,18 @@ class OneTouchReferralResponse(BaseModel):
 
 
 class RecordChildOutcomeRequest(BaseModel):
-    outcome_notes: str = Field(..., description="Follow-up notes and clinical services received")
-    new_tier: str | None = Field(default=None, description="Optional updated triage tier after evaluation")
-    next_follow_up_days: int | None = Field(default=None, description="Schedule next home visit in N days")
-    close_referral: bool = Field(default=True, description="Whether to close the active referral")
+    outcome_notes: str = Field(
+        ..., description="Follow-up notes and clinical services received"
+    )
+    new_tier: str | None = Field(
+        default=None, description="Optional updated triage tier after evaluation"
+    )
+    next_follow_up_days: int | None = Field(
+        default=None, description="Schedule next home visit in N days"
+    )
+    close_referral: bool = Field(
+        default=True, description="Whether to close the active referral"
+    )
 
 
 class TierCountsResponse(BaseModel):
@@ -254,28 +275,44 @@ class ReferralSummary(BaseModel):
     Strictly contains ONLY the four listed fields needed for clinical triage handoff.
     No child names, no village/ward, no worker identifiers, no extraneous data.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     age_bracket: str = Field(..., description="Coarse age bracket")
     tier: str = Field(..., description="Screening triage tier")
-    domains_of_concern: list[str] = Field(..., description="Flagged developmental domains")
-    safety_rule_trigger: str | None = Field(default=None, description="Safety rule code if triggered")
+    domains_of_concern: list[str] = Field(
+        ..., description="Flagged developmental domains"
+    )
+    safety_rule_trigger: str | None = Field(
+        default=None, description="Safety rule code if triggered"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Offline-First Synchronization & Conflict Handling Schemas
 # ---------------------------------------------------------------------------
 
+
 class CHWSyncItem(BaseModel):
-    idempotency_key: str = Field(..., description="Client-generated unique UUID for exactly-once execution")
-    operation: Literal["screening", "referral", "contact", "outcome"] = Field(..., description="Type of queued action")
+    idempotency_key: str = Field(
+        ..., description="Client-generated unique UUID for exactly-once execution"
+    )
+    operation: Literal["screening", "referral", "contact", "outcome"] = Field(
+        ..., description="Type of queued action"
+    )
     child_id: str = Field(..., description="Target child ID or pseudonymous ID")
-    payload: dict[str, Any] = Field(default_factory=dict, description="Operation specific data")
-    client_timestamp: datetime | None = Field(default=None, description="Local client creation timestamp")
+    payload: dict[str, Any] = Field(
+        default_factory=dict, description="Operation specific data"
+    )
+    client_timestamp: datetime | None = Field(
+        default=None, description="Local client creation timestamp"
+    )
 
 
 class CHWSyncBatchRequest(BaseModel):
-    operations: list[CHWSyncItem] = Field(default_factory=list, description="Array of offline queued operations")
+    operations: list[CHWSyncItem] = Field(
+        default_factory=list, description="Array of offline queued operations"
+    )
 
 
 class CHWSyncItemResult(BaseModel):
@@ -309,4 +346,3 @@ class ConflictLogResponse(BaseModel):
     resolution: str
     reason: str
     created_at: datetime
-

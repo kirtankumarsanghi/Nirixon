@@ -69,13 +69,13 @@ Every feature status in Nirixon strictly reflects the verification proven by the
 | **Deterministic Clinical Safety Floor** | Clinical Safety | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_3_safety_rule_bypass`, `test_regressions.py` | Milestone regression and severe deficit deterministic override forcing immediate Tier 3: Refer triage (overriding ML output) |
 | **Clinician "What-If" Simulation Sandbox** | Clinician Tools | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_4_what_if_simulation`, `test_sandbox.py` | Post-hoc re-scoring via `/api/sandbox/{session_id}/simulate`, hypothetical override testing, dynamic probability & TreeSHAP shifts |
 | **Community Health Worker Referral Lifecycle** | Community Health | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_5_referral_creation_to_outcome`, `test_referrals.py` | 5-stage auditable state machine (`created` ➔ `sent` ➔ `seen` ➔ `outcome recorded` ➔ `closed`), printable 4-field minimal PDF summary |
-| **Frontline Worker Low-Literacy Dashboard** | Community Health | **Live · Verified** | `frontend/src/pages/LowLiteracyWorkerDashboard.test.tsx` (4 tests) | Mobile-first 360px viewport responsiveness, 200 seeded children list, fast filters (tier, overdue, age), high-contrast touch targets |
-| **Offline-First PWA & Idempotent Sync** | Field Operations | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_6_offline_sync`, `OfflineWorkerDashboard.test.tsx` | Service Worker caching, IndexedDB (`nirixon-chw-offline-db`), UUID idempotency keys, conflict logs, auto device wipe on logout |
-| **Multilingual Audio Narration Engine** | Accessibility | **Live · Verified** | `tests/test_audio_narration.py`, `tests/test_landing_demo.py` | Pre-recorded validated audio in Hindi & English, 0.8× and 1.0× playback speeds, audio manifest clinical review gate (`reviewed_by`, `reviewed_date`), silent text fallback |
+| **Frontline Worker Caseload Dashboard** | Community Health | **Live · No dedicated test** | *—* | Mobile-first 360px viewport, ward-wide caseload list, fast filters (tier, overdue, age), high-contrast touch targets. No frontend test covers this view yet. |
+| **Offline Sync (server)** | Field Operations | **Backend live · client offline queue not implemented** | `tests/test_end_to_end.py::test_e2e_flow_6_offline_sync` | `POST /api/chw/sync` with UUID idempotency keys and conflict logging is live and verified. The browser-side service worker + IndexedDB write queue is **not implemented yet** (see Roadmap). |
+| **Multilingual Audio Narration** | Accessibility | **Backend live · UI playback not wired** | `tests/test_audio_narration.py` | Validated Hindi & English clips with 0.8× / 1.0× variants and a manifest review gate (`reviewed_by`, `reviewed_date`). The check-in UI does not play them yet. |
 | **Area-Level Data Isolation & Privacy Invariants** | Data Governance | **Live · Verified** | `tests/test_referrals.py`, `tests/test_end_to_end.py` | Zero cross-ward leakage; workers strictly restricted to their assigned village/ward; 100% opt-in with consent recorded; pseudonymous IDs only |
-| **Multi-Caregiver Joint Family Triangulation** | Concordance | **Live · Verified** | `tests/test_share_merge.py`, `JointFamilyPages.test.tsx` | Zero-login 72-hour invite links, zero-PII exposure, clinical combination rule (safety-maximized floor + statistical primary vector), Concordance Index ($0.0 - 1.0$) |
-| **Longitudinal WHO Growth & Plateau Tracking** | Growth Surveillance | **Live · Verified** | `tests/test_growth_sync.py`, `growthSync.test.ts` | Opt-in synced developmental age tracking, WHO motor milestone velocity, automated plateau alerts, right-to-erasure cascade (`DELETE /api/growth/data/{child_id}`) |
-| **Find Help Geolocation & DEIC Directory** | Health Navigation | **Live · Verified** | `tests/test_help.py`, `FindHelpPage.test.tsx` | Haversine distance lookup by 6-digit PIN code / GPS, age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
+| **Multi-Caregiver Joint Family Triangulation** | Concordance | **Live · Verified** | `tests/test_share_merge.py` | Zero-login 72-hour invite links, zero-PII exposure, clinical combination rule (safety-maximized floor + statistical primary vector), Concordance Index ($0.0 - 1.0$) |
+| **Longitudinal Growth & Plateau Tracking** | Growth Surveillance | **Live · Verified** | `tests/test_growth_sync.py` | Opt-in synced developmental age tracking, automated plateau alerts, right-to-erasure cascade (`DELETE /api/growth/data/{child_id}`) |
+| **Find Help Directory** | Health Navigation | **Live · Verified** | `backend/tests/test_find_help.py`, `backend/tests/test_find_help_route.py`, `frontend/src/test/find-help.test.tsx` | Haversine distance lookup by 6-digit PIN code, age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
 | **WhatsApp Community Bot / Messaging** | Messaging / Bot | **Coming next · Roadmap** | *In Architecture Design* | Gated for lightweight automated follow-up messages; currently preserved in "Coming next" status per safety governance requirements |
 
 ---
@@ -637,7 +637,7 @@ Follow this step-by-step walkthrough to reproduce every verified capability in N
 ### Scenario 5: Frontline Worker Low-Literacy Dashboard (ASHA / Anganwadi)
 1. **Log in as Frontline CHW:** Sign in as `chw@example.com` / `changeme` (assigned to **Ward 12**).
 2. **Access Dashboard:** Navigate to `/referrals` or `/chw`.
-3. **Filter Village Roster:** The dashboard displays 200 seeded children for Ward 12.
+3. **Filter Village Roster:** The dashboard lists every child in Ward 12 (empty until children are registered or screened).
 4. **Test Quick Filters:**
    - Click the **Tier 3** badge to isolate high-risk children.
    - Click the **Overdue Follow-Up** chip to view children pending a 30-day home check.
@@ -721,18 +721,16 @@ nirixon/
     ├── package.json             # NPM dependencies & scripts
     ├── vite.config.ts           # Vite configuration & dev server proxy
     ├── src/
-    │   ├── App.tsx              # Root router & authentication bridge
-    │   ├── api/                 # Axios/Fetch API client & typed request wrappers
-    │   ├── auth/                # AuthContext & role guards
-    │   ├── pages/               # Application Views & Portals
-    │   │   ├── ScreeningPage.tsx# Interactive adaptive questionnaire
-    │   │   ├── CHWReferralPage.tsx # Community health worker portal
-    │   │   ├── FindHelpPage.tsx # DEIC & health facility locator
-    │   │   ├── JointRespondentPage.tsx # Zero-login secondary caregiver view
-    │   │   └── DeferredPages.tsx# Growth, Sandbox, and What-If views
+    │   ├── App.tsx              # Root router & workspace shell
+    │   ├── store.tsx            # App context: auth, routing, data loading, toasts
+    │   ├── api/                 # Typed fetch API client
+    │   ├── auth/                # Role definitions
+    │   ├── views/               # Workspace views: Home, CheckIn, Growth, Caseload,
+    │   │                        #   FindHelp, Share, Cases, ClinicalReview, WhatIf …
+    │   ├── components/          # Reusable UI components & layout
+    │   ├── lib/                 # Domain model, hash router, API adapters
     │   ├── landing/             # Public landing page with live interactive demo
-    │   ├── components/          # Reusable UI components & layouts
-    │   └── toast/               # Accessible toast notification system
+    │   └── test/                # Vitest + React Testing Library tests
 ```
 
 ---
