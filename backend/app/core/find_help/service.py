@@ -255,11 +255,15 @@ def find_facilities(
     limit: int = 10,
     age_group: str | None = None,
     result: str | None = None,
+    *,
+    loc: dict | None = None,
 ) -> dict:
     """age_group ("0-5" | "6-12") ranks developmental/early-intervention services first, then referral hospitals,
     then everything else, nearest first within each group. Without age_group the order is plain distance.
+
+    Pass `loc` to search around explicit coordinates (GPS) instead of a PIN.
     """
-    loc = resolve_pin(conn, pin)
+    loc = loc or resolve_pin(conn, pin)
     response = {
         "pin": pin,
         "age_group": age_group,
@@ -352,3 +356,55 @@ def find_facilities(
         if best:
             response["nearest_specialist"] = _shape(best[0][1], best[0][0], age_group)
     return response
+
+
+def _empty_response(label: str, age_group: str | None, result: str | None) -> dict:
+    return {
+        "pin": label,
+        "age_group": age_group,
+        "result": result,
+        "resolved": None,
+        "coverage": "none",
+        "facilities": [],
+        "nearest_specialist": None,
+        "suggestions": build_suggestions(None, age_group, None),
+        "advice": ADVICE.get(result or ""),
+        "state_deic": None,
+        "helplines": HELPLINES,
+    }
+
+
+def resolve_coords(conn: sqlite3.Connection, lat: float, lng: float) -> dict | None:
+    """District/state come from the nearest PIN row; the origin stays the caller's point."""
+    row = conn.execute(
+        "SELECT district, state FROM pincodes "
+        "ORDER BY ((lat-?)*(lat-?)) + ((lng-?)*(lng-?)) LIMIT 1",
+        (lat, lat, lng, lng),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "district": row["district"],
+        "state": row["state"],
+        "lat": lat,
+        "lng": lng,
+        "approximate": False,
+        "match": "gps",
+    }
+
+
+def find_facilities_near(
+    conn: sqlite3.Connection,
+    lat: float,
+    lng: float,
+    types: list[str] | None = None,
+    limit: int = 10,
+    age_group: str | None = None,
+    result: str | None = None,
+) -> dict:
+    """Nearest facilities around a GPS point (same ranking as the PIN path)."""
+    label = f"{lat:.4f}, {lng:.4f}"
+    point = resolve_coords(conn, lat, lng)
+    if point is None:
+        return _empty_response(label, age_group, result)
+    return find_facilities(conn, label, types, limit, age_group, result, loc=point)
