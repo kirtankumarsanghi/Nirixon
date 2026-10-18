@@ -222,14 +222,16 @@ describe("child record drawer with partial area scores", () => {
       handoff: "none",
     };
     const out = render(
-      <ChildDrawer
-        child={partial}
-        onClose={() => {}}
-        onScreen={() => {}}
-        onRefer={() => {}}
-        onContacted={() => {}}
-        onOutcome={() => {}}
-      />,
+      <AppProvider>
+        <ChildDrawer
+          child={partial}
+          onClose={() => {}}
+          onScreen={() => {}}
+          onRefer={() => {}}
+          onContacted={() => {}}
+          onOutcome={() => {}}
+        />
+      </AppProvider>,
     );
     expect(out.container.textContent).not.toMatch(ERR);
   });

@@ -27,6 +27,18 @@ vi.mock("../api/client", async (importOriginal) => {
       getSessions: vi.fn(async () => []),
     },
     referralApi: { ...actual.referralApi, getChildren: vi.fn(async () => []) },
+    shareApi: {
+      ...actual.shareApi,
+      getAudioItem: vi.fn(async () => ({
+        item_id: "test",
+        has_audio: false,
+        fallback_to_text: true,
+        reason: "test: text only",
+        text: null,
+        audio: null,
+        available_languages: [],
+      })),
+    },
   };
 });
 
