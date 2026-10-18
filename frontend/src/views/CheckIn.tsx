@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
+import { QuestionAudio } from "../components/QuestionAudio";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
@@ -965,13 +966,16 @@ export function CheckIn() {
                   <p className="text-[14.5px] font-bold">Nirixon</p>
                   <p className="text-[12px] text-muted">{targetChild ? targetChild.id : name || "Sample child"} · {age} months · Module {module}</p>
                 </div>
-                <button
-                  onClick={() => setLang(lang === "en" ? "hi" : "en")}
-                  className="ml-auto rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
-                  aria-label="Switch language"
-                >
-                  {lang === "en" ? "हिन्दी" : "EN"}
-                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  {question && <QuestionAudio itemId={question.item_id} lang={lang} />}
+                  <button
+                    onClick={() => setLang(lang === "en" ? "hi" : "en")}
+                    className="rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
+                    aria-label="Switch language"
+                  >
+                    {lang === "en" ? "हिन्दी" : "EN"}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-5 px-6">
@@ -1009,7 +1013,10 @@ export function CheckIn() {
               </div>
 
               <div className="mx-6 mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
-                <p className="text-[12.5px] leading-snug font-semibold">{REGRESSION_Q[lang]}</p>
+                <div className="flex items-center gap-2">
+                  <QuestionAudio itemId="regression_flag" lang={lang} />
+                  <p className="text-[12.5px] leading-snug font-semibold">{REGRESSION_Q[lang]}</p>
+                </div>
                 <button
                   role="switch"
                   aria-checked={regression}
