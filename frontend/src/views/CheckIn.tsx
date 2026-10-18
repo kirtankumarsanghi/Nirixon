@@ -99,13 +99,12 @@ function toBackendAnswer(responseType: string | undefined, val: DesignVal): numb
 }
 
 export function CheckIn() {
-  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast } = useApp();
+  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast, lang, setLang } = useApp();
   const assisting = role !== "parent";
   const initialChild = children.find((c) => c.id === checkInTarget);
   const initialAge = initialChild?.ageMonths ?? (assisting ? 30 : 39);
 
   const [phase, setPhase] = useState<Phase>("setup");
-  const [lang, setLang] = useState<Lang>("en");
   const [target, setTarget] = useState<string>(() => checkInTarget ?? "");
   const targetChild = children.find((c) => c.id === target);
   const [name, setName] = useState(assisting ? "" : "Aarav");

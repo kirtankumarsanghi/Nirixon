@@ -5,6 +5,7 @@ import { parseHash, toHash, type Route } from "./lib/router";
 import { api, onUnauthorized, referralApi, setAuthToken } from "./api/client";
 import type { ChildRecord, CHWSyncItem } from "./api/types";
 import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
+import type { Lang } from "./lib/i18n";
 import { clearAllOfflineData, enqueue, getCache, isNetworkError, newKey, putCache, queueCount } from "./lib/offlineQueue";
 import { flushQueue } from "./lib/offlineSync";
 
@@ -38,6 +39,9 @@ interface AppCtx {
   canBack: boolean;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  /** App language (persisted); drives the migrated chrome strings. */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
 
   checkIns: CheckIn[];
   addCheckIn: (ci: CheckIn) => void;
@@ -130,6 +134,13 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     }
   });
   const timer = useRef<number | undefined>(undefined);
+  const [lang, setLang] = useState<Lang>(() => {
+    try {
+      return window.localStorage.getItem("nirixon-lang") === "hi" ? "hi" : "en";
+    } catch {
+      return "en";
+    }
+  });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -141,6 +152,15 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     }
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#071914" : "#fff4dc");
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("nirixon-lang", lang);
+    } catch {
+      /* private mode / restricted storage */
+    }
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   /* Browser back / forward / manual URL edits → state. */
   useEffect(() => {
@@ -416,6 +436,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       canBack: histState().prevApp === true,
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+      lang,
+      setLang,
       checkIns,
       addCheckIn: (ci) => setCheckIns((p) => [ci, ...p]),
       children,
@@ -440,7 +462,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       pendingSync,
       syncNow,
     };
-  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error, online, pendingSync, syncNow, referChild, contactChild, outcomeChild]);
+  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, lang, loading, error, online, pendingSync, syncNow, referChild, contactChild, outcomeChild]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }
