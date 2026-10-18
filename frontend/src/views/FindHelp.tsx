@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ClipboardCopy, ExternalLink, Loader2, Search, Tent } from "lucide-react";
+import { Check, ClipboardCopy, ExternalLink, Loader2, LocateFixed, Search, Tent } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
 import { facilitiesApi } from "../api/client";
 import type { Facility, FacilityType, FacilitiesResponse } from "../api/types";
@@ -179,6 +179,7 @@ export function FindHelp() {
   const [hover, setHover] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const ageGroup = age === "" ? undefined : parseInt(age || "0", 10) >= 6 ? "6-12" : "0-5";
 
@@ -199,6 +200,35 @@ export function FindHelp() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const useMyLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      showToast("Location is not available on this device");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const r = await facilitiesApi.getNear(
+            { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            { ageGroup, limit: 12 },
+          );
+          setRes(r);
+          setAsked("your location");
+        } catch (e) {
+          showToast(e instanceof Error ? e.message : "Could not search near you");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        showToast("Location permission denied — enter a PIN instead");
+      },
+      { enableHighAccuracy: false, timeout: 8000 },
+    );
   };
 
   const list = res?.facilities ?? [];
@@ -262,6 +292,10 @@ export function FindHelp() {
 
             <Btn size="lg" className="mt-6 w-full" onClick={() => void search(pin)} disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} {busy ? "Searching…" : "Find nearest help"}
+            </Btn>
+            <Btn size="lg" variant="light" className="mt-2 w-full" onClick={useMyLocation} disabled={busy || locating}>
+              {locating ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4" />}{" "}
+              {locating ? "Locating…" : "Use my location"}
             </Btn>
 
             <div className="mt-7 border-t border-line pt-6">

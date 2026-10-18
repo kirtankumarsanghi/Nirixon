@@ -43,3 +43,20 @@ async def test_facilities_route_mounted_and_validated(api_env):
             "/api/facilities", params={"pin": "302031", "age_group": "13-18"}
         )
     ).status_code == 422
+
+    # GPS path: latitude and longitude travel together; neither alone is valid.
+    assert (await client.get("/api/facilities")).status_code == 422
+    assert (
+        await client.get("/api/facilities", params={"lat": 26.9})
+    ).status_code == 422
+    assert (
+        await client.get("/api/facilities", params={"lng": 75.8})
+    ).status_code == 422
+
+    near = await client.get("/api/facilities", params={"lat": 26.9124, "lng": 75.7873})
+    assert near.status_code in (200, 503), near.text
+    if near.status_code == 200:
+        body = near.json()
+        assert body["resolved"]["match"] == "gps"
+        assert body["resolved"]["state"] == "Rajasthan"
+        assert body["helplines"]

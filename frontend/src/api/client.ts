@@ -369,6 +369,16 @@ export const facilitiesApi = {
     if (opts.limit != null) q.set("limit", String(opts.limit));
     return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
   },
+  /** Same directory around explicit coordinates (GPS "near me"). */
+  getNear(
+    coords: { lat: number; lng: number },
+    opts: { ageGroup?: "0-5" | "6-12"; limit?: number } = {},
+  ): Promise<FacilitiesResponse> {
+    const q = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng) });
+    if (opts.ageGroup) q.set("age_group", opts.ageGroup);
+    if (opts.limit != null) q.set("limit", String(opts.limit));
+    return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
+  },
 };
 
 export const referralApi = {
