@@ -11,85 +11,85 @@
   },
   "claims": {
     "module_a_accuracy": {
-      "value": 94.9,
+      "value": 74.2,
       "label": "Test Accuracy",
-      "display": "94.9%",
+      "display": "74.2%",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_macro_f1": {
-      "value": 0.9,
+      "value": 0.721,
       "label": "Macro F1",
-      "display": "0.900",
+      "display": "0.721",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_macro_auroc": {
-      "value": 0.977,
+      "value": 0.887,
       "label": "Macro AUROC",
-      "display": "0.977",
+      "display": "0.887",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_refer_precision": {
-      "value": 87.4,
+      "value": 73.6,
       "label": "Refer Precision",
-      "display": "87.4%",
+      "display": "73.6%",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_refer_recall": {
-      "value": 81.1,
+      "value": 62.1,
       "label": "Refer Recall",
-      "display": "81.1%",
+      "display": "62.1%",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_refer_specificity": {
-      "value": 99.1,
+      "value": 96.4,
       "label": "Refer Specificity",
-      "display": "99.1%",
+      "display": "96.4%",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_refer_auprc": {
-      "value": 0.891,
+      "value": 0.762,
       "label": "Refer AUPRC",
-      "display": "0.891",
+      "display": "0.762",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_test_n": {
-      "value": 1600,
+      "value": 10000,
       "label": "Module A Test Set Size",
-      "display": "1,600 held-out cases",
+      "display": "10,000 held-out cases",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_confusion_matrix": {
       "value": [
         [
-          1142,
-          25,
-          3
+          3871,
+          678,
+          2
         ],
         [
-          23,
-          286,
-          10
+          1065,
+          2681,
+          309
         ],
         [
-          3,
-          18,
-          90
+          84,
+          445,
+          865
         ]
       ],
       "labels": [
@@ -98,34 +98,34 @@
         "Refer"
       ],
       "label": "Test Confusion Matrix (Rows: True, Cols: Pred)",
-      "display": "Typical: 1142/1170 | Monitor: 286/319 | Refer: 90/111",
+      "display": "Typical: 3871/4551 | Monitor: 2681/4055 | Refer: 865/1394",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 1600
+      "sample_size": 10000
     },
     "module_a_refer_breakdown": {
-      "true_refer_total": 111,
-      "classified_as_refer": 90,
-      "missed_as_monitor": 18,
-      "missed_as_typical": 3,
+      "true_refer_total": 1394,
+      "classified_as_refer": 865,
+      "missed_as_monitor": 445,
+      "missed_as_typical": 84,
       "label": "True Refer Cohort Classification",
-      "display": "90 correctly flagged as Refer (81.1%), 18 classified as Monitor, 3 classified as Typical",
+      "display": "865 correctly flagged as Refer (62.1%), 445 classified as Monitor, 84 classified as Typical",
       "source_file": "backend/ml/artifacts/metrics.json",
       "data_type": "synthetic",
-      "sample_size": 111
+      "sample_size": 1394
     },
     "latency_p50": {
-      "value": 14.3,
+      "value": 12.9,
       "label": "Inference Latency (p50)",
-      "display": "14.3 ms",
+      "display": "12.9 ms",
       "source_file": "backend/ml/artifacts/latency_benchmark.json",
       "data_type": "synthetic",
       "sample_size": 200
     },
     "latency_p95": {
-      "value": 27.0,
+      "value": 16.4,
       "label": "Inference Latency (p95)",
-      "display": "27.0 ms",
+      "display": "16.4 ms",
       "source_file": "backend/ml/artifacts/latency_benchmark.json",
       "data_type": "synthetic",
       "sample_size": 200
@@ -148,34 +148,45 @@
       "data_type": "code_specification",
       "sample_size": 2412
     },
+    "module_b_handwritten_eval": {
+      "notes_n": 76,
+      "safety_recall": 100.0,
+      "any_hit_rate": 85.7,
+      "micro_f1": 84.5,
+      "label": "Module B Independent Handwritten Evaluation",
+      "display": "76 clinical notes: 100% safety recall, 85.7% any-domain hit rate, 84.5% F1",
+      "source_file": "backend/ml/module_b/handwritten_eval_b.csv",
+      "data_type": "clinical_handwritten",
+      "sample_size": 76
+    },
     "module_b_domain_precision": {
-      "value": 49.6,
-      "label": "Module B Domain Micro Precision",
-      "display": "49.6%",
+      "value": 56.8,
+      "label": "Module B Domain Micro Precision (rules-primary)",
+      "display": "56.8%",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700
     },
     "module_b_domain_recall": {
-      "value": 67.4,
-      "label": "Module B Domain Micro Recall",
-      "display": "67.4%",
+      "value": 51.2,
+      "label": "Module B Domain Micro Recall (rules-primary)",
+      "display": "51.2%",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700
     },
     "module_b_domain_f1": {
-      "value": 57.1,
-      "label": "Module B Domain Micro F1",
-      "display": "57.1%",
+      "value": 53.9,
+      "label": "Module B Domain Micro F1 (rules-primary)",
+      "display": "53.9%",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700
     },
     "module_b_any_hit_rate": {
-      "value": 74.8,
-      "label": "Module B Any-True-Domain Hit Rate",
-      "display": "74.8%",
+      "value": 66.4,
+      "label": "Module B Any-True-Domain Hit Rate (rules-primary)",
+      "display": "66.4%",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700
@@ -188,25 +199,14 @@
       "data_type": "synthetic",
       "sample_size": 138
     },
-    "module_b_handwritten_eval": {
-      "notes_n": 76,
-      "safety_recall": 100.0,
-      "any_hit_rate": 80.4,
-      "micro_f1": 66.7,
-      "label": "Module B Independent Handwritten Evaluation",
-      "display": "76 clinical notes: 100% safety recall, 80.4% any-domain hit rate, 66.7% F1",
-      "source_file": "backend/ml/module_b/handwritten_eval_b.csv",
-      "data_type": "clinical_handwritten",
-      "sample_size": 76
-    },
     "module_b_safety_hybrid_proof": {
       "rules_only_safety_recall": 100.0,
-      "rules_only_domain_recall": 33.1,
+      "rules_only_domain_recall": 31.4,
       "classifier_only_safety_recall": 12.3,
       "hybrid_safety_recall": 100.0,
-      "hybrid_domain_recall": 67.4,
-      "label": "Safety Recall: Rules vs ML vs Hybrid Blend",
-      "display": "Rules 100% (domain recall 33.1%) | ML Classifier 12.3% | Hybrid Blend 100% (domain recall 67.4%)",
+      "hybrid_domain_recall": 67.0,
+      "label": "Safety Recall: Rules vs ML vs Blend",
+      "display": "Rules 100% (domain recall 31.4%) | ML Classifier 12.3% | Blend 100% (domain recall 67.0%)",
       "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
       "data_type": "synthetic",
       "sample_size": 5700

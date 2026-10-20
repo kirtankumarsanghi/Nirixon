@@ -1,37 +1,37 @@
-state,pins,facilities,with_phone,verified,deic_loaded,deic_official,deic_gap
-Andaman And Nicobar Islands,22,0,0,0,0,0,0
-Andhra Pradesh,1228,41,5,0,0,34,34
-Arunachal Pradesh,49,2,1,0,0,3,3
-Assam,572,981,55,0,0,13,13
-Bihar,857,0,0,0,0,9,9
-Chandigarh,25,137,20,0,0,1,1
-Chhattisgarh,274,5,0,0,0,7,7
-Delhi,97,1109,414,0,0,1,1
-Goa,88,1,1,0,0,2,2
-Gujarat,1007,6,0,0,0,25,25
-Haryana,315,43,3,0,0,21,21
-Himachal Pradesh,436,0,0,0,0,7,7
-Jammu And Kashmir,196,0,0,0,0,22,22
-Jharkhand,380,0,0,0,0,6,6
-Karnataka,1347,5797,659,0,0,14,14
-Kerala,1425,0,0,0,0,14,14
-Ladakh,16,19,2,0,0,2,2
-Lakshadweep,0,0,0,0,0,0,0
-Madhya Pradesh,770,28,0,0,0,22,22
-Maharashtra,1585,10018,211,0,0,31,31
-Manipur,51,0,0,0,0,9,9
-Meghalaya,68,11,0,0,0,3,3
-Mizoram,47,0,0,0,0,2,2
-Nagaland,43,0,0,0,0,1,1
-Odisha,935,0,0,0,0,32,32
-Puducherry,22,0,0,0,0,1,1
-Punjab,534,9,0,0,0,5,5
-Rajasthan,1004,3843,24,0,0,12,12
-Sikkim,19,0,0,0,0,1,1
-Tamil Nadu,2036,1,0,0,0,34,34
-Telangana,673,4423,536,0,0,10,10
-The Dadra And Nagar Haveli And Daman And Diu,8,0,0,0,0,2,2
-Tripura,80,0,0,0,0,3,3
-Uttar Pradesh,1651,12,9,0,0,6,6
-Uttarakhand,300,0,0,0,0,5,5
-West Bengal,1127,1,0,0,0,7,7
+state,pins,facilities,with_phone,verified,trust_official,trust_verified,trust_unverified,deic_loaded,deic_official,deic_gap
+Andaman And Nicobar Islands,22,55,0,0,55,0,0,0,0,0
+Andhra Pradesh,1228,12589,937,0,12551,0,38,0,34,34
+Arunachal Pradesh,49,324,2,0,322,0,2,0,3,3
+Assam,572,6779,152,0,5809,0,970,0,13,13
+Bihar,857,10344,972,0,10344,0,0,0,9,9
+Chandigarh,25,224,41,0,87,0,137,0,1,1
+Chhattisgarh,274,7586,809,0,7581,0,5,0,7,7
+Delhi,97,2370,975,0,1328,0,1042,0,1,1
+Goa,88,238,3,0,237,0,1,0,2,2
+Gujarat,1007,10214,565,0,10208,0,6,0,25,25
+Haryana,315,3614,115,0,3571,0,43,0,21,21
+Himachal Pradesh,436,2879,140,0,2879,0,0,0,7,7
+Jammu And Kashmir,196,3441,253,0,3441,0,0,0,22,22
+Jharkhand,380,6103,301,0,6103,0,0,0,6,6
+Karnataka,1347,17915,3660,0,12127,0,5788,0,14,14
+Kerala,1425,6595,28,0,6595,0,0,0,14,14
+Ladakh,16,254,7,0,235,0,19,0,2,2
+Lakshadweep,0,0,0,0,0,0,0,0,0,0
+Madhya Pradesh,770,19503,2615,0,19475,0,28,0,22,22
+Maharashtra,1585,27261,3970,0,17259,0,10002,0,31,31
+Manipur,51,521,1,0,521,0,0,0,9,9
+Meghalaya,68,797,31,0,786,0,11,0,3,3
+Mizoram,47,421,0,0,421,0,0,0,2,2
+Nagaland,43,646,2,0,646,0,0,0,1,1
+Odisha,935,9666,593,0,9666,0,0,0,32,32
+Puducherry,22,107,37,0,107,0,0,0,1,1
+Punjab,534,5864,339,0,5855,0,9,0,5,5
+Rajasthan,1004,20665,1222,0,16826,0,3839,0,12,12
+Sikkim,19,178,3,0,178,0,0,0,1,1
+Tamil Nadu,2036,14057,4096,0,14056,0,1,0,34,34
+Telangana,673,13440,774,0,9387,0,4053,0,10,10
+The Dadra And Nagar Haveli And Daman And Diu,8,109,7,0,109,0,0,0,2,2
+Tripura,80,1152,9,0,1152,0,0,0,3,3
+Uttar Pradesh,1651,27172,4121,0,27163,0,9,0,6,6
+Uttarakhand,300,2235,136,0,2235,0,0,0,5,5
+West Bengal,1127,14484,496,0,14483,0,1,0,7,7

@@ -27,6 +27,7 @@ Clinician Sandbox to avoid unnecessary memory overhead.
 
 from __future__ import annotations
 
+import json
 import logging
 import pickle
 from dataclasses import dataclass, field
@@ -57,6 +58,7 @@ MODEL_PKL_NAMES = {
     "logistic_regression": "model_logistic_regression.pkl",
     "random_forest": "model_random_forest.pkl",
     "xgboost": "model_xgboost.pkl",
+    "ensemble": "model_ensemble.pkl",
 }
 
 
@@ -66,6 +68,23 @@ class ModelNotLoadedError(RuntimeError):
 
 class FeatureColumnMismatchError(ValueError):
     """Raised when a feature vector does not match feature_columns.pkl."""
+
+
+def apply_operating_point(
+    probabilities: dict[str, float], refer_threshold: float
+) -> str:
+    """Refer when p(Refer) clears a threshold picked on VALIDATION; then Monitor vs Typical.
+
+    Argmax under-calls Refer because the class is rare. This keeps the screening
+    trade-off explicit instead of hiding it in an argmax.
+    """
+    if probabilities.get("Refer", 0.0) >= refer_threshold:
+        return "Refer"
+    return (
+        "Monitor"
+        if probabilities.get("Monitor", 0.0) >= probabilities.get("Typical", 0.0)
+        else "Typical"
+    )
 
 
 @dataclass
@@ -91,6 +110,8 @@ class InferenceService:
         self.artifacts_dir: Path | None = None
         self.load_error: str | None = None
         self._production_model_name: str | None = None
+        # Refer threshold selected on validation by train.py (None → argmax).
+        self.refer_threshold: float | None = None
 
     @property
     def is_loaded(self) -> bool:
@@ -157,12 +178,30 @@ class InferenceService:
             len(self.feature_columns or []),
         )
 
+        # Optional: operating point chosen on validation (graceful fallback to argmax).
+        threshold_file = directory / "refer_threshold.json"
+        self.refer_threshold = None
+        if threshold_file.is_file():
+            try:
+                data = json.loads(threshold_file.read_text(encoding="utf-8"))
+                self.refer_threshold = float(data["refer_threshold"])
+                logger.info(
+                    "Operating point: Refer threshold %.4f (target recall %.2f, %s)",
+                    self.refer_threshold,
+                    float(data.get("target_recall", 0.0)),
+                    data.get("selected_on", "validation"),
+                )
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                logger.warning("Could not read %s: %s", threshold_file, exc)
+                self.refer_threshold = None
+
     def _clear(self) -> None:
         self.model = None
         self.preprocessor = None
         self.feature_columns = None
         self.shap_explainer = None
         self._production_model_name = None
+        self.refer_threshold = None
 
     def load_model_by_name(self, model_name: str) -> Any:
         """
@@ -257,6 +296,11 @@ class InferenceService:
                 ordered_proba.setdefault(label, 0.0)
             ml_classification = str(scoring_model.predict(X)[0])
 
+        if self.refer_threshold is not None:
+            ml_classification = apply_operating_point(
+                ordered_proba, self.refer_threshold
+            )
+
         ml_score = float(ordered_proba.get(ml_classification, 0.0))
 
         shap_values, top_features = self._explain(
@@ -343,12 +387,26 @@ def build_feature_vector(
     explicitly. Values from real_answers win over imputed on collision.
     """
     from data.generator.age_brackets import map_to_bracket_ordinal
+    from data.generator.item_bank import DOMAINS, ITEM_BANK
 
     combined: dict[str, Any] = {}
     combined.update(imputed_answers)
     combined.update(real_answers)
     combined["corrected_age_months"] = corrected_age_months
     combined["age_bracket_ordinal"] = map_to_bracket_ordinal(corrected_age_months)
+
+    # Same domain means the generator produces, computed from the answers the
+    # model actually received (real + imputed). Kept in one place so training
+    # and inference cannot drift.
+    for domain in DOMAINS:
+        values = [
+            combined[item.item_id]
+            for item in ITEM_BANK
+            if item.domain == domain and combined.get(item.item_id) is not None
+        ]
+        combined[f"mean_{domain}"] = (
+            float(sum(values) / len(values)) if values else None
+        )
 
     return {col: combined.get(col) for col in feature_columns}
 

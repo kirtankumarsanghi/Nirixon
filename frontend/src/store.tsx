@@ -264,6 +264,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     timer.current = window.setTimeout(() => setToast(null), 2600);
   }, []);
 
+  // Clear any pending toast timer when the provider unmounts.
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
   const refreshPending = useCallback(async () => {
     try {
       setPendingSync(await queueCount());
@@ -333,13 +336,19 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   );
 
   // Any 401 inside the workspace means the token is gone/expired — drop it and
-  // return to sign-in instead of firing more doomed requests.
+  // return to sign-in instead of firing more doomed requests. Registered once;
+  // the current route is read through a ref so the handler never goes stale.
+  const routeScreenRef = useRef(route.screen);
+  useEffect(() => {
+    routeScreenRef.current = route.screen;
+  });
+
   useEffect(() => {
     onUnauthorized(() => {
       setAuthToken(null);
-      if (route.screen === "app") navigate({ screen: "login" }, true);
+      if (routeScreenRef.current === "app") navigate({ screen: "login" }, true);
     });
-  }, [navigate, route.screen]);
+  }, [navigate]);
 
   /** Apply an optimistic caseload change, persist it, and roll back on failure.
    *  When the device is offline the change is queued (idempotent) and kept. */

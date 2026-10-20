@@ -99,10 +99,11 @@ def evaluate(name, df, router, mode):
             ]
         )
     else:
+        policy = "rules_primary" if mode == "rules_primary" else "blend"
         pred = np.zeros_like(Y)
         unclear_pred = np.zeros(len(texts), dtype=int)
         for i, t in enumerate(texts):
-            r = router.route(t)
+            r = router.route(t, policy=policy)
             for l in r.flagged:
                 pred[i, LABELS.index(l)] = 1
             pred[i, LABELS.index("safety")] = int(r.safety)
@@ -211,7 +212,9 @@ def main():
         thr[l] = round(bt, 3)
     print("thresholds:", thr)
 
-    router = DomainRouter(vec, clf, thr, safety_clf_thr=0.30, rule_boost=True)
+    router = DomainRouter(
+        vec, clf, thr, safety_clf_thr=0.30, rule_boost=True, policy="rules_primary"
+    )
     router.save(os.path.join(ART, "router_b.joblib"))
 
     results = []
@@ -222,7 +225,7 @@ def main():
         sets.append((f"test:lang={lg}", te[te.lang == lg].reset_index(drop=True)))
     sets.append(("handwritten(independent)", hw))
     for nm, df in sets:
-        for mode in ("rules", "clf", "blend"):
+        for mode in ("rules", "clf", "blend", "rules_primary"):
             results.append(evaluate(nm, df, router, mode))
 
     print(

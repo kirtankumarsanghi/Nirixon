@@ -71,6 +71,11 @@ def generate_claims_register():
     latency_n = xgb_latency["n_samples"]
 
     # 3. Module B Router metrics
+    test_unseen_shipped = next(
+        x
+        for x in router_data
+        if x.get("name") == "test(all, unseen)" and x.get("mode") == "rules_primary"
+    )
     test_unseen_blend = next(
         x
         for x in router_data
@@ -87,16 +92,18 @@ def generate_claims_register():
         if x.get("name") == "test(all, unseen)" and x.get("mode") == "clf"
     )
 
-    b_prec = round(test_unseen_blend["domain_micro_P"] * 100, 1)
-    b_rec = round(test_unseen_blend["domain_micro_R"] * 100, 1)
-    b_f1 = round(test_unseen_blend["domain_micro_F1"] * 100, 1)
-    b_any_hit = round(test_unseen_blend["any_true_domain_flagged"] * 100, 1)
-    b_safety_rec = round(test_unseen_blend["safety_R"] * 100, 1)
-    b_n = test_unseen_blend["n"]
+    b_prec = round(test_unseen_shipped["domain_micro_P"] * 100, 1)
+    b_rec = round(test_unseen_shipped["domain_micro_R"] * 100, 1)
+    b_f1 = round(test_unseen_shipped["domain_micro_F1"] * 100, 1)
+    b_any_hit = round(test_unseen_shipped["any_true_domain_flagged"] * 100, 1)
+    b_safety_rec = round(test_unseen_shipped["safety_R"] * 100, 1)
+    b_n = test_unseen_shipped["n"]
 
     rules_safety_rec = round(test_unseen_rules["safety_R"] * 100, 1)
     rules_domain_rec = round(test_unseen_rules["domain_micro_R"] * 100, 1)
     clf_safety_rec = round(test_unseen_clf["safety_R"] * 100, 1)
+    blend_safety_rec = round(test_unseen_blend["safety_R"] * 100, 1)
+    blend_domain_rec = round(test_unseen_blend["domain_micro_R"] * 100, 1)
 
     # 4. Handwritten evaluation
     with open(handwritten_csv_path, encoding="utf-8") as f:
@@ -108,7 +115,8 @@ def generate_claims_register():
         (
             x
             for x in router_data
-            if "handwritten" in x.get("name", "").lower() and x.get("mode") == "blend"
+            if "handwritten" in x.get("name", "").lower()
+            and x.get("mode") == "rules_primary"
         ),
         None,
     )
@@ -251,9 +259,20 @@ def generate_claims_register():
                 "data_type": "code_specification",
                 "sample_size": 2412,
             },
+            "module_b_handwritten_eval": {
+                "notes_n": notes_count,
+                "safety_recall": hw_safety,
+                "any_hit_rate": hw_any_hit,
+                "micro_f1": hw_f1,
+                "label": "Module B Independent Handwritten Evaluation",
+                "display": f"{notes_count} clinical notes: {int(hw_safety)}% safety recall, {hw_any_hit}% any-domain hit rate, {hw_f1}% F1",
+                "source_file": "backend/ml/module_b/handwritten_eval_b.csv",
+                "data_type": "clinical_handwritten",
+                "sample_size": notes_count,
+            },
             "module_b_domain_precision": {
                 "value": b_prec,
-                "label": "Module B Domain Micro Precision",
+                "label": "Module B Domain Micro Precision (rules-primary)",
                 "display": f"{b_prec}%",
                 "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
                 "data_type": "synthetic",
@@ -261,7 +280,7 @@ def generate_claims_register():
             },
             "module_b_domain_recall": {
                 "value": b_rec,
-                "label": "Module B Domain Micro Recall",
+                "label": "Module B Domain Micro Recall (rules-primary)",
                 "display": f"{b_rec}%",
                 "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
                 "data_type": "synthetic",
@@ -269,7 +288,7 @@ def generate_claims_register():
             },
             "module_b_domain_f1": {
                 "value": b_f1,
-                "label": "Module B Domain Micro F1",
+                "label": "Module B Domain Micro F1 (rules-primary)",
                 "display": f"{b_f1}%",
                 "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
                 "data_type": "synthetic",
@@ -277,7 +296,7 @@ def generate_claims_register():
             },
             "module_b_any_hit_rate": {
                 "value": b_any_hit,
-                "label": "Module B Any-True-Domain Hit Rate",
+                "label": "Module B Any-True-Domain Hit Rate (rules-primary)",
                 "display": f"{b_any_hit}%",
                 "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
                 "data_type": "synthetic",
@@ -291,25 +310,14 @@ def generate_claims_register():
                 "data_type": "synthetic",
                 "sample_size": 138,
             },
-            "module_b_handwritten_eval": {
-                "notes_n": notes_count,
-                "safety_recall": hw_safety,
-                "any_hit_rate": hw_any_hit,
-                "micro_f1": hw_f1,
-                "label": "Module B Independent Handwritten Evaluation",
-                "display": f"{notes_count} clinical notes: {int(hw_safety)}% safety recall, {hw_any_hit}% any-domain hit rate, {hw_f1}% F1",
-                "source_file": "backend/ml/module_b/handwritten_eval_b.csv",
-                "data_type": "clinical_handwritten",
-                "sample_size": notes_count,
-            },
             "module_b_safety_hybrid_proof": {
                 "rules_only_safety_recall": rules_safety_rec,
                 "rules_only_domain_recall": rules_domain_rec,
                 "classifier_only_safety_recall": clf_safety_rec,
-                "hybrid_safety_recall": b_safety_rec,
-                "hybrid_domain_recall": b_rec,
-                "label": "Safety Recall: Rules vs ML vs Hybrid Blend",
-                "display": f"Rules {int(rules_safety_rec)}% (domain recall {rules_domain_rec}%) | ML Classifier {clf_safety_rec}% | Hybrid Blend {int(b_safety_rec)}% (domain recall {b_rec}%)",
+                "hybrid_safety_recall": blend_safety_rec,
+                "hybrid_domain_recall": blend_domain_rec,
+                "label": "Safety Recall: Rules vs ML vs Blend",
+                "display": f"Rules {int(rules_safety_rec)}% (domain recall {rules_domain_rec}%) | ML Classifier {clf_safety_rec}% | Blend {int(blend_safety_rec)}% (domain recall {blend_domain_rec}%)",
                 "source_file": "backend/ml/artifacts/module_b_router/router_metrics.json",
                 "data_type": "synthetic",
                 "sample_size": b_n,

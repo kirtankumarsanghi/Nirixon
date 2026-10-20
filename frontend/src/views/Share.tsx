@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Clock, Copy, MessageCircle, Printer, Share2 } from "lucide-react";
 import { LogoLockup } from "../landing/components/system";
 import { Btn, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
@@ -10,6 +10,13 @@ export function Share() {
   const { checkIns, showToast } = useApp();
   const [id, setId] = useState(checkIns[0].id);
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
   const [mode, setMode] = useState<"card" | "text">("card");
   const ci = checkIns.find((c) => c.id === id) ?? checkIns[0];
   const ev = evaluate(ci.scores, ci.regression);
@@ -29,7 +36,8 @@ export function Share() {
     }
     setCopied(true);
     showToast("Summary copied to clipboard");
-    window.setTimeout(() => setCopied(false), 1800);
+    if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopied(false), 1800);
   };
 
   const share = async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, Printer, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
@@ -9,8 +9,11 @@ import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
   DOMAINS,
+  MODULE_A_DOMAINS,
+  MODULE_B_DOMAINS,
   TIER_META,
   ageBand,
+  designDomain,
   domainStatus,
   evaluate,
   type CheckIn as CheckInT,
@@ -76,17 +79,6 @@ const REGRESSION_Q: Record<Lang, string> = {
   hi: "क्या बच्चे ने कोई ऐसा काम करना बंद कर दिया जो पहले करता था?",
 };
 
-const MODULE_A_DOMAINS = ["gross", "fine", "comm", "social", "cog", "adaptive"];
-const MODULE_B_DOMAINS = ["attention", "listening_speaking", "reading", "writing", "numbers", "motor", "social", "emotion_conduct"];
-const DESIGN_OF: Record<string, string> = {
-  gross_motor: "gross",
-  fine_motor: "fine",
-  communication: "comm",
-  personal_social: "social",
-  cognitive: "cog",
-  self_help: "adaptive",
-};
-const designDomain = (k: string) => DESIGN_OF[k] ?? k;
 const moduleForAge = (m: number): Module => (m >= 60 ? "B" : "A");
 const barW = (z: number) => `${((Math.max(-3, Math.min(1, z)) + 3) / 4) * 100}%`;
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Connection problem — please try again.");
@@ -222,7 +214,6 @@ export function CheckIn() {
       }
       window.scrollTo({ top: 0 });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [targetChild, name, assisting, module, patchChild, reload]
   );
 
@@ -276,7 +267,6 @@ export function CheckIn() {
       }
       setPhase("setup");
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [finalize, sessionId, showToast]
   );
 
@@ -469,16 +459,23 @@ export function CheckIn() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `submit` closes over live state, so reference the latest one through a ref
+  // rather than re-registering the key listener on every render.
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+
   useEffect(() => {
     if (phase !== "quiz") return;
     const k = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
       const i = ["1", "2", "3"].indexOf(e.key);
-      if (i >= 0) void submit(ANSWER_OPTIONS[i].val);
+      if (i >= 0) void submitRef.current(ANSWER_OPTIONS[i].val);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  });
+  }, [phase]);
 
   const chooseModule = (next: Module) => {
     setModule(next);

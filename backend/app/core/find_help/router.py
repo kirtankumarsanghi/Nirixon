@@ -69,6 +69,12 @@ def facilities(
     result: Annotated[
         str | None, Query(description="Screening result: typical | monitor | refer")
     ] = None,
+    verified_only: Annotated[
+        bool,
+        Query(
+            description="Return only government/programme or human-verified listings (drops mapped-only entries)"
+        ),
+    ] = False,
 ):
     if (lat is None) != (lng is None):
         raise HTTPException(422, "Provide both lat and lng, or a pin.")
@@ -92,7 +98,11 @@ def facilities(
     conn = connect_readonly(path)
     try:
         if pin is not None:
-            return find_facilities(conn, pin, type, limit, age_group, result)
-        return find_facilities_near(conn, lat, lng, type, limit, age_group, result)
+            return find_facilities(
+                conn, pin, type, limit, age_group, result, verified_only=verified_only
+            )
+        return find_facilities_near(
+            conn, lat, lng, type, limit, age_group, result, verified_only=verified_only
+        )
     finally:
         conn.close()

@@ -1,0 +1,263 @@
+{
+  "summary": {
+    "n_items": 36,
+    "mean_bracket_weighted_mi": 0.0342,
+    "weak_item_count": 0,
+    "weak_threshold_mi": 0.01,
+    "selection": "Production selection is adaptive and answer-conditioned: at each step the engine recomputes mutual information within the subpopulation matching the answers so far and asks the highest-MI uncovered item."
+  },
+  "items": [
+    {
+      "item_id": "CG05",
+      "mutual_information": 0.0154,
+      "bracket_weighted_mi": 0.0641,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CG06",
+      "mutual_information": 0.0169,
+      "bracket_weighted_mi": 0.0621,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM06",
+      "mutual_information": 0.0121,
+      "bracket_weighted_mi": 0.0563,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM05",
+      "mutual_information": 0.0098,
+      "bracket_weighted_mi": 0.0526,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH04",
+      "mutual_information": 0.0103,
+      "bracket_weighted_mi": 0.0525,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CG03",
+      "mutual_information": 0.0097,
+      "bracket_weighted_mi": 0.0512,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CG02",
+      "mutual_information": 0.0089,
+      "bracket_weighted_mi": 0.0457,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH02",
+      "mutual_information": 0.0091,
+      "bracket_weighted_mi": 0.0454,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS06",
+      "mutual_information": 0.01,
+      "bracket_weighted_mi": 0.0429,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM06",
+      "mutual_information": 0.0076,
+      "bracket_weighted_mi": 0.04,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM06",
+      "mutual_information": 0.0069,
+      "bracket_weighted_mi": 0.0395,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS05",
+      "mutual_information": 0.0065,
+      "bracket_weighted_mi": 0.0389,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH06",
+      "mutual_information": 0.0072,
+      "bracket_weighted_mi": 0.0385,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM05",
+      "mutual_information": 0.0053,
+      "bracket_weighted_mi": 0.0336,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH05",
+      "mutual_information": 0.0054,
+      "bracket_weighted_mi": 0.0332,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CG04",
+      "mutual_information": 0.0053,
+      "bracket_weighted_mi": 0.0324,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS04",
+      "mutual_information": 0.0051,
+      "bracket_weighted_mi": 0.0321,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM04",
+      "mutual_information": 0.0047,
+      "bracket_weighted_mi": 0.03,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM05",
+      "mutual_information": 0.0047,
+      "bracket_weighted_mi": 0.0287,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM03",
+      "mutual_information": 0.0053,
+      "bracket_weighted_mi": 0.0279,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM04",
+      "mutual_information": 0.0045,
+      "bracket_weighted_mi": 0.0276,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS03",
+      "mutual_information": 0.0049,
+      "bracket_weighted_mi": 0.0274,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH03",
+      "mutual_information": 0.0045,
+      "bracket_weighted_mi": 0.0271,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM04",
+      "mutual_information": 0.0044,
+      "bracket_weighted_mi": 0.0266,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM03",
+      "mutual_information": 0.0047,
+      "bracket_weighted_mi": 0.0259,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM03",
+      "mutual_information": 0.0044,
+      "bracket_weighted_mi": 0.025,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CG01",
+      "mutual_information": 0.0045,
+      "bracket_weighted_mi": 0.0249,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS02",
+      "mutual_information": 0.0066,
+      "bracket_weighted_mi": 0.0247,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "SH01",
+      "mutual_information": 0.0051,
+      "bracket_weighted_mi": 0.0243,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM02",
+      "mutual_information": 0.0065,
+      "bracket_weighted_mi": 0.0239,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM02",
+      "mutual_information": 0.0054,
+      "bracket_weighted_mi": 0.0233,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM02",
+      "mutual_information": 0.0052,
+      "bracket_weighted_mi": 0.0221,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "PS01",
+      "mutual_information": 0.0079,
+      "bracket_weighted_mi": 0.0218,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "CM01",
+      "mutual_information": 0.0074,
+      "bracket_weighted_mi": 0.0212,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "FM01",
+      "mutual_information": 0.006,
+      "bracket_weighted_mi": 0.0201,
+      "distinct_values": 3,
+      "weak": false
+    },
+    {
+      "item_id": "GM01",
+      "mutual_information": 0.0067,
+      "bracket_weighted_mi": 0.0192,
+      "distinct_values": 3,
+      "weak": false
+    }
+  ]
+}

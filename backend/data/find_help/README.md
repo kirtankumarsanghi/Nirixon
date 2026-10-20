@@ -16,7 +16,8 @@ Replaces the 5-PIN demo in `lib/facilities.ts` with a real lookup: **any valid I
 |---|---|
 | `data/pincodes.csv` | **Real.** 19,287 PINs (India Post post-office data, Dec 2021 snapshot via the IndiaPIN project) with cleaned coordinates. 19,048 from office coordinates, 239 district-level approximations (`coord_source=district_centroid`). Spot-checked: Abids, AIIMS Delhi, Parel, Jayanagar, Banjara Hills, Chennai GPO, Kolkata, Guwahati all within ~1 km. |
 | `data/deic_counts_by_state.csv` | **Real.** Operational DEICs per state/UT, Rajya Sabha Session 262, AU 1065 B(ii). Totals 367. Counts only. |
-| Facility listings (names, addresses, phones) | **Not included.** No public source with DEIC addresses/phones is reachable or exists as one file (the state pages I found list districts or counts only). Nothing was invented. Fill it with the two steps below. |
+| `data/facilities/mohfw_health_facilities.csv` | **Government source (generated).** MoHFW public health-facility directory (2021), pulled from Esri India's Living Atlas by `scripts/find_help/import_mohfw_arcgis.py`: PHC / CHC / district- and state-hospital rows with facility type and geo-location, ~227k. Imports as `official`. Gitignored — regenerate with the script. |
+| DEIC addresses & phone numbers | **Not included.** No public source with per-DEIC addresses/phones was reachable (state pages list districts or counts only). Nothing was invented. Add them to `data/facilities/deic_verified.csv` with `verified_at` / `verified_by`. |
 
 ## Setup (about 15 minutes of your time)
 
@@ -28,6 +29,10 @@ python scripts/find_help/fetch_osm_facilities.py IN-RJ IN-TS IN-KA
 
 # 2. Build the reference database
 python scripts/find_help/import_reference_data.py   # writes data/find_help/reference.sqlite + coverage.csv
+
+# 2b. (optional) authoritative government facility list -> `official` rows
+python scripts/find_help/import_mohfw_arcgis.py     # ~227k MoHFW facilities (needs internet)
+python scripts/find_help/import_reference_data.py
 
 # 3. Test
 python -m pytest tests/test_find_help.py tests/test_find_help_route.py -q
@@ -61,6 +66,26 @@ python scripts/import_reference_data.py
 
 The adapter auto-detects common column names and prints what it matched (use `--map name="Header"` to override). It was tested on a synthetic file only, because the real files could not be downloaded when this was written: check its printed "matched / not found" lines on your first run. Duplicates across sources are merged by name and location.
 
+## Trust & provenance
+
+Every listing carries a `trust` level derived **at import time from its source** — never from how the name reads:
+
+| Level | Meaning | How it is earned |
+|---|---|---|
+| `official` | Government / programme listing | `operator_type` is a government value (`government`, `public`, `state`, `govt`, `municipal`, `central`, `rbsk`, `nhm`) **or** the source is an official directory (data.gov.in, AIKosh, NHM/MoHFW, RBSK/DEIC list) |
+| `verified` | A person confirmed this row | `verified_at` (and `verified_by`) are filled in the source CSV |
+| `unverified` | Mapped only | Everything else, e.g. OpenStreetMap |
+
+A crowd-sourced row named "District Hospital" stays `unverified`; the name cannot upgrade it.
+
+What it changes:
+
+* With `age_group` (a screening context) ranking is **trust first**, then developmental fit, then DEIC/RBSK, then distance. An official centre ~10 km away outranks an unmapped clinic next door. Without `age_group` the order stays plain distance.
+* `verified_only=true` drops `unverified` rows entirely (the UI exposes this as “Show trusted only”).
+* Every response carries `trust` per facility plus a `trust_summary` count and a `trust_note` stating that trust is provenance, not a quality rating.
+
+To mark a row `verified`, add it under `data/facilities/*.csv` with `verified_at=YYYY-MM-DD` and `verified_by`. To make it `official`, set `operator_type=government` or import it through the government-directory adapter. Re-run `import_reference_data.py` afterwards; `reports/coverage.csv` gains `trust_official` / `trust_verified` / `trust_unverified` per state.
+
 ## Age-group and developmental ranking
 
 `GET /api/facilities?pin=302031&age_group=0-5&result=refer&limit=10`
@@ -80,7 +105,12 @@ The adapter auto-detects common column names and prints what it matched (use `--
   "pin": "302031",
   "resolved": {"district": "Jaipur", "state": "Rajasthan", "lat": 26.89, "lng": 75.90, "approximate": false, "match": "exact"},
   "coverage": "nearby",                       // nearby (<=25 km) | district | state | none
-  "facilities": [{"id": 1, "name": "...", "type": "DEIC", "km": 3.2, "phone": null, "address": "...", "source": "...", "verified_at": null}],
+  "facilities": [{"id": 1, "name": "...", "type": "DEIC", "km": 3.2, "phone": null, "address": "...",
+                  "source": "...", "verified_at": null,
+                  "trust": {"level": "official", "rank": 0, "label": "Government / programme listing", "verified_at": null, "verified_by": null, "source": "data.gov.in ..."}}],
+  "trust_summary": {"official": 4, "unverified": 8},
+  "trust_note": "Trust reflects where a listing came from, not a quality rating. … call before travelling.",
+  "verified_only": false,
   "state_deic": {"state": "Rajasthan", "operational": 12, "source": "Rajya Sabha Session 262, AU 1065 B(ii)"},
   "helplines": [{"name": "Tele-MANAS", "number": "14416"}, {"name": "Childline", "number": "1098"}]
 }

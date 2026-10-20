@@ -130,8 +130,11 @@ async def test_sandbox_simulate_safety_rule_overrides_model_output(api_env):
 
     token = await _login(client)
 
-    # Completed session with all 0s (Typical on-track milestones)
-    session_id, action = await _run_full_session(client, token, regression=0)
+    # Completed session with on-track (2) answers. The response scale is
+    # 0 times / 1-2 times / 3+ times, so 2 is the "typical" answer, not 0 or 1.
+    session_id, action = await _run_full_session(
+        client, token, regression=0, answer_value=2
+    )
     assert action["type"] == "complete"
     assert action["result"]["final_classification"] in ("Typical", "Monitor")
     assert action["result"]["safety_override_triggered"] is False

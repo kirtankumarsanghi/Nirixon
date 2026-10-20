@@ -101,3 +101,25 @@ Nirixon Triage Output    Blinded Pediatrician Evaluation
 * **Months 1–2:** Institutional Ethics Committee (IEC/IRB) submission and clinic tablet setup.
 * **Months 3–6:** Patient recruitment, prospective data collection ($N = 250$).
 * **Months 7–8:** Interim statistical analysis, sensitivity/AUPRC verification against synthetic benchmark predictions.
+
+---
+
+## 8. Analysis tooling
+
+Do not analyse in a spreadsheet. Use the repository tooling so the endpoints match this
+protocol:
+
+```bash
+cd backend/ml/validation/src
+python pilot_analysis.py --data path/to/pilot.csv
+```
+
+Start from `docs/pilot_data_TEMPLATE.csv` (one row per participant):
+- **accuracy study:** `subject_id, app_tier, reference_tier`
+- **test–retest:** `subject_id, tier_t1, tier_t2`
+
+The script reports Refer sensitivity/specificity, PPV/NPV with Wilson 95% CIs, the
+3-class confusion matrix and Cohen's κ. It refuses to run without data and never
+generates any.
+
+Until this is run, every real-world accuracy statement must read **“pilot pending”**.

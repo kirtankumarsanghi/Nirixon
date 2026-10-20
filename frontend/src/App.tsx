@@ -6,6 +6,7 @@ import { MenuOverlay, Nav } from "./components/Nav";
 import { RoleDock } from "./components/RoleDock";
 import { SyncStatus } from "./components/SyncStatus";
 import { ScrollProgress } from "./components/ScrollProgress";
+import { ServerSettingsButton } from "./components/ServerSettings";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
 import { AppProvider, useApp } from "./store";
 import { cn } from "./utils/cn";
@@ -157,6 +158,7 @@ function Workspace() {
                 ))}
               </div>
             </div>
+            <ServerSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
             <button
               type="button"
               onClick={logout}

@@ -19,7 +19,7 @@ const SCREENING_APP_URL =
   "#/login";
 
 
-export default function Navbar() {
+export default function Navbar({ onReplayIntro }: { onReplayIntro?: () => void }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState(LINKS[0].href);
@@ -88,6 +88,20 @@ export default function Navbar() {
               </a>
             );
           })}
+          {onReplayIntro && (
+            <a
+              href="#top"
+              className="nav-link"
+              title="Replay the introduction"
+              aria-label="Replay the introduction"
+              onClick={(event) => {
+                event.preventDefault();
+                onReplayIntro();
+              }}
+            >
+              <span className="relative z-10">Intro</span>
+            </a>
+          )}
         </nav>
 
         <div className="header-actions">
@@ -145,6 +159,22 @@ export default function Navbar() {
                   {link.label}
                 </motion.a>
               ))}
+              {onReplayIntro && (
+                <motion.a
+                  href="#top"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setOpen(false);
+                    onReplayIntro();
+                  }}
+                  className="border-b border-bone/10 py-4 font-display text-4xl uppercase tracking-wide text-bone transition-colors hover:text-apricot"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08 + LINKS.length * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  Replay intro
+                </motion.a>
+              )}
               <motion.a
                 href="#cta"
                 onClick={() => setOpen(false)}

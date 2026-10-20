@@ -13,7 +13,8 @@ FEATURE COLUMNS (what the model is trained on):
                           non-linear developmental density that the continuous
                           float alone doesn't express to a tree model)
   - family_history_flag
-  - regression_flag
+  - mean_<domain>        (6 domain means; legal now that labels come from the
+                          latent severity, not from these observed aggregates)
 
 EXCLUDED FROM TRAINING:
   - child_id                 -> identifier, not a feature
@@ -27,6 +28,13 @@ EXCLUDED FROM TRAINING:
                                  never as a model input. See fairness_check.py
                                  for why this is a stronger test than
                                  including it and checking its coefficient.
+  - regression_flag          -> used to DERIVE the label (composite_risk_score in
+                                label_derivation.py). Leaving it in the features
+                                lets the model read the override instead of
+                                inferring risk, which inflates measured
+                                performance. The deterministic safety floor
+                                (app/core/safety_floor.py) applies it at
+                                inference, so excluding it loses nothing.
   - risk_label               -> the target, not a feature
 """
 
@@ -40,6 +48,9 @@ NON_FEATURE_COLUMNS = {
     "age_bracket",  # string; age_bracket_ordinal is the model feature
     "multilingual_home_flag",
     "risk_label",
+    # Feeds the label derivation AND would otherwise be a feature — a shortcut.
+    # The safety floor handles it deterministically at inference.
+    "regression_flag",
 }
 
 TARGET_COLUMN = "risk_label"

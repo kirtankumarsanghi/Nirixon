@@ -6,14 +6,16 @@
 Inputs
   data/pincodes.csv                 pin,district,state,lat,lng,coord_source,n_offices
   data/deic_counts_by_state.csv     state,operational_deics,source
-  data/facilities/*.csv             name,type,address,state,district,pin,lat,lng,phone,operator_type,source,source_id,verified_at[,specialty]
+  data/facilities/*.csv             name,type,address,state,district,pin,lat,lng,phone,operator_type,source,source_id,verified_at,verified_by[,specialty]
                                     (every *.csv in the folder; *TEMPLATE* files are skipped)
 
 Rules
   * Nothing is invented. Rows without a name, or without a usable location (lat/lng or a known pin), are skipped and counted.
   * state/district are always taken from the nearest PIN centroid, so OSM/manual spelling differences cannot break matching.
   * If lat/lng are blank but pin is known, the PIN centroid is used.
-  * verified_at stays empty unless the source file provides it.
+  * verified_at / verified_by stay empty unless the source file provides them.
+  * trust is derived from provenance (never invented): official = government/programme source
+    or operator; verified = a person confirmed the row; unverified = mapped only (e.g. OpenStreetMap).
 """
 
 from __future__ import annotations
@@ -75,6 +77,43 @@ TAG_PATTERNS = {
 def infer_specialty(name: str, extra: str = "") -> str:
     text = f"{name or ''} {extra or ''}".lower()
     return ",".join(t for t, pat in TAG_PATTERNS.items() if re.search(pat, text))
+
+
+# Trust is a property of provenance, not of how the name reads. A crowd-sourced
+# row is never upgraded because its name says "District Hospital".
+GOV_OPERATORS = {
+    "government",
+    "govt",
+    "public",
+    "state",
+    "central",
+    "municipal",
+    "rbsk",
+    "nhm",
+}
+GOV_SOURCE_RE = re.compile(
+    r"data\.gov\.in|aikosh|national health mission|\bnhm\b|\bmohfw\b|\brbsk\b|"
+    r"deic list|government|govt|state health",
+    re.I,
+)
+# Crowd-sourced rows must never be promoted by a tag inside that same crowd-sourced
+# record (OSM carries operator:type=government). Provenance has to be independent.
+CROWD_SOURCE_RE = re.compile(r"openstreetmap|\bosm\b|crowd", re.I)
+
+
+def derive_trust(
+    operator_type: str | None, source: str, verified_at: str | None
+) -> str:
+    """official (authoritative listing) | verified (human-confirmed) | unverified (mapped only)."""
+    op = (operator_type or "").strip().lower()
+    src = source or ""
+    if GOV_SOURCE_RE.search(src):
+        return "official"
+    if op in GOV_OPERATORS and not CROWD_SOURCE_RE.search(src):
+        return "official"
+    if (verified_at or "").strip():
+        return "verified"
+    return "unverified"
 
 
 def num(x):
@@ -172,6 +211,9 @@ def main():
                     skipped["duplicate"] += 1
                     continue
                 seen.add(key)
+                operator = (r.get("operator_type") or "").strip() or None
+                source = (r.get("source") or os.path.basename(path)).strip()
+                verified_at = (r.get("verified_at") or "").strip() or None
                 fac.append(
                     (
                         name,
@@ -183,11 +225,13 @@ def main():
                         lat,
                         lng,
                         (r.get("phone") or "").strip() or None,
-                        (r.get("operator_type") or "").strip() or None,
-                        (r.get("source") or os.path.basename(path)).strip(),
+                        operator,
+                        source,
                         (r.get("source_id") or "").strip() or None,
-                        (r.get("verified_at") or "").strip() or None,
+                        verified_at,
                         infer_specialty(name, r.get("specialty")) or None,
+                        (r.get("verified_by") or "").strip() or None,
+                        derive_trust(operator, source, verified_at),
                     )
                 )
 
@@ -200,7 +244,8 @@ def main():
     CREATE TABLE pincodes(pin TEXT PRIMARY KEY, district TEXT, state TEXT, lat REAL, lng REAL, coord_source TEXT, n_offices INTEGER);
     CREATE TABLE deic_counts(state TEXT PRIMARY KEY, operational_deics INTEGER, source TEXT);
     CREATE TABLE facilities(id INTEGER PRIMARY KEY, name TEXT, type TEXT, address TEXT, state TEXT, district TEXT, pin TEXT,
-        lat REAL, lng REAL, phone TEXT, operator_type TEXT, source TEXT, source_id TEXT, verified_at TEXT, specialty TEXT);
+        lat REAL, lng REAL, phone TEXT, operator_type TEXT, source TEXT, source_id TEXT, verified_at TEXT, specialty TEXT,
+        verified_by TEXT, trust TEXT);
     CREATE INDEX ix_pin_prefix ON pincodes(pin);
     CREATE INDEX ix_fac_geo ON facilities(lat, lng);
     CREATE INDEX ix_fac_area ON facilities(state, district);
@@ -222,7 +267,7 @@ def main():
     )
     c.executemany("INSERT INTO deic_counts VALUES(?,?,?)", deic)
     c.executemany(
-        "INSERT INTO facilities(name,type,address,state,district,pin,lat,lng,phone,operator_type,source,source_id,verified_at,specialty) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO facilities(name,type,address,state,district,pin,lat,lng,phone,operator_type,source,source_id,verified_at,specialty,verified_by,trust) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         fac,
     )
     c.commit()
@@ -237,6 +282,7 @@ def main():
         s["with_phone"] += bool(f_[8])
         s["verified"] += bool(f_[12])
         s["deic_loaded"] += f_[1] == "DEIC"
+        s[f"trust_{f_[15]}"] += 1
     os.makedirs(os.path.dirname(a.report) or ".", exist_ok=True)
     with open(a.report, "w", newline="") as f:
         w = csv.writer(f)
@@ -247,6 +293,9 @@ def main():
                 "facilities",
                 "with_phone",
                 "verified",
+                "trust_official",
+                "trust_verified",
+                "trust_unverified",
                 "deic_loaded",
                 "deic_official",
                 "deic_gap",
@@ -262,6 +311,9 @@ def main():
                     s["facilities"],
                     s["with_phone"],
                     s["verified"],
+                    s["trust_official"],
+                    s["trust_verified"],
+                    s["trust_unverified"],
                     s["deic_loaded"],
                     n,
                     max(n - s["deic_loaded"], 0),

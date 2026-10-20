@@ -34,6 +34,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import label_binarize
 
 logging.basicConfig(
@@ -334,11 +335,7 @@ def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]
         sample_children,
         simulate_item_responses,
     )
-    from label_derivation import (
-        assign_labels_by_quantile,
-        composite_risk_score,
-        domain_percentiles,
-    )
+    from label_derivation import assign_labels_by_latent
 
     shifts = [0.0, 0.25, 0.50, 0.75, 1.0]
     results = []
@@ -362,16 +359,15 @@ def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]
 
         item_df = simulate_item_responses(children, latents, rng)
         domain_scores = compute_domain_scores(item_df)
-        pct_df = domain_percentiles(
-            domain_scores, children["corrected_age_months"].to_numpy()
-        )
-        composite = composite_risk_score(
-            pct_df, children["regression_flag"].to_numpy(), rng
-        )
-        labels = assign_labels_by_quantile(composite)
+
+        # Labels come from the latent severity, exactly as in the generator.
+        labels = assign_labels_by_latent(latents.min(axis=1))
 
         test_df = pd.concat([children, item_df], axis=1)
         test_df["risk_label"] = labels
+        # The production model now consumes the same domain means as training.
+        for d in domain_scores.columns:
+            test_df[f"mean_{d}"] = domain_scores[d]
 
         X_test = test_df[feature_columns]
         y_test = test_df["risk_label"].to_numpy()
@@ -515,14 +511,34 @@ def plot_and_save_curves(
     return chart_path
 
 
+def heldout_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Reproduce train.py's split (same seed, same sequence).
+
+    Stress tests evaluate a fixed model; scoring it on the full frame would include
+    the rows it was trained on and overstate every result.
+    """
+    _, temp = train_test_split(
+        df, test_size=0.4, stratify=df["risk_label"], random_state=42
+    )
+    _, test = train_test_split(
+        temp, test_size=0.5, stratify=temp["risk_label"], random_state=42
+    )
+    return test
+
+
 def main():
     model, feature_columns = load_artifacts()
     df = pd.read_csv(BACKEND_DIR / "data" / "processed" / "screening_data_items.csv")
+    test_df = heldout_rows(df)
 
-    logger.info("Loaded dataset with %d rows", len(df))
-    noise_res = stress_test_label_noise(df, model, feature_columns)
-    bias_res = stress_test_reporting_bias(df, model, feature_columns)
-    missing_res = stress_test_missing_answers(df, model, feature_columns)
+    logger.info(
+        "Loaded dataset with %d rows; stress tests use %d held-out rows",
+        len(df),
+        len(test_df),
+    )
+    noise_res = stress_test_label_noise(test_df, model, feature_columns)
+    bias_res = stress_test_reporting_bias(test_df, model, feature_columns)
+    missing_res = stress_test_missing_answers(test_df, model, feature_columns)
     shift_res = stress_test_generator_shift(model, feature_columns)
 
     chart_path = plot_and_save_curves(

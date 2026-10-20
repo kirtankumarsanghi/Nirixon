@@ -80,6 +80,9 @@ jobs:
       - name: Typecheck
         run: npx tsc -b
 
+      - name: Lint (eslint)
+        run: npx eslint src
+
       - name: Unit tests
         run: npx vitest run
 

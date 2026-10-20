@@ -29,10 +29,15 @@ def test_every_item_has_reviewed_audio_or_text_fallback():
     report = report_res.json()
 
     assert report["total_system_items"] > 0
+    # Every item is counted exactly once: reviewed, narrated on demand, or uncovered.
     assert (
-        report["covered_items_count"] + report["uncovered_items_count"]
+        report["covered_items_count"]
+        + report["uncovered_items_count"]
+        + report["ondemand_hindi_items_count"]
         == report["total_system_items"]
     )
+    # The Module B adaptive bank has no pre-reviewed clips but is narrated on demand.
+    assert report["ondemand_hindi_items_count"] > 0
 
     # Verify covered items have valid reviewed metadata
     for item in report["covered_items"]:
@@ -135,15 +140,17 @@ def test_pregenerated_audio_files_exist_and_are_served():
     Audio files are pre-generated on disk and served as static audio assets.
     """
     repo_root = Path(__file__).resolve().parent.parent.parent
-    fe_audio_en = repo_root / "frontend" / "public" / "audio" / "narration" / "en"
-    fe_audio_hi = repo_root / "frontend" / "public" / "audio" / "narration" / "hi"
+    # The backend static mirror is the single source of truth. The SPA requests
+    # clips from /audio, which is proxied to the API in dev and in the nginx image.
+    audio_en = repo_root / "backend" / "static" / "audio" / "narration" / "en"
+    audio_hi = repo_root / "backend" / "static" / "audio" / "narration" / "hi"
 
-    assert fe_audio_en.exists()
-    assert fe_audio_hi.exists()
+    assert audio_en.exists()
+    assert audio_hi.exists()
 
     # Check GM01 narration exists and has non-zero size
-    gm01_en = fe_audio_en / "GM01.mp3"
-    gm01_hi = fe_audio_hi / "GM01.mp3"
+    gm01_en = audio_en / "GM01.mp3"
+    gm01_hi = audio_hi / "GM01.mp3"
     assert gm01_en.exists()
     assert gm01_hi.exists()
     assert gm01_en.stat().st_size > 10000

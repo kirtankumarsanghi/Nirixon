@@ -9,7 +9,9 @@
  * Token is stored in module scope — intentionally ephemeral (no persistence).
  */
 
-const BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8000";
+// Same-origin on the web (Vite and nginx proxy /api); only native builds or a
+// remote API need an absolute VITE_API_BASE_URL.
+const BASE = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").trim().replace(/\/+$/, "");
 const DEMO_EMAIL = (import.meta.env.VITE_DEMO_EMAIL as string | undefined) ?? "parent@example.com";
 const DEMO_PASSWORD = (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? "changeme";
 
