@@ -6,6 +6,7 @@ Behaviour lives in tests/test_find_help.py; this only checks the wiring in app.m
 from __future__ import annotations
 
 import pytest
+
 from tests.test_api import _login
 
 pytest_plugins = ("tests.test_api",)
