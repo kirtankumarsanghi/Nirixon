@@ -77,11 +77,15 @@ def main() -> None:
                 "model_tier_pct": round(model_pct, 1),
                 "gap_pp": round(gap, 1),
                 "source": row.get("source", ""),
-                "verdict": "plausible" if abs(gap) <= PLAUSIBLE_GAP_PP else "investigate",
+                "verdict": (
+                    "plausible" if abs(gap) <= PLAUSIBLE_GAP_PP else "investigate"
+                ),
             }
         )
 
-    print(f"{'indicator':28} {'band':>9} {'external':>9} {'model':>8} {'gap':>7}  verdict")
+    print(
+        f"{'indicator':28} {'band':>9} {'external':>9} {'model':>8} {'gap':>7}  verdict"
+    )
     for r in rows:
         band = f"{r['age_min_months']}-{r['age_max_months']}"
         print(
@@ -90,9 +94,7 @@ def main() -> None:
         )
 
     OUT_PATH.write_text(
-        json.dumps(
-            {"tolerance_pp": PLAUSIBLE_GAP_PP, "comparisons": rows}, indent=2
-        ),
+        json.dumps({"tolerance_pp": PLAUSIBLE_GAP_PP, "comparisons": rows}, indent=2),
         encoding="utf-8",
     )
     print(f"\nWrote {OUT_PATH}")

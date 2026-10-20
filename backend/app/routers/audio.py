@@ -117,8 +117,12 @@ HINDI_VOICE = "hi-IN-SwaraNeural"
 ENGLISH_VOICE = "en-IN-NeerjaNeural"
 HINDI_LABEL = "हिन्दी (Hindi)"
 ENGLISH_LABEL = "English"
-GENERATED_BY_HI = "Machine-generated narration (edge-tts hi-IN) - pending clinical review"
-GENERATED_BY_EN = "Machine-generated narration (edge-tts en-IN) - pending clinical review"
+GENERATED_BY_HI = (
+    "Machine-generated narration (edge-tts hi-IN) - pending clinical review"
+)
+GENERATED_BY_EN = (
+    "Machine-generated narration (edge-tts en-IN) - pending clinical review"
+)
 
 _hindi_file = _JsonFileCache(HINDI_TEXT_PATH, fallback={})
 _english_texts: dict[str, str] | None = None
@@ -177,7 +181,9 @@ async def ensure_generated_clip(item_id: str, language: str) -> str | None:
             target.parent.mkdir(parents=True, exist_ok=True)
             await edge_tts.Communicate(text, voice).save(str(target))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Could not synthesize %s clip for %s: %s", label, item_id, exc)
+            logger.warning(
+                "Could not synthesize %s clip for %s: %s", label, item_id, exc
+            )
             return None
     return f"{prefix}/{item_id}.mp3"
 

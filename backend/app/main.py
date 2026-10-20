@@ -275,9 +275,7 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     # Capacitor WebView origins are stable and must always be allowed: a stale
     # CORS_ORIGINS env var must not lock the packaged app out of its own API.
     native_origins = ["https://localhost", "http://localhost", "capacitor://localhost"]
-    allowed_origins = list(
-        dict.fromkeys([*settings.cors_origin_list, *native_origins])
-    )
+    allowed_origins = list(dict.fromkeys([*settings.cors_origin_list, *native_origins]))
 
     app.add_middleware(
         CORSMiddleware,

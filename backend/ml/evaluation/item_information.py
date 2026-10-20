@@ -16,9 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pandas as pd
-from sklearn.metrics import mutual_info_score
-
 from columns import ITEM_PREFIXES
+from sklearn.metrics import mutual_info_score
 
 BACKEND = Path(__file__).resolve().parents[2]
 DATA_PATH = BACKEND / "data" / "processed" / "screening_data_items.csv"
@@ -72,7 +71,9 @@ def main() -> None:
         json.dumps({"summary": summary, "items": rows}, indent=2), encoding="utf-8"
     )
 
-    print(f"Items: {summary['n_items']}  weak (<{WEAK_MI} MI): {summary['weak_item_count']}")
+    print(
+        f"Items: {summary['n_items']}  weak (<{WEAK_MI} MI): {summary['weak_item_count']}"
+    )
     print("\nStrongest items:")
     for r in rows[:8]:
         print(f"  {r['item_id']}  bracket-MI={r['bracket_weighted_mi']:.4f}")
