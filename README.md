@@ -49,7 +49,7 @@
 
 In low- and middle-income regions—and particularly across India and South Asia—over 70% of neurodevelopmental delays, sensory impairments, and learning disabilities are detected only after children enter primary school, missing the critical early intervention window (ages 0–5). Frontline health workers (**ASHA**, **Anganwadi**, and **ANM**) conduct massive door-to-door community surveys, but face paper-based bottlenecks, fragmented referral chains, multi-caregiver disagreement, and intermittent internet connectivity.
 
-**Nirixon** is an open, privacy-by-design, clinical-grade developmental screening platform specifically built to bridge this divide. It couples:
+**Nirixon** is an open, privacy-by-design developmental screening and triage platform specifically built to bridge this divide. It couples:
 - **Calibrated Machine Learning (XGBoost/LightGBM)** with local **SHAP** feature attribution.
 - An **Uncompromising Deterministic Clinical Safety Floor** that overrides statistical models upon detecting developmental regression or severe milestone loss.
 - An **Offline-First Progressive Web App (PWA)** for grassroots workers with automated conflict resolution and zero-PII storage.
@@ -611,9 +611,10 @@ npm run build
 Nirixon is engineered for transparent, responsible healthcare AI deployment. Evaluators, clinicians, and researchers should note the following explicit system boundaries:
 
 ### 1. Synthetic & Semi-Synthetic Training Data
-The machine learning models (calibrated XGBoost for Module A and TF-IDF NLP classifier for Module B) were trained and evaluated on synthetic and semi-synthetic developmental milestone distributions calibrated to peer-reviewed epidemiological prevalence rates (e.g., CDC, WHO, and Indian National Family Health Survey benchmarks). 
-- While internal validation confirms high discriminative capability on held-out synthetic cohorts, prospective clinical validation across diverse socioeconomic, nutritional, and regional strata across India remains ongoing.
-- Models must not be treated as a definitive diagnostic instrument.
+The machine learning models (calibrated XGBoost for Module A and a TF-IDF NLP router for Module B) were trained and evaluated on synthetic and semi-synthetic developmental milestone distributions. **These numbers measure recovery of the generating rule, not clinical accuracy.**
+- On the held-out synthetic cohort (50,000 children) the Module A model reaches macro AUPRC ≈ **0.79** and Refer-class AUPRC ≈ **0.76** (chance = 0.14), with Refer sensitivity 0.62 / specificity 0.96 at argmax. At the deployed screening threshold (0.20) Refer sensitivity is 0.80 at 0.90 specificity, flagging 19.5%. Labels are a threshold on the true latent severity, so the classifier must infer the construct from noisy items. Null controls (label shuffle, random features, permuted inputs) all collapse to chance — evidence that the pipeline is not leaking. With the classifier disabled, the rule + safety floor still catches **every** regression case.
+- Prospective clinical validation across socioeconomic, nutritional and regional strata **has not been performed**. `docs/pilot_study_protocol.md` defines the study; every real-world accuracy claim is **pilot pending**.
+- Models must not be treated as a definitive diagnostic instrument. See [`docs/VALIDITY.md`](docs/VALIDITY.md) for the full claims table, the model-disabled demonstration, and the list of what is and is not tested.
 
 ### 2. Clinical Review Pending (Screening vs Diagnostic Device)
 Nirixon is strictly categorized as an **AI-assisted developmental screening and triage decision-support tool (Section 0.5 guidelines)**.

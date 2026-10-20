@@ -1,0 +1,5 @@
+item_id,item_text,domain,rater_id,essential
+GM01,How many times in the past week has your child lifted their head while lying on their tummy?,gross_motor,R1,
+GM01,How many times in the past week has your child lifted their head while lying on their tummy?,gross_motor,R2,
+GM01,How many times in the past week has your child lifted their head while lying on their tummy?,gross_motor,R3,
+GM02,How many times in the past week has your child rolled from tummy to back or back to tummy?,gross_motor,R1,

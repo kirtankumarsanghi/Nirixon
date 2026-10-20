@@ -1,0 +1,38 @@
+{
+  "tolerance_pp": 10.0,
+  "comparisons": [
+    {
+      "indicator": "asq3_global_delay_rural_north_india",
+      "metric": "refer_pct",
+      "age_min_months": 6,
+      "age_max_months": 36,
+      "external_pct": 20.0,
+      "model_tier_pct": 14.3,
+      "gap_pp": -5.7,
+      "source": "J Family Med Prim Care (ASQ-3, rural North India)",
+      "verdict": "plausible"
+    },
+    {
+      "indicator": "gdd_under2_lower",
+      "metric": "refer_pct",
+      "age_min_months": 0,
+      "age_max_months": 24,
+      "external_pct": 1.0,
+      "model_tier_pct": 14.2,
+      "gap_pp": 13.2,
+      "source": "Indian Pediatrics review",
+      "verdict": "investigate"
+    },
+    {
+      "indicator": "gdd_under2_upper",
+      "metric": "refer_pct",
+      "age_min_months": 0,
+      "age_max_months": 24,
+      "external_pct": 2.5,
+      "model_tier_pct": 14.2,
+      "gap_pp": 11.7,
+      "source": "Indian Pediatrics review",
+      "verdict": "investigate"
+    }
+  ]
+}

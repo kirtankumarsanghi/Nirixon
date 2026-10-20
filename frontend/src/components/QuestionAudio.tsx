@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Pause, Volume2 } from "lucide-react";
-import { shareApi } from "../api/client";
+import { shareApi, resolveApiUrl } from "../api/client";
 import type { AudioItemQueryResponse } from "../api/types";
 import { cn } from "../utils/cn";
 
@@ -40,6 +40,7 @@ export function QuestionAudio({
   className?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [entry, setEntry] = useState<AudioItemQueryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -73,6 +74,12 @@ export function QuestionAudio({
     if (audio) audio.playbackRate = rate;
   }, [rate, entry]);
 
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
+  }, []);
+
   if (loading) {
     return (
       <span className={cn("grid size-8 place-items-center text-muted", className)} aria-hidden>
@@ -81,7 +88,8 @@ export function QuestionAudio({
     );
   }
 
-  const serverAudio = Boolean(entry?.has_audio && entry.audio?.audio_url);
+  const audioSrc = entry?.audio?.audio_url ? resolveApiUrl(entry.audio.audio_url) : undefined;
+  const serverAudio = Boolean(entry?.has_audio && audioSrc);
 
   // Reviewed clip wins. Otherwise speak the Hindi rendition when one exists
   // (Module A manifest text or the translated Module B map); otherwise fall back
@@ -108,7 +116,7 @@ export function QuestionAudio({
   if (!serverAudio && !canSpeak) return null;
 
   const toggle = async () => {
-    if (serverAudio && entry?.audio?.audio_url) {
+    if (serverAudio && audioSrc) {
       const audio = audioRef.current;
       if (!audio) return;
       if (playing) {
@@ -116,13 +124,27 @@ export function QuestionAudio({
         setPlaying(false);
         return;
       }
+      audio.currentTime = 0;
+      audio.playbackRate = rate;
       try {
-        audio.currentTime = 0;
-        audio.playbackRate = rate;
         await audio.play();
         setPlaying(true);
       } catch {
-        setPlaying(false);
+        // Some Android WebViews refuse to stream cross-origin media directly
+        // (mixed content / media cache). Fetch it and play from a blob URL.
+        try {
+          const res = await fetch(audioSrc);
+          if (!res.ok) throw new Error(`Audio ${res.status}`);
+          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = URL.createObjectURL(await res.blob());
+          audio.src = blobUrlRef.current;
+          audio.load();
+          audio.playbackRate = rate;
+          await audio.play();
+          setPlaying(true);
+        } catch {
+          setPlaying(false);
+        }
       }
       return;
     }
@@ -148,7 +170,7 @@ export function QuestionAudio({
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)}>
       {serverAudio && (
-        <audio ref={audioRef} src={entry?.audio?.audio_url} preload="none" onEnded={() => setPlaying(false)} />
+        <audio ref={audioRef} src={audioSrc} preload="none" onEnded={() => setPlaying(false)} />
       )}
       <button
         type="button"

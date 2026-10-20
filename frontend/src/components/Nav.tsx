@@ -27,7 +27,9 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
       <div className="nrx-nav-shell mx-auto flex max-w-[1360px] items-center justify-between gap-3 rounded-full border py-2 pr-2 pl-2.5 shadow-[0_20px_44px_-24px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:pl-3">
         <button type="button" onClick={onHome} className="flex items-center gap-3 rounded-full pr-2 transition-transform hover:scale-[1.015]" aria-label="Nirixon home">
           <LogoMark size={46} />
-          <Wordmark />
+          <span className="hidden sm:block">
+            <Wordmark />
+          </span>
         </button>
 
         <nav
@@ -80,24 +82,27 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
           <button
             type="button"
             onClick={onCta}
-            className="group hidden items-center gap-3 rounded-full bg-ink py-1.5 pr-1.5 pl-5 text-[13.5px] font-bold text-paper shadow-[0_14px_26px_-12px_rgba(31,20,9,0.9)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] sm:inline-flex"
+            aria-label={ctaLabel}
+            className="group inline-flex items-center gap-2 rounded-full bg-ink py-1 pr-1 pl-3.5 text-[12.5px] font-bold text-paper shadow-[0_14px_26px_-12px_rgba(31,20,9,0.9)] transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] sm:gap-3 sm:py-1.5 sm:pr-1.5 sm:pl-5 sm:text-[13.5px]"
           >
-            {ctaLabel}
-            <span className="grid size-9 place-items-center rounded-full bg-rust transition-transform duration-300 group-hover:rotate-45">
+            <span className="whitespace-nowrap sm:hidden">{ctaLabel.split(" ")[0]}</span>
+            <span className="hidden whitespace-nowrap sm:inline">{ctaLabel}</span>
+            <span className="grid size-8 place-items-center rounded-full bg-rust transition-transform duration-300 group-hover:rotate-45 sm:size-9">
               <ArrowUpRight className="size-4" />
             </span>
           </button>
           <button
             type="button"
             onClick={onMenu}
-            className="nrx-menu-button flex items-center gap-3 rounded-full border border-line/80 py-3 pr-5 pl-4 text-[13.5px] font-bold transition-all active:scale-[0.97]"
+            aria-label="Open menu"
+            className="nrx-menu-button flex items-center gap-3 rounded-full border border-line/80 px-3.5 py-3 text-[13.5px] font-bold transition-all active:scale-[0.97] sm:pr-5 sm:pl-4"
           >
             <span className="flex flex-col gap-[5px]" aria-hidden>
               <span className="h-[1.8px] w-[18px] rounded-full bg-ink" />
               <span className="h-[1.8px] w-[18px] rounded-full bg-ink" />
               <span className="h-[1.8px] w-[12px] rounded-full bg-ink" />
             </span>
-            Menu
+            <span className="hidden sm:inline">Menu</span>
           </button>
         </div>
       </div>

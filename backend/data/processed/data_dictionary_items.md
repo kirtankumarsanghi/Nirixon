@@ -8,7 +8,7 @@
 - `family_history_flag`: 1 if family history of developmental delay
 - `multilingual_home_flag`: 1 if home is multilingual — CONTEXT, not a penalty; must show no correlation with domain scores (checked in Stage 2)
 - `regression_flag`: 1 if child has lost a previously-acquired skill — a high-weight red flag independent of the smooth age trend
-- `risk_label`: Typical / Monitor / Refer — derived label, NOT a model input
+- `risk_label`: Typical / Monitor / Refer — a threshold on the TRUE latent severity (ASQ-style -2 / -1 SD cut-offs). It is NOT a model input and NOT a quantile of the observed answers, so class prevalence is an observed outcome.
 
 ## Item-level fields (36 columns, one per item, coded 0 / 1 / 2)
 Response scale: 0 = 0 times in the past week, 1 = 1-2 times, 2 = 3+ times

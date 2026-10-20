@@ -359,6 +359,18 @@ export interface FacilityRelevance {
   label: string;
 }
 
+export type TrustLevel = "official" | "verified" | "unverified";
+
+/** Provenance of a listing: where it came from, not a quality rating. */
+export interface FacilityTrust {
+  level: TrustLevel;
+  rank: number;
+  label: string;
+  verified_at: string | null;
+  verified_by: string | null;
+  source: string | null;
+}
+
 export interface Facility {
   id: number;
   name: string;
@@ -374,6 +386,7 @@ export interface Facility {
   verified_at: string | null;
   specialty: string[];
   relevance: FacilityRelevance;
+  trust: FacilityTrust;
 }
 
 export interface FacilitySuggestion {
@@ -418,6 +431,10 @@ export interface FacilitiesResponse {
   advice: string | null;
   state_deic: StateDeic | null;
   helplines: FacilityHelpline[];
+  /** Counts of returned facilities by provenance level. */
+  trust_summary: Partial<Record<TrustLevel, number>>;
+  trust_note: string;
+  verified_only: boolean;
 }
 
 // ---------------------------------------------------------------------------

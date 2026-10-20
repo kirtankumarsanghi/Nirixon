@@ -64,6 +64,9 @@ class AudioCoverageReport(BaseModel):
     total_system_items: int
     covered_items_count: int
     uncovered_items_count: int
+    # Items with no pre-reviewed clip but which are narrated on demand in Hindi
+    # (the Module B adaptive bank). Counted separately from covered/uncovered.
+    ondemand_hindi_items_count: int = 0
     coverage_percentage: float
     clinical_reviewer: str
     clinical_review_date: str

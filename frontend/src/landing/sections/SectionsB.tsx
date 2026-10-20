@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "How was it tested?",
-    a: `Empirically evaluated on held-out synthetic test sets: Module A on ${claims.module_a_test_n.display} (${claims.module_a_accuracy.display} accuracy, ${claims.module_a_refer_recall.display} Refer recall, ${claims.module_a_refer_specificity.display} specificity), and Module B on ${claims.module_b_any_hit_rate.sample_size} scenarios (${claims.module_b_any_hit_rate.display} any-domain hit rate, ${claims.module_b_safety_recall.display} crisis safety recall), plus ${claims.module_b_handwritten_eval.notes_n} independent handwritten clinical notes. Evaluated on synthetic data. Clinical validation pending. Screening aid, not a diagnosis.`,
+    a: `Empirically evaluated on held-out synthetic test sets: Module A on ${claims.module_a_test_n.display} (${claims.module_a_macro_f1.display} macro F1, ${claims.module_a_refer_recall.display} Refer recall, ${claims.module_a_refer_specificity.display} specificity), and Module B on ${claims.module_b_any_hit_rate.sample_size} scenarios (${claims.module_b_any_hit_rate.display} any-domain hit rate, ${claims.module_b_safety_recall.display} crisis safety recall), plus ${claims.module_b_handwritten_eval.notes_n} independent handwritten clinical notes. Evaluated on synthetic data. Clinical validation pending. Screening aid, not a diagnosis.`,
   },
   {
     q: "What about my child’s data and privacy?",

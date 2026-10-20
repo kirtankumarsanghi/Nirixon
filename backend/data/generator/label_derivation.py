@@ -144,6 +144,32 @@ def composite_risk_score(
     return composite
 
 
+def assign_labels_by_latent(
+    worst_latent: np.ndarray,
+    refer_sd: float = -2.0,
+    monitor_sd: float = -1.0,
+) -> np.ndarray:
+    """Labels come from the TRUE latent severity, not from the observed item scores.
+
+    The observed responses are noisy realisations of this latent. Deriving the label
+    from those same responses (the previous quantile method) let a model recover a
+    deterministic function of its own inputs — it could look accurate while learning
+    nothing about the construct. Here the label is a threshold on the unobserved
+    latent, so the classifier has to *infer* severity from noisy indicators.
+
+    Class prevalence is therefore an **observed outcome** of the latent distribution
+    and the ASQ-3-style cut-offs, not a target chosen in advance.
+
+    ASQ-3 convention: any domain <= -2 SD is the referral area; -2 to -1 SD is the
+    monitoring area.
+    """
+    return np.where(
+        worst_latent <= refer_sd,
+        "Refer",
+        np.where(worst_latent <= monitor_sd, "Monitor", "Typical"),
+    )
+
+
 def assign_labels_by_quantile(
     composite: np.ndarray,
     typical_frac: float = 0.73,

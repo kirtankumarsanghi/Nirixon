@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import type {
   AnswerRequest,
   LoginRequest,
@@ -15,8 +16,6 @@ import type {
   WorkerContactRequest,
   WorkerContactResponse,
   WorkerSuggestion,
-  SandboxSimulateRequest,
-  HelpNearbyResponse,
   LiveTaskDefinition,
   TouchConfigResponse,
   TouchTelemetrySubmission,
@@ -50,8 +49,67 @@ import type {
   FacilitiesResponse,
 } from "./types";
 
-const rawBase = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
-const API_BASE = typeof rawBase === "string" ? rawBase.replace("://localhost:", "://127.0.0.1:") : "http://127.0.0.1:8000";
+// Same-origin by default: both the Vite dev server and nginx proxy /api and
+// /audio, so a browser must never be pointed at the API host directly. A
+// Capacitor WebView has no proxy, so native builds have to set an absolute URL.
+const envBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+const API_BASE_KEY = "nirixon_api_base";
+
+function normalizeBase(value: string | null | undefined): string {
+  return (value ?? "").trim().replace(/\/+$/, "");
+}
+
+function defaultApiBase(): string {
+  if (envBase) return envBase.replace("://localhost:", "://127.0.0.1:");
+  return Capacitor.isNativePlatform() ? "http://127.0.0.1:8000" : "";
+}
+
+function storedApiBase(): string {
+  try {
+    return normalizeBase(localStorage.getItem(API_BASE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+let apiBase = storedApiBase() || defaultApiBase();
+
+/** The API host currently in use. Empty means same-origin (web). */
+export function getApiBase(): string {
+  return apiBase;
+}
+
+/** The override saved on this device, if any. */
+export function getSavedApiBase(): string {
+  return storedApiBase();
+}
+
+/**
+ * Persist a new API host (pass null/"" to reset to the build default). The
+ * value is read on every request, so callers do not need to be remounted.
+ */
+export function setApiBase(value: string | null): void {
+  const next = normalizeBase(value);
+  apiBase = next || defaultApiBase();
+  try {
+    if (next) localStorage.setItem(API_BASE_KEY, next);
+    else localStorage.removeItem(API_BASE_KEY);
+  } catch {
+    /* private mode / restricted storage */
+  }
+}
+
+/**
+ * Resolve a server-relative asset path (e.g. `/audio/narration/...`) against the
+ * API host. Root-relative paths would otherwise resolve against the page origin,
+ * which in the Capacitor WebView is the app bundle (https://localhost) — so
+ * narration would request a file that does not exist instead of the backend.
+ */
+export function resolveApiUrl(path: string): string {
+  if (!path) return path;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith("//")) return path;
+  return `${apiBase}${path.startsWith("/") ? "" : "/"}${path}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -127,7 +185,7 @@ async function request<T>(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+      const res = await fetch(`${apiBase}${path}`, { ...init, headers });
 
       if (res.status === 401) {
         if (path === "/api/auth/login") {
@@ -321,39 +379,10 @@ export const api = {
   },
 };
 
-export const screenApi = api;
 
-export const sandboxApi = {
-  simulate(
-    sessionId: string,
-    body: SandboxSimulateRequest,
-  ): Promise<ResultPayload> {
-    return request<ResultPayload>(`/api/sandbox/${sessionId}/simulate`, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-  },
-};
+;
 
-export const helpApi = {
-  getNearby(params: {
-    pin?: string | null;
-    lat?: number | null;
-    lng?: number | null;
-    age?: number | null;
-    age_years?: number | null;
-    limit?: number;
-  }): Promise<HelpNearbyResponse> {
-    const query = new URLSearchParams();
-    if (params.pin) query.set("pin", params.pin);
-    if (params.lat != null) query.set("lat", String(params.lat));
-    if (params.lng != null) query.set("lng", String(params.lng));
-    if (params.age != null) query.set("age", String(params.age));
-    if (params.age_years != null) query.set("age_years", String(params.age_years));
-    if (params.limit != null) query.set("limit", String(params.limit));
-    return request<HelpNearbyResponse>(`/api/help/nearby?${query.toString()}`);
-  },
-};
+;
 
 export const facilitiesApi = {
   /**
@@ -362,21 +391,23 @@ export const facilitiesApi = {
    */
   get(
     pin: string,
-    opts: { ageGroup?: "0-5" | "6-12"; limit?: number } = {},
+    opts: { ageGroup?: "0-5" | "6-12"; limit?: number; verifiedOnly?: boolean } = {},
   ): Promise<FacilitiesResponse> {
     const q = new URLSearchParams({ pin });
     if (opts.ageGroup) q.set("age_group", opts.ageGroup);
     if (opts.limit != null) q.set("limit", String(opts.limit));
+    if (opts.verifiedOnly) q.set("verified_only", "true");
     return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
   },
   /** Same directory around explicit coordinates (GPS "near me"). */
   getNear(
     coords: { lat: number; lng: number },
-    opts: { ageGroup?: "0-5" | "6-12"; limit?: number } = {},
+    opts: { ageGroup?: "0-5" | "6-12"; limit?: number; verifiedOnly?: boolean } = {},
   ): Promise<FacilitiesResponse> {
     const q = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng) });
     if (opts.ageGroup) q.set("age_group", opts.ageGroup);
     if (opts.limit != null) q.set("limit", String(opts.limit));
+    if (opts.verifiedOnly) q.set("verified_only", "true");
     return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
   },
 };
@@ -476,14 +507,14 @@ export const referralApi = {
     const token = getAuthToken();
     const headers: Record<string, string> = { Accept: "text/plain" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE}/api/referrals/${encodeURIComponent(id)}/summary?format=text`, {
+    const res = await fetch(`${apiBase}/api/referrals/${encodeURIComponent(id)}/summary?format=text`, {
       headers,
     });
     if (!res.ok) throw new ApiError(res.status, await res.text());
     return res.text();
   },
   getSummaryPdfUrl(id: string): string {
-    return `${API_BASE}/api/referrals/${encodeURIComponent(id)}/summary/pdf`;
+    return `${apiBase}/api/referrals/${encodeURIComponent(id)}/summary/pdf`;
   },
   deleteReferral(id: string): Promise<{ deleted: boolean; message: string }> {
     return request<{ deleted: boolean; message: string }>(`/api/referrals/${encodeURIComponent(id)}`, {
@@ -625,17 +656,7 @@ export interface GrowthAnalysis {
   }[];
 }
 
-export const growthApi = {
-  getStatus(): Promise<{ sync_enabled: boolean; privacy_model: string }> {
-    return request<{ sync_enabled: boolean; privacy_model: string }>("/api/growth/status");
-  },
-  getVisits(childId: string): Promise<GrowthVisit[]> {
-    return request<GrowthVisit[]>(`/api/growth/visits/${encodeURIComponent(childId)}`);
-  },
-  getAnalysis(childId: string): Promise<GrowthAnalysis> {
-    return request<GrowthAnalysis>(`/api/growth/analysis/${encodeURIComponent(childId)}`);
-  },
-};
+;
 
 export interface EvidenceClassMetrics {
   precision: number;

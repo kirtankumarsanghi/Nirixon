@@ -37,7 +37,7 @@ services:
       ENVIRONMENT: development
       DATABASE_URL: postgresql+asyncpg://nirixon:nirixon@db:5432/nirixon
       JWT_SECRET: docker-dev-secret-change-me
-      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,https://localhost,http://localhost,capacitor://localhost
       SESSION_REPO_BACKEND: redis
       REDIS_URL: redis://redis:6379/0
       ML_ARTIFACTS_DIR: /app/backend/ml/artifacts

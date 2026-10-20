@@ -33,11 +33,7 @@ from correlation_structure import (
     sample_domain_latents,
 )
 from item_bank import DOMAINS, ITEM_BANK
-from label_derivation import (
-    assign_labels_by_quantile,
-    composite_risk_score,
-    domain_percentiles,
-)
+from label_derivation import assign_labels_by_latent
 
 RNG_SEED = SEED
 
@@ -48,7 +44,7 @@ RNG_SEED = SEED
 # naturally attract slightly fewer children, but the adjacent-bracket
 # borrowing fallback in imputation.py handles thin bins without requiring
 # further data inflation.
-N_CHILDREN = 8000
+N_CHILDREN = int(os.environ.get("NIRIXON_N_CHILDREN", "8000"))
 
 AGE_MIN, AGE_MAX = 0, 60  # months
 
@@ -263,7 +259,9 @@ def write_data_dictionary(path: str) -> None:
         + "penalty; must show no correlation with domain scores (checked in Stage 2)\n",
         "- `regression_flag`: 1 if child has lost a previously-acquired skill — a "
         + "high-weight red flag independent of the smooth age trend\n",
-        "- `risk_label`: Typical / Monitor / Refer — derived label, NOT a model input\n",
+        "- `risk_label`: Typical / Monitor / Refer — a threshold on the TRUE latent "
+        "severity (ASQ-style -2 / -1 SD cut-offs). It is NOT a model input and NOT a "
+        "quantile of the observed answers, so class prevalence is an observed outcome.\n",
         "\n## Item-level fields (36 columns, one per item, coded 0 / 1 / 2)\n",
         "Response scale: 0 = 0 times in the past week, 1 = 1-2 times, 2 = 3+ times\n\n",
         "| item_id | domain | motor_confound | live_elicitation_eligible | typical_age_months | "
@@ -307,19 +305,24 @@ def generate(
     item_responses = simulate_item_responses(children, latents, sampler)
     domain_scores = compute_domain_scores(item_responses)  # derived, display-only
 
-    pct_df = domain_percentiles(
-        domain_scores, children["corrected_age_months"].to_numpy()
-    )
-    composite = composite_risk_score(
-        pct_df, children["regression_flag"].to_numpy(), sampler
-    )
-    labels = assign_labels_by_quantile(composite)
+    # Labels are a threshold on the TRUE latent severity (after any regression
+    # event), never a quantile of the observed responses. Class prevalence is
+    # therefore an observed outcome of the latent distribution and the ASQ-style
+    # -2 / -1 SD cut-offs, not a target set in advance.
+    worst_latent = latents.min(axis=1)
+    labels = assign_labels_by_latent(worst_latent)
 
     full = pd.concat([children, item_responses], axis=1)
     full["risk_label"] = labels
 
+    # Domain means are legitimate model features now that the label is a threshold
+    # on the latent severity rather than a quantile of these same columns. They
+    # summarise item evidence the model already sees, so they cannot leak the target.
+    for d in DOMAINS:
+        full[f"mean_{d}"] = domain_scores[d]
+
     # domain_scores kept separate / clearly derived, so it's obvious these
-    # are NOT meant to be fed to the model as features.
+    # are the display-only aggregates.
     derived = pd.concat([children[["child_id"]], domain_scores], axis=1)
 
     return full, derived

@@ -59,7 +59,9 @@ def main() -> int:
         return 0
 
     for index, row in enumerate(todo, start=1):
-        translations[row["item_id"]] = argos_translate.translate(row["text"], "en", "hi")
+        translations[row["item_id"]] = argos_translate.translate(
+            row["text"], "en", "hi"
+        )
         if index % SAVE_EVERY == 0 or index == len(todo):
             write_outputs(translations)
             print(f"translated {index}/{len(todo)}", flush=True)

@@ -30,6 +30,7 @@ COLS = [
     "source",
     "source_id",
     "verified_at",
+    "verified_by",
 ]
 
 
@@ -410,3 +411,206 @@ def test_government_csv_adapter(tmp_path):
     assert {
         f["type"] for f in find_facilities(connect_readonly(db), "302001")["facilities"]
     } == {"District Hospital", "CHC"}
+
+
+# ---- provenance / trust (synthetic fixtures) ----
+
+# The clinic is much closer; the official centre is farther. Distance alone would
+# rank the clinic first, which is exactly the behaviour this model is meant to fix.
+TRUST_FX = [
+    {
+        "name": "TEST Unverified Clinic",
+        "type": "Clinic",
+        "lat": "26.921",
+        "lng": "75.821",
+    },
+    {
+        "name": "TEST Early Intervention Centre",
+        "type": "",
+        "lat": "26.99",
+        "lng": "75.78",
+        "operator_type": "government",
+        "phone": "0141-0000000",
+    },
+]
+
+
+def test_trust_derived_from_provenance_not_from_the_name(tmp_path):
+    """A crowd-sourced row is unverified even when its name reads like a district hospital."""
+    import sqlite3
+
+    fx = [
+        {
+            "name": "TEST Mapped Hospital",
+            "type": "Hospital",
+            "lat": "26.95",
+            "lng": "75.80",
+        },
+        {
+            "name": "TEST Confirmed Clinic",
+            "type": "Clinic",
+            "lat": "26.94",
+            "lng": "75.81",
+            "verified_at": "2026-03-20",
+            "verified_by": "Nirixon reviewer",
+        },
+        {
+            "name": "TEST Govt District Hospital",
+            "type": "District Hospital",
+            "lat": "26.93",
+            "lng": "75.82",
+            "operator_type": "government",
+        },
+        {
+            "name": "TEST Mapped District Hospital",
+            "type": "District Hospital",
+            "lat": "26.92",
+            "lng": "75.83",
+        },
+        {
+            # OSM carries operator:type=government, but the record itself is
+            # crowd-sourced: it must NOT be promoted to official.
+            "name": "TEST OSM Govt Hospital",
+            "type": "Hospital",
+            "lat": "26.91",
+            "lng": "75.84",
+            "operator_type": "government",
+            "source": "OpenStreetMap (ODbL)",
+        },
+    ]
+    db, _ = build_db(tmp_path, fx)
+    levels = dict(
+        sqlite3.connect(db).execute("SELECT name, trust FROM facilities").fetchall()
+    )
+    assert levels["TEST Mapped Hospital"] == "unverified"
+    assert levels["TEST Confirmed Clinic"] == "verified"
+    assert levels["TEST Govt District Hospital"] == "official"
+    assert (
+        levels["TEST Mapped District Hospital"] == "unverified"
+    )  # name does not upgrade it
+    # A crowd-sourced record's own operator tag cannot upgrade it either.
+    assert levels["TEST OSM Govt Hospital"] == "unverified"
+
+
+def test_official_listing_outranks_a_closer_mapped_clinic(tmp_path):
+    db, _ = build_db(tmp_path, TRUST_FX)
+    c = connect_readonly(db)
+    # No screening context: plain nearest-first is unchanged.
+    assert names(find_facilities(c, "302001"))[0] == "TEST Unverified Clinic"
+    # Screening context: provenance comes first.
+    a = find_facilities(c, "302001", age_group="0-5", result="refer")
+    assert names(a)[0] == "TEST Early Intervention Centre"
+    assert a["facilities"][0]["trust"]["level"] == "official"
+    assert a["facilities"][-1]["trust"]["level"] == "unverified"
+    assert a["trust_summary"] == {"official": 1, "unverified": 1}
+    assert "call before travelling" in a["trust_note"]
+
+
+def test_verified_only_drops_mapped_listings(tmp_path):
+    db, _ = build_db(tmp_path, TRUST_FX)
+    c = connect_readonly(db)
+    only = find_facilities(c, "302001", age_group="0-5", verified_only=True)
+    assert names(only) == ["TEST Early Intervention Centre"]
+    assert only["verified_only"] is True
+    assert only["trust_summary"] == {"official": 1}
+
+
+def test_reference_db_without_trust_column_still_works(tmp_path):
+    """An already-built reference DB keeps working: trust is derived from verified_at."""
+    import sqlite3
+
+    db, _ = build_db(
+        tmp_path,
+        [
+            {
+                "name": "TEST Confirmed Clinic",
+                "type": "Clinic",
+                "lat": "26.94",
+                "lng": "75.81",
+                "verified_at": "2026-03-20",
+            },
+            {
+                "name": "TEST Mapped Clinic",
+                "type": "Clinic",
+                "lat": "26.95",
+                "lng": "75.82",
+            },
+        ],
+    )
+    con = sqlite3.connect(db)
+    con.executescript(
+        "CREATE TABLE facilities_old AS SELECT id,name,type,address,state,district,pin,lat,lng,"
+        "phone,operator_type,source,source_id,verified_at,specialty FROM facilities;"
+        "DROP TABLE facilities;"
+        "ALTER TABLE facilities_old RENAME TO facilities;"
+    )
+    con.commit()
+    con.close()
+    r = find_facilities(connect_readonly(db), "302001", age_group="0-5")
+    levels = {f["name"]: f["trust"]["level"] for f in r["facilities"]}
+    assert levels["TEST Confirmed Clinic"] == "verified"
+    assert levels["TEST Mapped Clinic"] == "unverified"
+
+
+def test_api_verified_only_param(tmp_path, monkeypatch):
+    pytest.importorskip("fastapi")
+    pytest.importorskip("httpx")
+    from app.core.find_help.router import router
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    db, _ = build_db(tmp_path, TRUST_FX)
+    monkeypatch.setenv("NIRIXON_REFERENCE_DB", db)
+    app = FastAPI()
+    app.include_router(router)
+    c = TestClient(app)
+    allr = c.get("/api/facilities", params={"pin": "302001"}).json()
+    assert len(allr["facilities"]) == 2 and allr["trust_summary"]
+    filt = c.get(
+        "/api/facilities", params={"pin": "302001", "verified_only": "true"}
+    ).json()
+    assert [f["name"] for f in filt["facilities"]] == ["TEST Early Intervention Centre"]
+    assert filt["verified_only"] is True
+
+
+def test_mohfw_arcgis_rows_map_to_official_facilities():
+    """The government-directory extractor is pure/offline: no network in this test."""
+    sys.path.insert(0, os.path.join(ROOT, "scripts", "find_help"))
+    from import_mohfw_arcgis import to_row
+
+    feature = {
+        "attributes": {
+            "objectid": 7,
+            "facilityname": "Uthangarai",
+            "facilitytype": "Community Health Centre",
+            "landline": "04341-222043",
+            "address": "Government Hospital, Uthangarai",
+            "street": "",
+            "landmark": "",
+            "locality": "",
+            "subdistrict": "Uthangarai",
+            "district": "Krishnagiri",
+            "state": "Tamil Nadu",
+            "posatalcode": "635207",
+        },
+        "geometry": {"x": 78.535451, "y": 12.266359},
+    }
+    row = to_row(feature)
+    assert row is not None
+    # A bare place name gains its designation so a caregiver can read it.
+    assert row["name"] == "Uthangarai Community Health Centre"
+    assert row["type"] == "CHC"
+    assert row["pin"] == "635207" and row["phone"] == "04341-222043"
+    assert row["operator_type"] == "government"
+    assert "MoHFW" in row["source"]
+    # Published directory, NOT a human-verified record.
+    assert row["verified_at"] == "" and row["verified_by"] == ""
+
+    # Maternal & child-health facilities are tagged for the 0-5 ranking.
+    feature["attributes"].update(
+        {"facilitytype": "Maternity Home", "facilityname": "TEST Maternity"}
+    )
+    assert to_row(feature)["specialty"] == "pediatric"
+
+    # Missing name or geometry is skipped, never invented.
+    assert to_row({"attributes": {}, "geometry": {}}) is None

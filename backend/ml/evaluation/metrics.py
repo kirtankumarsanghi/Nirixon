@@ -58,6 +58,7 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
         y_true, y_pred, labels=LABEL_ORDER, output_dict=True, zero_division=0
     )
     sens_spec = compute_sensitivity_specificity(y_true, y_pred, labels=LABEL_ORDER)
+    calibration = compute_calibration(y_true, y_proba)
 
     return {
         "macro_auprc": macro_auprc,
@@ -70,6 +71,51 @@ def compute_metrics(y_true, y_pred, y_proba) -> dict:
         "classification_report": report,
         "classification_report_dict": report_dict,
         "sensitivity_specificity": sens_spec,
+        "calibration": calibration,
+    }
+
+
+def compute_calibration(y_true, y_proba, n_bins: int = 10) -> dict:
+    """Multiclass Brier score + expected calibration error + reliability bins.
+
+    Accuracy alone says nothing about whether a probability can be trusted; a model
+    that reports 0.9 for a class it gets right 60% of the time is unusable for
+    triage, however good its AUROC looks.
+    """
+    y_idx = np.array([LABEL_ORDER.index(v) for v in y_true])
+    onehot = np.eye(len(LABEL_ORDER))[y_idx]
+    brier = float(np.mean(np.sum((y_proba - onehot) ** 2, axis=1)))
+
+    confidence = y_proba.max(axis=1)
+    correct = (y_proba.argmax(axis=1) == y_idx).astype(float)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+
+    ece = 0.0
+    bins: list[dict] = []
+    for i in range(n_bins):
+        mask = (confidence >= edges[i]) & (confidence < edges[i + 1])
+        if i == n_bins - 1:  # include the final right edge
+            mask = mask | (confidence == edges[i + 1])
+        if not mask.any():
+            continue
+        conf = float(confidence[mask].mean())
+        acc = float(correct[mask].mean())
+        weight = float(mask.mean())
+        ece += weight * abs(acc - conf)
+        bins.append(
+            {
+                "bin": f"{edges[i]:.1f}-{edges[i + 1]:.1f}",
+                "n": int(mask.sum()),
+                "mean_confidence": round(conf, 4),
+                "accuracy": round(acc, 4),
+                "gap": round(acc - conf, 4),
+            }
+        )
+
+    return {
+        "brier_multiclass": round(brier, 4),
+        "ece": round(float(ece), 4),
+        "reliability_bins": bins,
     }
 
 

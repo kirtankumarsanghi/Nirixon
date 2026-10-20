@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, ArrowUp, ArrowUpRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { MenuOverlay, Nav } from "../components/Nav";
+import { ServerSettingsButton } from "../components/ServerSettings";
+import { getApiBase } from "../api/client";
 import { LogoMark, Wordmark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { Btn, Chip, Display, Eyebrow, Marquee, Reveal } from "../components/ui";
@@ -50,7 +52,31 @@ export function Login() {
   const [active, setActive] = useState<Role>("parent");
   const [tab, setTab] = useState("signin");
   const [menu, setMenu] = useState(false);
+  const [apiState, setApiState] = useState<"checking" | "ok" | "down" | null>(null);
   const timers = useRef<number[]>([]);
+
+  // Surface whether the phone can actually reach the configured API host.
+  useEffect(() => {
+    const base = getApiBase();
+    if (!base) {
+      setApiState(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 5000);
+    setApiState("checking");
+    fetch(`${base}/health`, { signal: controller.signal })
+      .then(async (res) => {
+        const body = (await res.json().catch(() => null)) as { status?: string } | null;
+        setApiState(res.ok && body?.status === "ok" ? "ok" : "down");
+      })
+      .catch(() => setApiState("down"))
+      .finally(() => window.clearTimeout(timer));
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const ids = ["signin", "roles", "walkthrough"];
@@ -72,7 +98,13 @@ export function Login() {
 
   const scrollTo = (id: string) => {
     setMenu(false);
-    window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), menu ? 450 : 0);
+    // Tracked so the unmount cleanup in the scroll effect can cancel it.
+    timers.current.push(
+      window.setTimeout(
+        () => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        menu ? 450 : 0,
+      ),
+    );
   };
 
   const fill = (r: Role) => {
@@ -184,6 +216,9 @@ export function Login() {
           { label: "Walkthrough", hint: "For evaluators", onClick: () => scrollTo("walkthrough") },
           { label: "Start check-in", hint: "Try it now", onClick: () => void enter("parent", "checkin") },
         ]}
+        footer={
+          <ServerSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
+        }
       />
 
       {/* ============================ HERO ============================ */}
@@ -236,6 +271,13 @@ export function Login() {
               <Eyebrow tone="peach">Workspace access</Eyebrow>
               <h2 className="mt-3 font-display text-[44px] leading-[0.95] text-paper uppercase">Welcome back</h2>
               <p className="mt-2 text-[13px] text-paper/60">Sign in, or tap a role to fill in a demo account.</p>
+
+              {apiState === "down" && (
+                <p role="alert" className="mt-4 rounded-2xl bg-brick/20 px-4 py-3 text-[12.5px] leading-snug text-[#ffb59f]">
+                  Can't reach {getApiBase()}. Use “Change” at the bottom of this card, and make sure the phone is on the
+                  same Wi-Fi as the backend.
+                </p>
+              )}
 
               <form onSubmit={submit} className="mt-7 space-y-4">
                 <label className="block">
@@ -320,6 +362,38 @@ export function Login() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void enter("parent", "checkin")}
+                className="mt-4 flex w-full items-center justify-between rounded-full bg-peach py-2 pr-2 pl-6 text-[14px] font-bold text-night transition-all hover:bg-[#f3a07a] active:scale-[0.99]"
+              >
+                Start a demo check-in
+                <span className="grid size-10 place-items-center rounded-full bg-night text-peach">
+                  <ArrowRight className="size-4" />
+                </span>
+              </button>
+
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+                <div className="min-w-0">
+                  <p className="font-mono text-[9.5px] tracking-[0.2em] text-paper/40 uppercase">API server</p>
+                  <p className="truncate font-mono text-[10.5px] text-paper/60">{getApiBase() || "same origin"}</p>
+                  {apiState && (
+                    <p
+                      className={cn(
+                        "mt-0.5 inline-flex items-center gap-1.5 font-mono text-[9.5px] font-semibold tracking-[0.14em] uppercase",
+                        apiState === "ok" ? "text-[#9ccf74]" : apiState === "down" ? "text-[#ff9b84]" : "text-paper/40"
+                      )}
+                    >
+                      <span className="size-1.5 rounded-full bg-current" />
+                      {apiState === "checking" ? "checking…" : apiState === "ok" ? "connected" : "unreachable"}
+                    </p>
+                  )}
+                </div>
+                <ServerSettingsButton className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] font-semibold text-paper/75 transition-colors hover:border-white/40 hover:text-paper">
+                  Change
+                </ServerSettingsButton>
               </div>
             </div>
           </div>

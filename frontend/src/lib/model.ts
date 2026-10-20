@@ -167,6 +167,41 @@ export function domainKeys(scores: Scores | undefined | null): string[] {
  *  per-module axes (e.g. a brand-new, unspecified check-in). */
 export const DOMAIN_KEYS: string[] = ["gross", "fine", "comm", "social", "cog", "adaptive"];
 
+export const MODULE_A_DOMAINS: string[] = DOMAIN_KEYS;
+
+/** Module B (school age) axis set. */
+export const MODULE_B_DOMAINS: string[] = [
+  "attention",
+  "listening_speaking",
+  "reading",
+  "writing",
+  "numbers",
+  "motor",
+  "social",
+  "emotion_conduct",
+];
+
+/** Backend domain id → design domain key. Module A ids are remapped to the
+ *  design's short keys; Module B ids are already the design's keys. */
+export const DOMAIN_MAP: Record<string, string> = {
+  gross_motor: "gross",
+  fine_motor: "fine",
+  communication: "comm",
+  personal_social: "social",
+  cognitive: "cog",
+  self_help: "adaptive",
+  attention: "attention",
+  listening_speaking: "listening_speaking",
+  reading: "reading",
+  writing: "writing",
+  numbers: "numbers",
+  motor: "motor",
+  emotion_conduct: "emotion_conduct",
+};
+
+/** Unknown ids pass through unchanged so new backend domains still render. */
+export const designDomain = (key: string): Domain => (DOMAIN_MAP[key] ?? key) as Domain;
+
 /* ------------------------------ display ------------------------------ */
 
 const _sig = (x: number) => 1 / (1 + Math.exp(-x));
