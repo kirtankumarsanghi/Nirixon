@@ -605,9 +605,7 @@ class DomainRouter:
                 }
         else:
             flagged_set = {
-                lab
-                for lab in LABELS
-                if lab != "safety" and probs[lab] >= self.thr[lab]
+                lab for lab in LABELS if lab != "safety" and probs[lab] >= self.thr[lab]
             }
 
         flagged = [lab for lab in LABELS if lab in flagged_set]

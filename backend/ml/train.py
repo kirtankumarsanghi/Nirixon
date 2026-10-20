@@ -82,10 +82,10 @@ from evaluation.subgroup_sensitivity import (
     sensitivity_by_family_history,
 )
 from explainability.shap_explainer import build_explainer, save_explainer
-from sklearn.base import clone
-from sklearn.ensemble import VotingClassifier
 from models.calibration import calibrate_model
 from models.model_comparison import run_grid_search
+from sklearn.base import clone
+from sklearn.ensemble import VotingClassifier
 
 RANDOM_STATE = SEED
 LATENCY_BENCHMARK_N = 200
@@ -998,12 +998,12 @@ def main():
             "target_recall": target_recall,
             "refer_threshold": round(refer_threshold, 6),
             "selected_on": "validation",
-            "test_refer_sensitivity": operating_point_metrics["sensitivity_specificity"][
-                "Refer"
-            ]["sensitivity"],
-            "test_refer_specificity": operating_point_metrics["sensitivity_specificity"][
-                "Refer"
-            ]["specificity"],
+            "test_refer_sensitivity": operating_point_metrics[
+                "sensitivity_specificity"
+            ]["Refer"]["sensitivity"],
+            "test_refer_specificity": operating_point_metrics[
+                "sensitivity_specificity"
+            ]["Refer"]["specificity"],
             "test_macro_f1": operating_point_metrics["macro_f1"],
             "test_flagged_share": round(
                 float(np.mean(np.asarray(policy_preds) == "Refer")), 4
