@@ -47,10 +47,9 @@ Thin-bracket fallback:
   that silently widens to coarser bins. A warning is emitted when fallback
   is triggered so it is visible during data regeneration, not silent.
 
-Thresholds on the composite score are picked empirically (see
-generate_synthetic_data.py) to land close to the target class balance
-(~73% Typical / 20% Monitor / 7% Refer) rather than hand-guessed, since
-guessing cutoffs rarely hits a target distribution by luck.
+Class prevalence is an observed outcome of the latent distribution and the
+ASQ-3-style cut-offs (~45.5% Typical / 40.6% Monitor / 13.9% Refer on the
+seeded 50k cohort), not a target chosen in advance.
 """
 
 from __future__ import annotations
