@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruff black pytest pytest-asyncio
+          pip install ruff black pytest pytest-asyncio pytest-cov
           pip install -r backend/requirements-ml.txt
           pip install -r backend/requirements.txt
 
@@ -55,7 +55,7 @@ jobs:
           # The adaptive-logic HTTP subset talks to the stub API on :8001.
           python -m uvicorn app.stub_api:app --port 8001 --log-level warning &
           sleep 3
-          python -m pytest tests/ -q --tb=short
+          python -m pytest tests/ -q --tb=short --cov=app --cov-report=term-missing
 
   frontend:
     name: Stage 5 — Frontend
@@ -79,6 +79,9 @@ jobs:
 
       - name: Typecheck
         run: npx tsc -b
+
+      - name: Lint (eslint)
+        run: npx eslint src
 
       - name: Unit tests
         run: npx vitest run

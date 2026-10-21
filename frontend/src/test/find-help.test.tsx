@@ -38,6 +38,14 @@ const nearby: FacilitiesResponse = {
       verified_at: null,
       specialty: ["pediatric"],
       relevance: { tier: 0, label: "Developmental / early-intervention service" },
+      trust: {
+        level: "unverified",
+        rank: 2,
+        label: "Mapped only — not verified",
+        verified_at: null,
+        verified_by: null,
+        source: "OpenStreetMap (ODbL)",
+      },
     },
     {
       id: 2,
@@ -54,12 +62,24 @@ const nearby: FacilitiesResponse = {
       verified_at: "2026-01-05",
       specialty: [],
       relevance: { tier: 2, label: "General facility" },
+      trust: {
+        level: "verified",
+        rank: 1,
+        label: "Confirmed by a Nirixon reviewer",
+        verified_at: "2026-01-05",
+        verified_by: "Nirixon reviewer",
+        source: "OpenStreetMap (ODbL)",
+      },
     },
   ],
   nearest_specialist: null,
   suggestions: [],
   advice: null,
   state_deic: { state: "Rajasthan", operational: 12, source: "Rajya Sabha Session 262" },
+  trust_summary: { unverified: 1, verified: 1 },
+  trust_note:
+    "Trust reflects where a listing came from, not a quality rating. Entries marked “mapped only” are crowd-sourced leads that may be closed, renamed or private — call before travelling.",
+  verified_only: false,
   helplines: [
     { name: "Tele-MANAS", number: "14416", note: "National tele-mental-health helpline" },
     { name: "Childline", number: "1098", note: "Child helpline" },
@@ -119,7 +139,11 @@ describe("Find Help against the facility directory", () => {
     const out = renderView();
     await searchFor("302031");
 
-    expect(mocks.get).toHaveBeenCalledWith("302031", { ageGroup: "0-5", limit: 12 });
+    expect(mocks.get).toHaveBeenCalledWith("302031", {
+      ageGroup: "0-5",
+      limit: 12,
+      verifiedOnly: false,
+    });
     await waitFor(() => expect(screen.getByText("SMS Hospital")).toBeInTheDocument());
     const text = out.container.textContent ?? "";
     expect(text).toContain("about 3.2 km");
@@ -129,8 +153,8 @@ describe("Find Help against the facility directory", () => {
     expect(screen.getByText("Jeevan Clinic")).toBeInTheDocument();
     expect(text).toContain("about 4.8 km");
     expect(text).not.toContain("null");
-    // Verified state is labelled honestly.
-    expect(screen.getByText("Not verified")).toBeInTheDocument();
+    // Provenance is labelled honestly: mapped-only vs human-verified.
+    expect(screen.getByText("Mapped only")).toBeInTheDocument();
     expect(screen.getByText(/Verified Jan 2026/)).toBeInTheDocument();
     expect(screen.getByText(/OpenStreetMap contributors/)).toBeInTheDocument();
   });
@@ -154,5 +178,20 @@ describe("Find Help against the facility directory", () => {
     fireEvent.click(screen.getByRole("button", { name: /find nearest help/i }));
     await waitFor(() => expect(screen.getByPlaceholderText("110029")).toHaveValue("12345"));
     expect(mocks.get).not.toHaveBeenCalled();
+  });
+
+  it("re-queries with the trusted-only filter when toggled", async () => {
+    mocks.get.mockResolvedValue(nearby);
+    renderView();
+    await searchFor("302031");
+
+    fireEvent.click(screen.getByRole("button", { name: /show trusted only/i }));
+    await waitFor(() =>
+      expect(mocks.get).toHaveBeenLastCalledWith("302031", {
+        ageGroup: "0-5",
+        limit: 12,
+        verifiedOnly: true,
+      }),
+    );
   });
 });

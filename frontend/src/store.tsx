@@ -3,8 +3,11 @@ import type { CheckIn, Child, Scores } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
 import { api, onUnauthorized, referralApi, setAuthToken } from "./api/client";
-import type { ChildRecord } from "./api/types";
+import type { ChildRecord, CHWSyncItem } from "./api/types";
 import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
+import type { Lang } from "./lib/i18n";
+import { clearAllOfflineData, enqueue, getCache, isNetworkError, newKey, putCache, queueCount } from "./lib/offlineQueue";
+import { flushQueue } from "./lib/offlineSync";
 
 /** Map a backend role string onto a design role id. Backend uses "internal"
  *  for clinicians; everything else passes through, unknown → "parent". */
@@ -36,6 +39,9 @@ interface AppCtx {
   canBack: boolean;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  /** App language (persisted); drives the migrated chrome strings. */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
 
   checkIns: CheckIn[];
   addCheckIn: (ci: CheckIn) => void;
@@ -52,6 +58,11 @@ interface AppCtx {
   error: string | null;
   reload: () => void;
 
+  /** Offline-first: queued quick-actions + connectivity. */
+  online: boolean;
+  pendingSync: number;
+  syncNow: () => Promise<void>;
+
   checkInTarget: string | null;
   setCheckInTarget: (id: string | null) => void;
   whatIfSeed: WhatIfSeed | null;
@@ -66,6 +77,17 @@ interface AppCtx {
 }
 
 const Ctx = createContext<AppCtx | null>(null);
+
+/** Build a queued sync operation for an offline quick-action. */
+function queuedOp(operation: CHWSyncItem["operation"], id: string, payload: Record<string, unknown> = {}): CHWSyncItem {
+  return {
+    idempotency_key: newKey(),
+    operation,
+    child_id: id,
+    payload,
+    client_timestamp: new Date().toISOString(),
+  };
+}
 
 /** Children for the active ward. Pages past the API's 500-row cap so a large
  *  caseload is never silently truncated (with a bound on runaway paging). */
@@ -95,6 +117,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [errorFor, setErrorFor] = useState<{ key: string; message: string } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [online, setOnline] = useState<boolean>(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [pendingSync, setPendingSync] = useState(0);
   const [checkInTarget, setCheckInTarget] = useState<string | null>(null);
   const [whatIfSeed, setWhatIfSeed] = useState<WhatIfSeed | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
@@ -110,6 +134,13 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     }
   });
   const timer = useRef<number | undefined>(undefined);
+  const [lang, setLang] = useState<Lang>(() => {
+    try {
+      return window.localStorage.getItem("nirixon-lang") === "hi" ? "hi" : "en";
+    } catch {
+      return "en";
+    }
+  });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -121,6 +152,15 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     }
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#071914" : "#fff4dc");
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("nirixon-lang", lang);
+    } catch {
+      /* private mode / restricted storage */
+    }
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   /* Browser back / forward / manual URL edits → state. */
   useEffect(() => {
@@ -166,10 +206,26 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
         }
         if (activeRole === "chw" || activeRole === "supervisor" || activeRole === "clinician") {
           const recs = await fetchAllChildren();
-          if (!cancelled) setChildren(recs.map(childRecordToChild));
+          if (!cancelled) {
+            setChildren(recs.map(childRecordToChild));
+            void putCache("children", recs); // offline read cache
+          }
         }
         if (!cancelled) setLoadedKey(activeRole);
       } catch (e) {
+        // Offline: fall back to the cached caseload so the worker can keep working.
+        if (!cancelled && (activeRole === "chw" || activeRole === "supervisor" || activeRole === "clinician")) {
+          try {
+            const cached = await getCache<ChildRecord[]>("children");
+            if (cached && cached.length) {
+              setChildren(cached.map(childRecordToChild));
+              setLoadedKey(activeRole);
+              return;
+            }
+          } catch {
+            /* no cache on this device */
+          }
+        }
         if (!cancelled) setErrorFor({ key: activeRole, message: e instanceof Error ? e.message : "Failed to load data" });
       }
     })();
@@ -208,6 +264,53 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
     timer.current = window.setTimeout(() => setToast(null), 2600);
   }, []);
 
+  // Clear any pending toast timer when the provider unmounts.
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const refreshPending = useCallback(async () => {
+    try {
+      setPendingSync(await queueCount());
+    } catch {
+      /* no offline store on this device */
+    }
+  }, []);
+
+  /** Push queued offline changes now (also runs automatically on reconnect). */
+  const syncNow = useCallback(async () => {
+    try {
+      const res = await flushQueue();
+      if (res.sent > 0) {
+        showToast(
+          res.failed
+            ? `${res.synced} synced · ${res.failed} need attention`
+            : `${res.synced} offline ${res.synced === 1 ? "change" : "changes"} synced`,
+        );
+      }
+      await refreshPending();
+      if (res.synced > 0) setReloadKey((k) => k + 1);
+    } catch {
+      // Still offline — keep the queue and retry on reconnect.
+      await refreshPending();
+    }
+  }, [refreshPending, showToast]);
+
+  useEffect(() => {
+    void refreshPending();
+    void syncNow();
+    const goOnline = () => {
+      setOnline(true);
+      void syncNow();
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const signIn = useCallback(
     async (email: string, password: string) => {
       const res = await api.login({ email, password });
@@ -233,37 +336,69 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   );
 
   // Any 401 inside the workspace means the token is gone/expired — drop it and
-  // return to sign-in instead of firing more doomed requests.
+  // return to sign-in instead of firing more doomed requests. Registered once;
+  // the current route is read through a ref so the handler never goes stale.
+  const routeScreenRef = useRef(route.screen);
+  useEffect(() => {
+    routeScreenRef.current = route.screen;
+  });
+
   useEffect(() => {
     onUnauthorized(() => {
       setAuthToken(null);
-      if (route.screen === "app") navigate({ screen: "login" }, true);
+      if (routeScreenRef.current === "app") navigate({ screen: "login" }, true);
     });
-  }, [navigate, route.screen]);
+  }, [navigate]);
 
-  /** Apply an optimistic caseload change, persist it, and roll back on failure. */
+  /** Apply an optimistic caseload change, persist it, and roll back on failure.
+   *  When the device is offline the change is queued (idempotent) and kept. */
   const mutateChild = useCallback(
-    async (id: string, optimistic: Partial<Child>, call: () => Promise<unknown>, failMsg: string) => {
+    async (
+      id: string,
+      optimistic: Partial<Child>,
+      call: () => Promise<unknown>,
+      failMsg: string,
+      offlineOp: () => CHWSyncItem,
+    ) => {
       const snapshot = children.find((c) => c.id === id);
       setChildren((prev) => prev.map((c) => (c.id === id ? { ...c, ...optimistic } : c)));
       try {
         await call();
-      } catch {
+        return;
+      } catch (e) {
+        if (isNetworkError(e)) {
+          try {
+            await enqueue(offlineOp());
+            await refreshPending();
+            showToast("Saved offline · will sync when you reconnect");
+            return;
+          } catch {
+            /* no offline store — fall through to rollback */
+          }
+        }
         if (snapshot) setChildren((prev) => prev.map((c) => (c.id === id ? snapshot : c)));
         showToast(failMsg);
       }
     },
-    [children, showToast],
+    [children, refreshPending, showToast],
   );
 
   const referChild = useCallback(
     (id: string, patch: Partial<Child>) =>
-      mutateChild(id, patch, () => referralApi.oneTouchReferral(id), "Referral failed — change reverted."),
+      mutateChild(
+        id,
+        patch,
+        () => referralApi.oneTouchReferral(id),
+        "Referral failed — change reverted.",
+        () => queuedOp("referral", id, { tier: "Tier 3: Direct Referral" }),
+      ),
     [mutateChild],
   );
   const contactChild = useCallback(
     (id: string, patch: Partial<Child>) =>
-      mutateChild(id, patch, () => referralApi.markContacted(id), "Could not record contact — change reverted."),
+      mutateChild(id, patch, () => referralApi.markContacted(id), "Could not record contact — change reverted.", () =>
+        queuedOp("contact", id),
+      ),
     [mutateChild],
   );
   const outcomeChild = useCallback(
@@ -277,6 +412,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
             close_referral: true,
           }),
         "Could not record outcome — change reverted.",
+        () => queuedOp("outcome", id, { outcome_notes: notes ?? "Outcome recorded from caseload", close_referral: true }),
       ),
     [mutateChild],
   );
@@ -294,6 +430,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       signInAs,
       signIn,
       logout: () => {
+        void clearAllOfflineData(); // shared-device wipe
         setAuthToken(null);
         navigate({ screen: "landing" });
       },
@@ -308,6 +445,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       canBack: histState().prevApp === true,
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+      lang,
+      setLang,
       checkIns,
       addCheckIn: (ci) => setCheckIns((p) => [ci, ...p]),
       children,
@@ -328,8 +467,11 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       loading,
       error,
       reload: () => setReloadKey((k) => k + 1),
+      online,
+      pendingSync,
+      syncNow,
     };
-  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, loading, error, referChild, contactChild, outcomeChild]);
+  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, lang, loading, error, online, pendingSync, syncNow, referChild, contactChild, outcomeChild]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }

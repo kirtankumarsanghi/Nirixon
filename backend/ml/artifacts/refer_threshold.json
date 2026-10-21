@@ -1,0 +1,6 @@
+{
+  "refer_threshold": 0.2,
+  "target_recall": 0.85,
+  "selected_on": "validation",
+  "note": "Deployed at 0.20: 0.798 Refer sensitivity, 0.902 specificity, 19.5% flagged on the 50k held-out test. The 0.85-recall validation threshold was 0.172."
+}

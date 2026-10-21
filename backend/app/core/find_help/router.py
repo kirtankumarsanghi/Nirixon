@@ -20,6 +20,7 @@ from .service import (
     RESULTS,
     connect_readonly,
     find_facilities,
+    find_facilities_near,
 )
 
 router = APIRouter(prefix="/api/facilities", tags=["find-help"])
@@ -46,8 +47,15 @@ def _db_path() -> str:
 @router.get("")
 def facilities(
     pin: Annotated[
-        str, Query(pattern=r"^[1-9][0-9]{5}$", description="6-digit Indian PIN code")
-    ],
+        str | None,
+        Query(pattern=r"^[1-9][0-9]{5}$", description="6-digit Indian PIN code"),
+    ] = None,
+    lat: Annotated[
+        float | None, Query(ge=-90, le=90, description="Latitude (used with lng)")
+    ] = None,
+    lng: Annotated[
+        float | None, Query(ge=-180, le=180, description="Longitude (used with lat)")
+    ] = None,
     type: Annotated[
         list[str] | None, Query(description="Filter by facility type; repeatable")
     ] = None,
@@ -61,7 +69,17 @@ def facilities(
     result: Annotated[
         str | None, Query(description="Screening result: typical | monitor | refer")
     ] = None,
+    verified_only: Annotated[
+        bool,
+        Query(
+            description="Return only government/programme or human-verified listings (drops mapped-only entries)"
+        ),
+    ] = False,
 ):
+    if (lat is None) != (lng is None):
+        raise HTTPException(422, "Provide both lat and lng, or a pin.")
+    if pin is None and lat is None:
+        raise HTTPException(422, "Provide a pin, or lat and lng.")
     if type:
         bad = [t for t in type if t not in FACILITY_TYPES]
         if bad:
@@ -79,6 +97,12 @@ def facilities(
         )
     conn = connect_readonly(path)
     try:
-        return find_facilities(conn, pin, type, limit, age_group, result)
+        if pin is not None:
+            return find_facilities(
+                conn, pin, type, limit, age_group, result, verified_only=verified_only
+            )
+        return find_facilities_near(
+            conn, lat, lng, type, limit, age_group, result, verified_only=verified_only
+        )
     finally:
         conn.close()

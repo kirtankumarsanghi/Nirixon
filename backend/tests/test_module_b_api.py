@@ -25,6 +25,7 @@ from app.core.module_b.engine_b import HEARING_CONCEPTS, VISION_CONCEPTS
 from app.core.module_b.service import module_b_service
 from app.core.safety_floor import MIN_DOMAINS_COVERED_B, MIN_REAL_ANSWERS_B
 from httpx import AsyncClient
+
 from tests.test_api import _auth, _login
 
 pytest_plugins = ("tests.test_api",)

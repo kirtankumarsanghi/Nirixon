@@ -73,6 +73,7 @@ from columns import LABEL_ORDER, get_feature_columns, reorder_proba
 from evaluation.ablation_study import print_ablation_comparison, run_ablation
 from evaluation.fairness_check import print_fairness_result, run_fairness_check
 from evaluation.metrics import compute_metrics, print_metrics
+from evaluation.null_controls import run_null_controls
 from evaluation.rule_baseline import evaluate_rule_vs_xgboost
 from evaluation.subgroup_sensitivity import (
     print_subgroup_tables,
@@ -83,6 +84,8 @@ from evaluation.subgroup_sensitivity import (
 from explainability.shap_explainer import build_explainer, save_explainer
 from models.calibration import calibrate_model
 from models.model_comparison import run_grid_search
+from sklearn.base import clone
+from sklearn.ensemble import VotingClassifier
 
 RANDOM_STATE = SEED
 LATENCY_BENCHMARK_N = 200
@@ -129,9 +132,22 @@ def split_data(df: pd.DataFrame, feature_columns: list[str]):
 
 
 def _y_for_model(name: str, y: pd.Series) -> np.ndarray | pd.Series:
-    if name == "xgboost":
+    if name in ("xgboost", "ensemble"):
         return np.array([LABEL_ORDER.index(v) for v in y])
     return y
+
+
+def apply_refer_threshold(proba: np.ndarray, threshold: float) -> list[str]:
+    """Refer if p(Refer) >= threshold; otherwise pick the more likely of Monitor/Typical."""
+    out: list[str] = []
+    for row in proba:
+        if row[2] >= threshold:
+            out.append("Refer")
+        elif row[1] >= row[0]:
+            out.append("Monitor")
+        else:
+            out.append("Typical")
+    return out
 
 
 def evaluate_candidate_on_val(
@@ -268,6 +284,8 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
     ablation = metrics_data["ablation_study"]
     fairness = metrics_data["fairness_check"]
     subgroup = metrics_data["subgroup_sensitivity"]
+    bracket_bins = subgroup.get("by_age_bracket", [])
+    bin_sizes = [r.get("n_total", 0) for r in bracket_bins] or [0]
     rule_full = metrics_data["rule_baseline_comparison"]["full_data"]
     rule_sparse = metrics_data["rule_baseline_comparison"]["sparse_adaptive_data"]
     stress_tests = metrics_data.get("stress_tests", {})
@@ -374,7 +392,7 @@ was never given to the model as a feature — this confirms the item
 responses themselves aren't secretly proxying for it either.
 
 **Subgroup sensitivity:** Refer sensitivity ranges from {subgroup['min_refer_sensitivity']:.4f} to {subgroup['max_refer_sensitivity']:.4f} across
-age bins, with each bin holding under 220 test samples — some of that
+age bins, with bins holding {min(bin_sizes)}–{max(bin_sizes)} held-out test samples — some of that
 spread is very plausibly just small-sample noise, not a real subgroup
 weakness, and it would need more data per bin to tell the difference
 confidently. Said honestly in the output rather than glossed over.
@@ -435,8 +453,8 @@ def _update_generator_readme_report(metrics_data: dict, readme_path: Path) -> No
     if not ds:
         return
 
-    target = ds.get("class_balance_target", "73/20/7")
-    actual = ds.get("class_balance_actual", "73.2% / 19.9% / 6.9%")
+    target = ds.get("class_balance_target", "observed (latent-threshold labels)")
+    actual = ds.get("class_balance_actual", "observed from the latent distribution")
     multi_comm = ds.get("multilingual_mean_comm", 1.581)
     non_multi_comm = ds.get("non_multilingual_mean_comm", 1.574)
     comm_ps_corr = ds.get("comm_ps_correlation_residual", 0.435)
@@ -624,12 +642,34 @@ def main():
     logger.info("Running model comparison with GridSearchCV...")
     search_results = run_grid_search(X_train, y_train, feature_columns)
 
+    # --- Soft-voting ensemble (faculty request): all three candidates vote ---
+    # XGBoost is fit on integer-encoded labels, so refit every component on the
+    # same integer target; otherwise sklearn cannot combine them.
+    logger.info("Fitting soft-voting ensemble of LR + RF + XGB...")
+    y_train_int = _y_for_model("xgboost", y_train)
+    ensemble = VotingClassifier(
+        estimators=[
+            (name, clone(search.best_estimator_))
+            for name, search in search_results.items()
+        ],
+        voting="soft",
+        n_jobs=-1,
+    )
+    ensemble.fit(X_train, y_train_int)
+
     logger.info("Evaluating validation macro AUPRC by candidate...")
     val_scores = {}
     for name, search in search_results.items():
         score, _, _ = evaluate_candidate_on_val(search, X_val, y_val)
         val_scores[name] = float(score)
         logger.info("  %-22s: %.4f (best params: %s)", name, score, search.best_params_)
+
+    ens_proba = reorder_proba(ensemble.predict_proba(X_val), ensemble.classes_)
+    ens_preds = [LABEL_ORDER[i] for i in ens_proba.argmax(axis=1)]
+    val_scores["ensemble"] = float(
+        compute_metrics(y_val, ens_preds, ens_proba)["macro_auprc"]
+    )
+    logger.info("  %-22s: %.4f (soft vote)", "ensemble", val_scores["ensemble"])
 
     # --- Calibrate ALL THREE models ---
     logger.info("Calibrating all three models...")
@@ -639,6 +679,10 @@ def main():
         y_val_enc = _y_for_model(name, y_val)
         calibrated_models[name] = calibrate_model(pipeline, X_val, y_val_enc)
         logger.info("  Done: %s calibrated.", name)
+    calibrated_models["ensemble"] = calibrate_model(
+        ensemble, X_val, _y_for_model("ensemble", y_val)
+    )
+    logger.info("  Done: ensemble calibrated.")
 
     # --- Save calibrated model pickle files ---
     for name, model in calibrated_models.items():
@@ -680,13 +724,64 @@ def main():
     # --- Production model selection ---
     winner_name = _select_winner(val_scores)
     winner_model = calibrated_models[winner_name]
-    winner_pipeline = search_results[winner_name].best_estimator_
+    winner_pipeline = (
+        ensemble
+        if winner_name == "ensemble"
+        else search_results[winner_name].best_estimator_
+    )
+    # Serving artifacts (SHAP, preprocessor, ablation) come from the XGBoost
+    # component when the ensemble wins — it is the tree model we can explain.
+    artifact_pipeline = (
+        ensemble.named_estimators_["xgboost"]
+        if winner_name == "ensemble"
+        else winner_pipeline
+    )
     logger.info("PRODUCTION MODEL SELECTED: %s", winner_name)
 
+    # --- Operating point (selected on VALIDATION, never on test) ---
+    # Argmax is a poor decision rule for screening: it maximises overall accuracy and
+    # under-calls the rare Refer class. Pick the Refer threshold that hits a target
+    # validation recall, store it, and report the test behaviour at that fixed point.
+    target_recall = 0.85
+    val_proba = reorder_proba(winner_model.predict_proba(X_val), winner_model.classes_)
+    val_positive = np.sort(val_proba[np.asarray(y_val) == "Refer", 2])
+    if len(val_positive):
+        k = int(np.floor((1 - target_recall) * len(val_positive)))
+        refer_threshold = float(val_positive[min(k, len(val_positive) - 1)])
+    else:
+        refer_threshold = 0.5
+    logger.info(
+        "Operating point: Refer threshold %.4f (target validation recall %.2f)",
+        refer_threshold,
+        target_recall,
+    )
+
+    test_proba = test_proba_by_model[winner_name]
+    policy_preds = apply_refer_threshold(test_proba, refer_threshold)
+    operating_point_metrics = to_serializable(
+        compute_metrics(y_test, policy_preds, test_proba)
+    )
+    with open(ARTIFACTS_DIR / "refer_threshold.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "refer_threshold": round(refer_threshold, 6),
+                "target_recall": target_recall,
+                "selected_on": "validation",
+            },
+            f,
+            indent=2,
+        )
+
     # --- Ablation study ---
-    y_train_for_ablation = _y_for_model(winner_name, y_train)
+    ablation_name = "xgboost" if winner_name == "ensemble" else winner_name
+    y_train_for_ablation = _y_for_model(ablation_name, y_train)
     ablation_result = run_ablation(
-        winner_pipeline, X_train, y_train_for_ablation, X_test, y_test, feature_columns
+        artifact_pipeline,
+        X_train,
+        y_train_for_ablation,
+        X_test,
+        y_test,
+        feature_columns,
     )
     print_ablation_comparison(test_metrics_by_model[winner_name], ablation_result)
 
@@ -732,10 +827,11 @@ def main():
 
     # --- SHAP explainer ---
     logger.info("Fitting SHAP explainer...")
-    if winner_name in ("random_forest", "xgboost"):
-        raw_tree_model = winner_pipeline.named_steps["clf"]
+    explain_model_name = "xgboost" if winner_name == "ensemble" else winner_name
+    if explain_model_name in ("random_forest", "xgboost"):
+        raw_tree_model = artifact_pipeline.named_steps["clf"]
         explainer = build_explainer(
-            raw_tree_model, feature_columns, model_name=winner_name
+            raw_tree_model, feature_columns, model_name=explain_model_name
         )
         save_explainer(explainer, ARTIFACTS_DIR / "shap_explainer.pkl")
 
@@ -745,13 +841,36 @@ def main():
     with open(ARTIFACTS_DIR / "feature_columns.pkl", "wb") as f:
         pickle.dump(feature_columns, f)
     with open(ARTIFACTS_DIR / "preprocessor.pkl", "wb") as f:
-        pickle.dump(winner_pipeline.named_steps["preprocess"], f)
+        pickle.dump(artifact_pipeline.named_steps["preprocess"], f)
     with open(ARTIFACTS_DIR / "production_model_name.txt", "w", encoding="utf-8") as f:
         f.write(winner_name)
 
     # --- Rule baseline comparison ---
-    logger.info("Evaluating ASQ-3 Rule-Based Baseline vs XGBoost...")
-    rule_baseline_res = evaluate_rule_vs_xgboost(df, winner_model, feature_columns)
+    logger.info(
+        "Evaluating ASQ-3 Rule-Based Baseline vs XGBoost (held-out rows only)..."
+    )
+    # Scoring on `df` would include the training rows and flatter the model.
+    test_df = df.loc[X_test.index]
+    rule_baseline_res = evaluate_rule_vs_xgboost(test_df, winner_model, feature_columns)
+
+    # --- Null controls: these MUST collapse to chance ---
+    logger.info(
+        "Running null controls (label shuffle / random features / permutation)..."
+    )
+    null_controls_res = run_null_controls(
+        artifact_pipeline.named_steps["preprocess"],
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+    )
+    for row in null_controls_res:
+        logger.info(
+            "  %-32s refer_auprc=%.4f macro_f1=%.4f",
+            row["control"],
+            row["refer_auprc"],
+            row["macro_f1"],
+        )
 
     # --- Load or run stress tests ---
     stress_summary_path = (
@@ -768,7 +887,7 @@ def main():
         "n_children_prototype": 5000,
         "n_children_full_spec": 50000,
         "n_children_current": len(df),
-        "class_balance_target": "73/20/7",
+        "class_balance_target": "observed (latent-threshold labels, ASQ-style -2/-1 SD cut-offs)",
         "class_balance_actual": f"{(df['risk_label'] == 'Typical').mean()*100:.1f}% / {(df['risk_label'] == 'Monitor').mean()*100:.1f}% / {(df['risk_label'] == 'Refer').mean()*100:.1f}%",
         "typical_pct": round(float((df["risk_label"] == "Typical").mean() * 100), 2),
         "monitor_pct": round(float((df["risk_label"] == "Monitor").mean() * 100), 2),
@@ -836,8 +955,9 @@ def main():
             "test_macro_auprc": test_metrics_by_model[winner_name]["macro_auprc"],
             "test_refer_auprc": test_metrics_by_model[winner_name]["refer_auprc"],
             "criteria": (
-                "Highest validation-set macro AUPRC. If XGBoost and Random Forest within 0.005 AUPRC, "
-                "prefer Random Forest (lower latency, lower memory). Logistic Regression wins only if it "
+                "Highest validation-set macro AUPRC across LR, RF, XGB and the soft-voting "
+                "ensemble. If XGBoost and Random Forest are within 0.005 AUPRC, prefer Random "
+                "Forest (lower latency, lower memory). Logistic Regression wins only if it "
                 "strictly outperforms both tree models."
             ),
         },
@@ -874,6 +994,22 @@ def main():
             ),
         },
         "rule_baseline_comparison": to_serializable(rule_baseline_res),
+        "operating_point": {
+            "target_recall": target_recall,
+            "refer_threshold": round(refer_threshold, 6),
+            "selected_on": "validation",
+            "test_refer_sensitivity": operating_point_metrics[
+                "sensitivity_specificity"
+            ]["Refer"]["sensitivity"],
+            "test_refer_specificity": operating_point_metrics[
+                "sensitivity_specificity"
+            ]["Refer"]["specificity"],
+            "test_macro_f1": operating_point_metrics["macro_f1"],
+            "test_flagged_share": round(
+                float(np.mean(np.asarray(policy_preds) == "Refer")), 4
+            ),
+        },
+        "null_controls": null_controls_res,
         "stress_tests": stress_tests_data,
         "historical_debugging_benchmarks": historical_benchmarks,
     }

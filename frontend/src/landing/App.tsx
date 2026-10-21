@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -20,6 +20,16 @@ import { Audience, Compare } from "./sections/Reach";
 gsap.registerPlugin(ScrollTrigger);
 
 export default function App() {
+  // Bumping this key remounts <Hero>, which re-runs the introduction sequence.
+  const [introRun, setIntroRun] = useState(0);
+
+  /** Replay the opening introduction from the landing navigation. */
+  const replayIntro = () => {
+    (window as Window & { __NIRIXON_PLAY_INTRO?: boolean }).__NIRIXON_PLAY_INTRO = true;
+    window.scrollTo({ top: 0, behavior: "auto" });
+    setIntroRun((run) => run + 1);
+  };
+
   // Smooth scrolling wired into GSAP's ticker so ScrollTrigger stays in sync
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -76,10 +86,10 @@ export default function App() {
           <PersistentPortrait />
           <div className="relative z-10">
             <ScrollRail />
-            <Navbar />
+            <Navbar onReplayIntro={replayIntro} />
             <FloatingViewSwitcher />
             <main>
-              <Hero />
+              <Hero key={introRun} />
               <CinematicSequence />
               <TrustMarquee />
               <Proof />

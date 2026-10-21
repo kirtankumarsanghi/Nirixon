@@ -1,0 +1,4 @@
+indicator,metric,age_min_months,age_max_months,value_pct,source,year,notes
+asq3_global_delay_rural_north_india,refer_pct,6,36,20.0,"J Family Med Prim Care (ASQ-3, rural North India)",2025,"n=400; tertiary OPD/immunization clinic; global developmental delay. Comparator for the Refer tier."
+gdd_under2_lower,refer_pct,0,24,1.0,"Indian Pediatrics review",2023,"Lower bound of the reported 1-2.5% range for global delay under 2 years; different tools and definitions."
+gdd_under2_upper,refer_pct,0,24,2.5,"Indian Pediatrics review",2023,"Upper bound of the reported range; comparator for the Refer tier."

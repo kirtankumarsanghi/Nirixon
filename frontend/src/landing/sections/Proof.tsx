@@ -190,8 +190,9 @@ export function Proof() {
                         </div>
                       </div>
                       <p className="mt-4 text-[12.5px] leading-relaxed text-fog">
-                        <strong>Clinical triage safety:</strong> Of the 21 cases not flagged as Refer on first pass,
-                        18 were triaged into <em>Monitor</em> for targeted follow-up. Only 3 true Refer cases were classified as Typical.
+                        <strong>Clinical triage safety:</strong> At the screening operating point, 1,112 of 1,394
+                        Refer cases are flagged. Of the 282 not flagged on first pass, 198 were triaged into
+                        <em>Monitor</em> for targeted follow-up; 84 were classified as Typical.
                       </p>
                     </div>
                   </div>
@@ -201,13 +202,16 @@ export function Proof() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="border border-bone/15 p-6">
                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">
-                      {claims.module_a_accuracy.label}
+                      {claims.module_a_macro_f1.label}
                     </p>
                     <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
-                      {claims.module_a_accuracy.display}
+                      {claims.module_a_macro_f1.display}
                     </p>
-                    <p className="mt-2 text-[12.5px] text-fog">Held-out test set accuracy across 3 tiers.</p>
-                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_accuracy.source_file}</p>
+                    <p className="mt-2 text-[12.5px] text-fog">
+                      Three-tier macro F1 on a held-out <em>synthetic</em> cohort. Raw accuracy is
+                      misleading at a 45.5% Typical base rate.
+                    </p>
+                    <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_macro_f1.source_file}</p>
                   </div>
 
                   <div className="border border-bone/15 p-6">
@@ -217,7 +221,7 @@ export function Proof() {
                     <p className="mt-3 font-display text-[2.8rem] leading-none text-bone">
                       {claims.module_a_macro_auroc.display}
                     </p>
-                    <p className="mt-2 text-[12.5px] text-fog">Macro F1: {claims.module_a_macro_f1.display}</p>
+                    <p className="mt-2 text-[12.5px] text-fog">Refer recall: {claims.module_a_refer_recall.display}</p>
                     <p className="mt-3 text-[10.5px] font-mono text-faint">{claims.module_a_macro_auroc.source_file}</p>
                   </div>
 
@@ -364,9 +368,13 @@ export function Proof() {
                     </div>
                     <p className="mt-2 text-[13px] leading-relaxed text-fog">
                       In router evaluations, the ML classifier alone achieved only <strong>{claims.module_b_safety_hybrid_proof.classifier_only_safety_recall}% safety recall</strong> on crisis phrases.
-                      By combining deterministic rule scanning with multi-label logistic regression, the hybrid architecture achieves{" "}
-                      <strong>{claims.module_b_safety_hybrid_proof.hybrid_safety_recall}% safety recall</strong> while delivering <strong>{claims.module_b_safety_hybrid_proof.hybrid_domain_recall}% domain recall</strong> (F1: {claims.module_b_domain_f1.display})
-                      and {claims.module_b_questions_range.display}.
+                      The shipped rules-primary router keeps{" "}
+                      <strong>{claims.module_b_safety_recall.display} safety recall</strong>, reaches{" "}
+                      <strong>{claims.module_b_domain_recall.display} domain recall</strong> on generated text
+                      (F1: {claims.module_b_domain_f1.display}), and scores{" "}
+                      <strong>{claims.module_b_handwritten_eval.micro_f1}% F1</strong> on{" "}
+                      {claims.module_b_handwritten_eval.notes_n} independent handwritten notes
+                      across {claims.module_b_questions_range.display}.
                     </p>
                   </div>
                 </div>

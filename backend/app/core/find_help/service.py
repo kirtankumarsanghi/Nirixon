@@ -6,6 +6,7 @@ No patient data is stored or logged here: the PIN a caregiver types is only used
 
 from __future__ import annotations
 
+import collections
 import math
 import sqlite3
 import statistics
@@ -40,6 +41,22 @@ TIER_LABELS = {
     1: "Referral hospital or related child-health service",
     2: "General facility",
 }
+
+# Trust is provenance, not a quality rating, and it is the FIRST ranking key once a
+# screening context exists: an official DEIC 15 km away matters more than an
+# unmapped clinic next door. Levels are derived at import time from the source
+# (see scripts/find_help/import_reference_data.py: derive_trust) and never invented.
+TRUST_ORDER = {"official": 0, "verified": 1, "unverified": 2}
+TRUST_LABELS = {
+    "official": "Government / programme listing",
+    "verified": "Confirmed by a Nirixon reviewer",
+    "unverified": "Mapped only — not verified",
+}
+TRUST_NOTE = (
+    "Trust reflects where a listing came from, not a quality rating. Start with the "
+    "government listings (DEIC / RBSK / district hospital). Entries marked “mapped only” "
+    "are crowd-sourced leads that may be closed, renamed or private — call before travelling."
+)
 ADVICE = {
     "refer": "The screening suggests a specialist assessment. Contact one of the centres below soon; a DEIC (free, "
     "government) or a district hospital paediatric department is the usual first stop. Ask for a developmental assessment.",
@@ -201,6 +218,27 @@ def _tags(row: sqlite3.Row) -> set[str]:
     return {t for t in (raw or "").split(",") if t}
 
 
+def _column(row: sqlite3.Row, name: str) -> str | None:
+    """Column read that survives a reference DB built before the column existed."""
+    try:
+        return row[name] or None
+    except (IndexError, KeyError):
+        return None
+
+
+def trust_of(row: sqlite3.Row) -> str:
+    """Trust level for a row. Older reference DBs (no `trust` column) are derived from
+    provenance instead of failing, so an existing build keeps working."""
+    value = _column(row, "trust")
+    if value in TRUST_ORDER:
+        return value
+    return "verified" if _column(row, "verified_at") else "unverified"
+
+
+def is_trusted(row: sqlite3.Row) -> bool:
+    return trust_of(row) in ("official", "verified")
+
+
 def tier_of(row: sqlite3.Row, age_group: str | None) -> int:
     """0 = developmental/early-intervention fit, 1 = referral hospital or related, 2 = general. Name-keyword based."""
     tags = _tags(row)
@@ -214,6 +252,7 @@ def tier_of(row: sqlite3.Row, age_group: str | None) -> int:
 
 def _shape(row: sqlite3.Row, km: float, age_group: str | None = None) -> dict:
     tier = tier_of(row, age_group)
+    trust = trust_of(row)
     return {
         "id": row["id"],
         "name": row["name"],
@@ -226,18 +265,28 @@ def _shape(row: sqlite3.Row, km: float, age_group: str | None = None) -> dict:
         "lat": row["lat"],
         "lng": row["lng"],
         "source": row["source"],
-        "verified_at": row["verified_at"] or None,
+        "verified_at": _column(row, "verified_at"),
         "specialty": sorted(_tags(row)),
         "relevance": {"tier": tier, "label": TIER_LABELS[tier]},
+        "trust": {
+            "level": trust,
+            "rank": TRUST_ORDER[trust],
+            "label": TRUST_LABELS[trust],
+            "verified_at": _column(row, "verified_at"),
+            "verified_by": _column(row, "verified_by"),
+            "source": _column(row, "source"),
+        },
     }
 
 
 def _ranked(rows, lat, lng, limit, age_group=None, by_relevance=False):
     scored = [(haversine_km(lat, lng, r["lat"], r["lng"]), r) for r in rows]
     if by_relevance:
-        # official DEIC/RBSK first, then keyword-matched developmental services, then referral/general; nearest first within each
+        # Provenance first (official > verified > mapped-only), then developmental fit,
+        # then official DEIC/RBSK, then distance. Nearest first within each group.
         scored.sort(
             key=lambda t: (
+                TRUST_ORDER[trust_of(t[1])],
                 tier_of(t[1], age_group),
                 t[1]["type"] not in ("DEIC", "RBSK"),
                 t[0],
@@ -255,11 +304,18 @@ def find_facilities(
     limit: int = 10,
     age_group: str | None = None,
     result: str | None = None,
+    *,
+    loc: dict | None = None,
+    verified_only: bool = False,
 ) -> dict:
-    """age_group ("0-5" | "6-12") ranks developmental/early-intervention services first, then referral hospitals,
-    then everything else, nearest first within each group. Without age_group the order is plain distance.
+    """age_group ("0-5" | "6-12") ranks official/verified developmental services first, then
+    referral hospitals, then everything else, nearest first within each group. Without age_group
+    the order is plain distance.
+
+    Pass `loc` to search around explicit coordinates (GPS) instead of a PIN.
+    Pass `verified_only` to drop mapped-only (unverified) listings entirely.
     """
-    loc = resolve_pin(conn, pin)
+    loc = loc or resolve_pin(conn, pin)
     response = {
         "pin": pin,
         "age_group": age_group,
@@ -272,6 +328,9 @@ def find_facilities(
         "advice": ADVICE.get(result or ""),
         "state_deic": None,
         "helplines": HELPLINES,
+        "trust_summary": {},
+        "trust_note": TRUST_NOTE,
+        "verified_only": verified_only,
     }
     if loc is None:
         return response
@@ -316,6 +375,8 @@ def find_facilities(
         for r in rows
         if haversine_km(loc["lat"], loc["lng"], r["lat"], r["lng"]) <= NEARBY_KM
     ]
+    if verified_only:
+        near = [r for r in near if is_trusted(r)]
     if near:
         response["coverage"] = "nearby"
         response["facilities"] = [
@@ -331,6 +392,8 @@ def find_facilities(
             rows = conn.execute(
                 f"SELECT * FROM facilities WHERE {where}{tclause}", [*args, *targs]
             ).fetchall()
+            if verified_only:
+                rows = [r for r in rows if is_trusted(r)]
             ranked = _ranked(rows, loc["lat"], loc["lng"], limit, age_group, rank)
             if ranked:
                 response["coverage"] = level
@@ -348,7 +411,78 @@ def find_facilities(
             (loc["state"],),
         ).fetchall()
         cand = [r for r in cand if tier_of(r, age_group) == 0]
+        if verified_only:
+            cand = [r for r in cand if is_trusted(r)]
         best = _ranked(cand, loc["lat"], loc["lng"], 1)
         if best:
             response["nearest_specialist"] = _shape(best[0][1], best[0][0], age_group)
+    response["trust_summary"] = dict(
+        collections.Counter(f["trust"]["level"] for f in response["facilities"])
+    )
     return response
+
+
+def _empty_response(label: str, age_group: str | None, result: str | None) -> dict:
+    return {
+        "pin": label,
+        "age_group": age_group,
+        "result": result,
+        "resolved": None,
+        "coverage": "none",
+        "facilities": [],
+        "nearest_specialist": None,
+        "suggestions": build_suggestions(None, age_group, None),
+        "advice": ADVICE.get(result or ""),
+        "state_deic": None,
+        "helplines": HELPLINES,
+        "trust_summary": {},
+        "trust_note": TRUST_NOTE,
+        "verified_only": False,
+    }
+
+
+def resolve_coords(conn: sqlite3.Connection, lat: float, lng: float) -> dict | None:
+    """District/state come from the nearest PIN row; the origin stays the caller's point."""
+    row = conn.execute(
+        "SELECT district, state FROM pincodes "
+        "ORDER BY ((lat-?)*(lat-?)) + ((lng-?)*(lng-?)) LIMIT 1",
+        (lat, lat, lng, lng),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "district": row["district"],
+        "state": row["state"],
+        "lat": lat,
+        "lng": lng,
+        "approximate": False,
+        "match": "gps",
+    }
+
+
+def find_facilities_near(
+    conn: sqlite3.Connection,
+    lat: float,
+    lng: float,
+    types: list[str] | None = None,
+    limit: int = 10,
+    age_group: str | None = None,
+    result: str | None = None,
+    *,
+    verified_only: bool = False,
+) -> dict:
+    """Nearest facilities around a GPS point (same ranking as the PIN path)."""
+    label = f"{lat:.4f}, {lng:.4f}"
+    point = resolve_coords(conn, lat, lng)
+    if point is None:
+        return _empty_response(label, age_group, result)
+    return find_facilities(
+        conn,
+        label,
+        types,
+        limit,
+        age_group,
+        result,
+        loc=point,
+        verified_only=verified_only,
+    )

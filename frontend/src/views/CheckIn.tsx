@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, Printer, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
+import { QuestionAudio } from "../components/QuestionAudio";
+import { caregiverPlanBody, printSheet } from "../lib/printSheet";
+import { loadModuleBHindi } from "../lib/moduleBHi";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
   DOMAINS,
+  MODULE_A_DOMAINS,
+  MODULE_B_DOMAINS,
   TIER_META,
   ageBand,
+  designDomain,
   domainStatus,
   evaluate,
   type CheckIn as CheckInT,
@@ -73,17 +79,6 @@ const REGRESSION_Q: Record<Lang, string> = {
   hi: "क्या बच्चे ने कोई ऐसा काम करना बंद कर दिया जो पहले करता था?",
 };
 
-const MODULE_A_DOMAINS = ["gross", "fine", "comm", "social", "cog", "adaptive"];
-const MODULE_B_DOMAINS = ["attention", "listening_speaking", "reading", "writing", "numbers", "motor", "social", "emotion_conduct"];
-const DESIGN_OF: Record<string, string> = {
-  gross_motor: "gross",
-  fine_motor: "fine",
-  communication: "comm",
-  personal_social: "social",
-  cognitive: "cog",
-  self_help: "adaptive",
-};
-const designDomain = (k: string) => DESIGN_OF[k] ?? k;
 const moduleForAge = (m: number): Module => (m >= 60 ? "B" : "A");
 const barW = (z: number) => `${((Math.max(-3, Math.min(1, z)) + 3) / 4) * 100}%`;
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Connection problem — please try again.");
@@ -97,13 +92,12 @@ function toBackendAnswer(responseType: string | undefined, val: DesignVal): numb
 }
 
 export function CheckIn() {
-  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast } = useApp();
+  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast, lang, setLang } = useApp();
   const assisting = role !== "parent";
   const initialChild = children.find((c) => c.id === checkInTarget);
   const initialAge = initialChild?.ageMonths ?? (assisting ? 30 : 39);
 
   const [phase, setPhase] = useState<Phase>("setup");
-  const [lang, setLang] = useState<Lang>("en");
   const [target, setTarget] = useState<string>(() => checkInTarget ?? "");
   const targetChild = children.find((c) => c.id === target);
   const [name, setName] = useState(assisting ? "" : "Aarav");
@@ -129,6 +123,18 @@ export function CheckIn() {
   const [recallPicked, setRecallPicked] = useState<string[]>([]);
   const [safetyMessage, setSafetyMessage] = useState("");
   const [helplines, setHelplines] = useState<Record<string, string>>({});
+  const [moduleBHi, setModuleBHi] = useState<Record<string, string> | null>(null);
+
+  useEffect(() => {
+    if (module !== "B") return;
+    let cancelled = false;
+    void loadModuleBHindi().then((map) => {
+      if (!cancelled) setModuleBHi(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [module]);
 
   useEffect(() => () => setCheckInTarget(null), [setCheckInTarget]);
 
@@ -208,7 +214,6 @@ export function CheckIn() {
       }
       window.scrollTo({ top: 0 });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [targetChild, name, assisting, module, patchChild, reload]
   );
 
@@ -262,7 +267,6 @@ export function CheckIn() {
       }
       setPhase("setup");
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [finalize, sessionId, showToast]
   );
 
@@ -455,16 +459,23 @@ export function CheckIn() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `submit` closes over live state, so reference the latest one through a ref
+  // rather than re-registering the key listener on every render.
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+
   useEffect(() => {
     if (phase !== "quiz") return;
     const k = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
       const i = ["1", "2", "3"].indexOf(e.key);
-      if (i >= 0) void submit(ANSWER_OPTIONS[i].val);
+      if (i >= 0) void submitRef.current(ANSWER_OPTIONS[i].val);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  });
+  }, [phase]);
 
   const chooseModule = (next: Module) => {
     setModule(next);
@@ -660,6 +671,27 @@ export function CheckIn() {
       }
       return DOMAINS[k]?.activity ?? "";
     };
+    const printPlan = () => {
+      const items = lows
+        .map((k) => {
+          const acts = (backendResult?.activities as Record<string, unknown> | undefined)?.[k];
+          const raw = Array.isArray(acts) && acts.length ? acts[0] : null;
+          const obj = raw && typeof raw === "object" ? (raw as { title?: string; steps?: string; minutes?: number }) : null;
+          return {
+            label: DOMAINS[k]?.label ?? k,
+            activity: (typeof raw === "string" ? raw : obj?.title) ?? DOMAINS[k]?.activity ?? "",
+            detail: obj?.steps ?? (obj?.minutes ? `${obj.minutes} min` : undefined),
+          };
+        })
+        .filter((i) => i.activity);
+      printSheet(
+        "Nirixon home activities",
+        caregiverPlanBody(items, {
+          childId: targetChild?.id,
+          date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+        }),
+      );
+    };
     return (
       <Page>
         <section className="relative overflow-hidden rounded-[44px] bg-night text-paper">
@@ -729,6 +761,7 @@ export function CheckIn() {
                 </>
               )}
               <Btn variant={tier === "Refer" ? "rust" : "light"} onClick={() => go("help")}><MapPin className="size-4" /> Find help</Btn>
+              <Btn variant="light" onClick={printPlan}><Printer className="size-4" /> Print plan</Btn>
               <Btn variant="soft" onClick={() => { setPhase("setup"); setResult(null); setBackendResult(null); setTarget(""); setQuestion(null); setAnswers({}); persistSession(null); window.scrollTo({ top: 0 }); }}>
                 <RotateCcw className="size-4" /> Another
               </Btn>
@@ -965,13 +998,23 @@ export function CheckIn() {
                   <p className="text-[14.5px] font-bold">Nirixon</p>
                   <p className="text-[12px] text-muted">{targetChild ? targetChild.id : name || "Sample child"} · {age} months · Module {module}</p>
                 </div>
-                <button
-                  onClick={() => setLang(lang === "en" ? "hi" : "en")}
-                  className="ml-auto rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
-                  aria-label="Switch language"
-                >
-                  {lang === "en" ? "हिन्दी" : "EN"}
-                </button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  {question && (
+                    <QuestionAudio
+                      itemId={question.item_id}
+                      lang={lang}
+                      text={qText}
+                      hindiText={moduleBHi?.[question.item_id]}
+                    />
+                  )}
+                  <button
+                    onClick={() => setLang(lang === "en" ? "hi" : "en")}
+                    className="rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
+                    aria-label="Switch language"
+                  >
+                    {lang === "en" ? "हिन्दी" : "EN"}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-5 px-6">

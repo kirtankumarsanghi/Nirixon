@@ -34,3 +34,24 @@ backend/ml/evaluation/artifacts/
 backend/ml/validation/results/
 backend/ml/validation/results_production/
 backend/ml/validation/scratch/
+
+# Tool caches and coverage artifacts (never commit these)
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Local archives (handoff bundles etc.)
+*.zip
+
+# Module B Hindi clips are synthesized on demand at runtime (disposable cache)
+backend/static/audio/generated/
+
+# Oversized local model exports (regenerate with backend/ml/train.py; GitHub rejects >100MB)
+backend/ml/artifacts/model_ensemble.pkl
+
+# Generated Find Help facility extract (rebuild: backend/scripts/find_help/import_mohfw_arcgis.py)
+backend/data/find_help/facilities/mohfw_health_facilities.csv

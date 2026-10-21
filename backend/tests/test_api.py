@@ -125,7 +125,9 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _run_full_session(client: AsyncClient, token: str, *, regression: int = 0):
+async def _run_full_session(
+    client: AsyncClient, token: str, *, regression: int = 0, answer_value: int = 1
+):
     r = await client.post(
         "/api/screen/start",
         headers=_auth(token),
@@ -147,7 +149,7 @@ async def _run_full_session(client: AsyncClient, token: str, *, regression: int 
         elif item_id in ("family_history_flag",):
             answer = 0
         else:
-            answer = 1
+            answer = answer_value
         r = await client.post(
             f"/api/screen/{session_id}/answer",
             headers=_auth(token),

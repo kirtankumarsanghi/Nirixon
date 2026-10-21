@@ -1,0 +1,208 @@
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Pause, Volume2 } from "lucide-react";
+import { shareApi, resolveApiUrl } from "../api/client";
+import type { AudioItemQueryResponse } from "../api/types";
+import { cn } from "../utils/cn";
+
+const speechAvailable = () =>
+  typeof window !== "undefined" &&
+  "speechSynthesis" in window &&
+  typeof SpeechSynthesisUtterance !== "undefined";
+
+function pickVoice(lang: "en" | "hi"): SpeechSynthesisVoice | undefined {
+  if (!speechAvailable()) return undefined;
+  const prefix = lang === "hi" ? "hi" : "en";
+  return window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith(prefix));
+}
+
+/**
+ * Plays narration for a question.
+ *
+ * 1. If the server has a reviewed clip (Module A, mandatory flags) it plays that
+ *    MP3 — including the validated Hindi transcript.
+ * 2. Otherwise it speaks: the Hindi rendition when one exists (Module A manifest
+ *    text, or the translated Module B map), else the English on-screen question.
+ *    Speed applies to every path.
+ */
+export function QuestionAudio({
+  itemId,
+  lang,
+  text,
+  hindiText,
+  className,
+}: {
+  itemId: string;
+  lang: "en" | "hi";
+  /** The question currently on screen; used when no pre-recorded clip exists. */
+  text?: string;
+  /** Hindi rendition of the question, when the bank provides one (Module B). */
+  hindiText?: string;
+  className?: string;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  const [entry, setEntry] = useState<AudioItemQueryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [rate, setRate] = useState<1 | 0.8>(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (speechAvailable()) window.speechSynthesis.cancel();
+    setEntry(null);
+    setPlaying(false);
+    setLoading(true);
+    shareApi
+      .getAudioItem(itemId, lang)
+      .then((res) => {
+        if (!cancelled) setEntry(res);
+      })
+      .catch(() => {
+        if (!cancelled) setEntry(null); // fall through to speech synthesis
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      if (speechAvailable()) window.speechSynthesis.cancel();
+    };
+  }, [itemId, lang]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) audio.playbackRate = rate;
+  }, [rate, entry]);
+
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <span className={cn("grid size-8 place-items-center text-muted", className)} aria-hidden>
+        <Loader2 className="size-3.5 animate-spin" />
+      </span>
+    );
+  }
+
+  const audioSrc = entry?.audio?.audio_url ? resolveApiUrl(entry.audio.audio_url) : undefined;
+  const serverAudio = Boolean(entry?.has_audio && audioSrc);
+
+  // Reviewed clip wins. Otherwise speak the Hindi rendition when one exists
+  // (Module A manifest text or the translated Module B map); otherwise fall back
+  // to the English source and tag the control rather than showing nothing.
+  const hindiSource = lang === "hi" ? (entry?.text ?? hindiText) : undefined;
+  const englishText = text ?? entry?.text ?? undefined;
+  let speakText: string | undefined;
+  let speechLang: "en" | "hi" = lang;
+  if (!serverAudio) {
+    if (lang === "hi") {
+      if (hindiSource) {
+        speakText = hindiSource;
+      } else if (englishText) {
+        speakText = englishText;
+        speechLang = "en";
+      }
+    } else {
+      speakText = englishText;
+    }
+  }
+  const englishFallback = !serverAudio && lang === "hi" && speechLang === "en";
+  const canSpeak = Boolean(speakText) && speechAvailable();
+
+  if (!serverAudio && !canSpeak) return null;
+
+  const toggle = async () => {
+    if (serverAudio && audioSrc) {
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (playing) {
+        audio.pause();
+        setPlaying(false);
+        return;
+      }
+      audio.currentTime = 0;
+      audio.playbackRate = rate;
+      try {
+        await audio.play();
+        setPlaying(true);
+      } catch {
+        // Some Android WebViews refuse to stream cross-origin media directly
+        // (mixed content / media cache). Fetch it and play from a blob URL.
+        try {
+          const res = await fetch(audioSrc);
+          if (!res.ok) throw new Error(`Audio ${res.status}`);
+          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = URL.createObjectURL(await res.blob());
+          audio.src = blobUrlRef.current;
+          audio.load();
+          audio.playbackRate = rate;
+          await audio.play();
+          setPlaying(true);
+        } catch {
+          setPlaying(false);
+        }
+      }
+      return;
+    }
+
+    const synth = window.speechSynthesis;
+    if (synth.speaking) {
+      synth.cancel();
+      setPlaying(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(speakText as string);
+    utterance.lang = speechLang === "hi" ? "hi-IN" : "en-IN";
+    const voice = pickVoice(speechLang);
+    if (voice) utterance.voice = voice;
+    utterance.rate = rate;
+    utterance.onend = () => setPlaying(false);
+    utterance.onerror = () => setPlaying(false);
+    synth.cancel();
+    synth.speak(utterance);
+    setPlaying(true);
+  };
+
+  return (
+    <span className={cn("inline-flex items-center gap-0.5", className)}>
+      {serverAudio && (
+        <audio ref={audioRef} src={audioSrc} preload="none" onEnded={() => setPlaying(false)} />
+      )}
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        aria-label={
+          playing
+            ? "Pause question audio"
+            : englishFallback
+              ? "Play question audio in English — Hindi is not available for this question"
+              : "Play question audio"
+        }
+        aria-pressed={playing}
+        className="grid size-8 place-items-center rounded-full border border-line-2 transition-colors hover:bg-sand"
+      >
+        {playing ? <Pause className="size-3.5" /> : <Volume2 className="size-3.5" />}
+      </button>
+      {englishFallback && (
+        <span
+          title="हिन्दी ऑडियो इस प्रश्न के लिए उपलब्ध नहीं है — अंग्रेज़ी में सुनाया जाएगा"
+          className="rounded-full border border-line-2 px-1.5 py-0.5 font-mono text-[9px] font-bold text-muted"
+        >
+          EN
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => setRate((r) => (r === 1 ? 0.8 : 1))}
+        aria-label={`Playback speed ${rate === 1 ? "1.0" : "0.8"} times`}
+        className="rounded-full px-1.5 py-1 font-mono text-[10px] font-bold text-muted transition-colors hover:text-ink"
+      >
+        {rate === 1 ? "1.0×" : "0.8×"}
+      </button>
+    </span>
+  );
+}

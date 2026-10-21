@@ -181,6 +181,7 @@ body {
 .demo-btn {
   height: 44px; padding: 4px 4px 4px 19px;
   display: inline-flex; align-items: center; gap: 10px;
+  border: 0; cursor: pointer;
   border-radius: 999px; background: var(--color-bone); color: var(--color-void);
   font: 700 13.5px var(--font-sans); text-decoration: none; white-space: nowrap;
   box-shadow: 0 14px 30px -16px rgba(29,20,9,.65);
@@ -475,10 +476,15 @@ body:not(.intro-ready) .module-content .fact { opacity: 0; }
   .site-header { left: 10px; right: 10px; top: 10px; min-height: 58px; padding: 7px 8px 7px 10px; gap: 10px; }
   .site-header.is-scrolled { top: 8px; min-height: 56px; }
   .logo-wordmark { font-size: 19px !important; }
+  .site-header .logo-wordmark { display: none !important; }
   .logo-tagline { display: none !important; }
   .site-header .logo-mark { width: 36px; height: 36px; }
   .floating-logo.is-docked { left: 20px; top: 21px; width: 36px; height: 36px; }
-  .demo-btn { display: none; }
+  /* Keep the primary action visible on phones; the app opens here. */
+  .demo-btn { display: inline-flex; height: 40px; padding: 3px 3px 3px 12px; font-size: 12px; gap: 6px; }
+  .demo-arrow { width: 30px; height: 30px; }
+  .menu-toggle { padding: 0 12px; }
+  .menu-toggle span { display: none; }
   .theme-toggle { width: 60px; height: 40px; padding: 0 7px; }
   .theme-thumb { width: 28px; height: 28px; }
   .theme-thumb.is-dark { transform: translateX(24px); }

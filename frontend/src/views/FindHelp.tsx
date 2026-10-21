@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { Check, ClipboardCopy, ExternalLink, Loader2, Search, Tent } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ClipboardCopy, ExternalLink, Loader2, LocateFixed, Search, Tent } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
 import { facilitiesApi } from "../api/client";
-import type { Facility, FacilityType, FacilitiesResponse } from "../api/types";
+import type { Facility, FacilityTrust, FacilityType, FacilitiesResponse } from "../api/types";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -18,6 +18,13 @@ const TYPE_COL: Record<FacilityType, { hex: string; short: string; chip: "sea" |
 
 const FALLBACK_COL = { hex: "#8a7a63", short: "FAC", chip: "sand" as const };
 const colOf = (t: FacilityType) => TYPE_COL[t] ?? FALLBACK_COL;
+
+/** Provenance is shown, never hidden: official > verified > mapped-only. */
+const TRUST_CHIP: Record<FacilityTrust["level"], { tone: "moss" | "sea" | "sand"; label: string }> = {
+  official: { tone: "moss", label: "Government listing" },
+  verified: { tone: "sea", label: "Verified" },
+  unverified: { tone: "sand", label: "Mapped only" },
+};
 
 const SAMPLE_PINS = [
   { pin: "110029", label: "South Delhi" },
@@ -178,11 +185,21 @@ export function FindHelp() {
   const [asked, setAsked] = useState("");
   const [hover, setHover] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
   const [busy, setBusy] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const ageGroup = age === "" ? undefined : parseInt(age || "0", 10) >= 6 ? "6-12" : "0-5";
 
-  const search = async (raw: string) => {
+  const search = async (raw: string, only = verifiedOnly) => {
     const d = raw.replace(/\D/g, "").slice(0, 6);
     if (d.length < 6 || d[0] === "0") {
       showToast("Enter a 6-digit PIN code");
@@ -191,14 +208,56 @@ export function FindHelp() {
     if (busy) return;
     setBusy(true);
     try {
-      const r = await facilitiesApi.get(d, { ageGroup, limit: 12 });
+      const r = await facilitiesApi.get(d, { ageGroup, limit: 12, verifiedOnly: only });
       setRes(r);
       setAsked(d);
+      setLastCoords(null);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Could not reach the facility directory.");
     } finally {
       setBusy(false);
     }
+  };
+
+  const searchNear = async (coords: { lat: number; lng: number }, only = verifiedOnly) => {
+    try {
+      const r = await facilitiesApi.getNear(coords, { ageGroup, limit: 12, verifiedOnly: only });
+      setRes(r);
+      setAsked("your location");
+      setLastCoords(coords);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Could not search near you");
+    }
+  };
+
+  /** Re-run the last lookup with the new trust filter, so the toggle is immediate. */
+  const setTrustFilter = (only: boolean) => {
+    setVerifiedOnly(only);
+    if (!res) return;
+    if (lastCoords) void searchNear(lastCoords, only);
+    else if (res.resolved) void search(res.pin, only);
+  };
+
+  const useMyLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      showToast("Location is not available on this device");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await searchNear({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        showToast("Location permission denied — enter a PIN instead");
+      },
+      { enableHighAccuracy: false, timeout: 8000 },
+    );
   };
 
   const list = res?.facilities ?? [];
@@ -215,7 +274,8 @@ export function FindHelp() {
     }
     setCopied(f.name);
     showToast("Details copied");
-    window.setTimeout(() => setCopied(null), 1600);
+    if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopied(null), 1600);
   };
 
   return (
@@ -263,6 +323,10 @@ export function FindHelp() {
             <Btn size="lg" className="mt-6 w-full" onClick={() => void search(pin)} disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />} {busy ? "Searching…" : "Find nearest help"}
             </Btn>
+            <Btn size="lg" variant="light" className="mt-2 w-full" onClick={useMyLocation} disabled={busy || locating}>
+              {locating ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4" />}{" "}
+              {locating ? "Locating…" : "Use my location"}
+            </Btn>
 
             <div className="mt-7 border-t border-line pt-6">
               <p className="mb-3 font-mono text-[10px] tracking-[0.22em] text-muted uppercase">Try a sample PIN</p>
@@ -270,6 +334,7 @@ export function FindHelp() {
                 {SAMPLE_PINS.map((s) => (
                   <button
                     key={s.pin}
+                    aria-label={`Try sample PIN ${s.label} ${s.pin}`}
                     onClick={() => {
                       setPin(s.pin);
                       void search(s.pin);
@@ -305,15 +370,26 @@ export function FindHelp() {
             <div className="nrx-rise rounded-[36px] bg-brick-bg p-8">
               <Tent className="size-7 text-brick" />
               <h3 className="mt-4 font-display text-[40px] leading-none uppercase">
-                {res.resolved ? `No listed facility near ${asked}` : `No listing for ${asked}`}
+                {res.verified_only
+                  ? "No verified listing yet"
+                  : res.resolved
+                    ? `No listed facility near ${asked}`
+                    : `No listing for ${asked}`}
               </h3>
               <p className="mt-3 max-w-[420px] text-[14px] leading-relaxed text-ink-2">
-                {res.state_deic
-                  ? res.state_deic.operational > 0
-                    ? `${res.state_deic.state} reports ${res.state_deic.operational} operational DEIC${res.state_deic.operational === 1 ? "" : "s"}. Contact your district health office or the district hospital for the one nearest you.`
-                    : `No DEIC is reported as operational in ${res.state_deic.state}. Go to the district hospital instead.`
-                  : "No facility directory data covers this area yet. Start with your district hospital or PHC."}
+                {res.verified_only
+                  ? "Mapped-only entries exist for this area, but none are verified. Use the programme routes below, or show all listings."
+                  : res.state_deic
+                    ? res.state_deic.operational > 0
+                      ? `${res.state_deic.state} reports ${res.state_deic.operational} operational DEIC${res.state_deic.operational === 1 ? "" : "s"}. Contact your district health office or the district hospital for the one nearest you.`
+                      : `No DEIC is reported as operational in ${res.state_deic.state}. Go to the district hospital instead.`
+                    : "No facility directory data covers this area yet. Start with your district hospital or PHC."}
               </p>
+              {res.verified_only && (
+                <Btn variant="light" className="mt-5" onClick={() => setTrustFilter(false)}>
+                  Show all listings
+                </Btn>
+              )}
               {res.resolved?.approximate && (
                 <p className="mt-3 text-[12.5px] text-muted">Approximate location (exact coordinates unavailable for this PIN).</p>
               )}
@@ -322,12 +398,25 @@ export function FindHelp() {
 
           {res && coverage !== "none" && (
             <div>
-              <p className="mb-2 flex items-center gap-3 text-[13px] font-semibold text-ink-2">
-                <span className="font-display text-[34px] leading-none text-ink">{list.length}</span> {coverage === "nearby" ? "facilities near" : "closest facilities to"}
-                <b className="text-ink">
-                  {res.resolved ? `${res.resolved.district}, ${res.resolved.state}` : asked} ({asked})
-                </b>
-              </p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-3 text-[13px] font-semibold text-ink-2">
+                  <span className="font-display text-[34px] leading-none text-ink">{list.length}</span> {coverage === "nearby" ? "facilities near" : "closest facilities to"}
+                  <b className="text-ink">
+                    {res.resolved ? `${res.resolved.district}, ${res.resolved.state}` : asked} ({asked})
+                  </b>
+                </p>
+                <button
+                  type="button"
+                  aria-pressed={verifiedOnly}
+                  onClick={() => setTrustFilter(!verifiedOnly)}
+                  className={cn(
+                    "rounded-full border px-4 py-2 text-[12px] font-bold transition-colors",
+                    verifiedOnly ? "border-ink bg-ink text-paper" : "border-line-2 text-ink-2 hover:bg-sand",
+                  )}
+                >
+                  {verifiedOnly ? "Showing trusted only" : "Show trusted only"}
+                </button>
+              </div>
               {(coverage !== "nearby" || res.resolved?.approximate) && (
                 <p className="mb-4 text-[12.5px] leading-relaxed text-muted">
                   {coverage === "district" && `No listed facility within 25 km — showing the closest in your district. `}
@@ -355,7 +444,11 @@ export function FindHelp() {
                           <div className="flex flex-wrap items-center gap-2">
                             <Chip tone={colOf(f.type).chip}>{f.type}</Chip>
                             {ageGroup && f.relevance.tier === 0 && <Chip tone="rust">Best for age {age}</Chip>}
-                            <Chip>{f.verified_at ? `Verified ${shortDate(f.verified_at)}` : "Not verified"}</Chip>
+                            <Chip tone={TRUST_CHIP[f.trust.level].tone}>
+                              {f.trust.level === "verified" && f.trust.verified_at
+                                ? `Verified ${shortDate(f.trust.verified_at)}`
+                                : TRUST_CHIP[f.trust.level].label}
+                            </Chip>
                           </div>
                           <h3 className="mt-3 font-display text-[28px] leading-[1.02] uppercase">{f.name}</h3>
                           <p className="mt-1 text-[13px] text-ink-2">{f.address || `${f.district}, ${f.state}`}</p>
@@ -383,6 +476,7 @@ export function FindHelp() {
                   </Reveal>
                 ))}
               </div>
+              <p className="mt-4 text-[12px] leading-relaxed text-muted">{res.trust_note}</p>
             </div>
           )}
 

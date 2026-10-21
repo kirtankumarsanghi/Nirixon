@@ -1,0 +1,35 @@
+{
+  "heldout_rows": 10000,
+  "policies": [
+    {
+      "policy": "A: ML only",
+      "refer_sensitivity": 0.621,
+      "refer_specificity": 0.964,
+      "refer_precision": 0.736,
+      "macro_f1": 0.721,
+      "missed_refer": 529,
+      "regression_cases": 496,
+      "regression_caught": 183
+    },
+    {
+      "policy": "B: rule + safety floor (model disabled)",
+      "refer_sensitivity": 0.725,
+      "refer_specificity": 0.908,
+      "refer_precision": 0.56,
+      "macro_f1": 0.652,
+      "missed_refer": 383,
+      "regression_cases": 496,
+      "regression_caught": 496
+    },
+    {
+      "policy": "C: ML + safety floor (current)",
+      "refer_sensitivity": 0.681,
+      "refer_specificity": 0.937,
+      "refer_precision": 0.637,
+      "macro_f1": 0.712,
+      "missed_refer": 445,
+      "regression_cases": 496,
+      "regression_caught": 496
+    }
+  ]
+}

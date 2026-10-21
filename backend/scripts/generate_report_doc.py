@@ -28,10 +28,10 @@ lines = [
     "| Metric | Value |",
     "|---|---|",
     f"| Total Item Universe | **{rep['total_system_items']}** |",
-    f"| Validated Items with Reviewed Audio | **{rep['covered_items_count']}** |",
-    f"| Uncovered Items (Text Fallback Active) | **{rep['uncovered_items_count']}** |",
-    "| Validated Bank Audio Coverage (Module A + Mandatory) | **100.0%** (38 / 38 items) |",
-    f"| Total System Audio Coverage | **{rep['coverage_percentage']}%** |",
+    f"| Clinically reviewed items (pre-generated clips) | **{rep['covered_items_count']}** |",
+    f"| Narrated on demand in Hindi (Module B adaptive bank) | **{rep.get('ondemand_hindi_items_count', 0)}** |",
+    f"| Uncovered items (written-text fallback) | **{rep['uncovered_items_count']}** |",
+    f"| Reviewed-narration coverage of the whole universe | **{rep['coverage_percentage']}%** |",
     "",
     "### Clinical Gating Invariants",
 ]
@@ -44,9 +44,10 @@ lines.extend(
         "",
         "---",
         "",
-        "## 2. Validated Question Banks with Reviewed Narration (38 Items)",
+        f"## 2. Validated Question Banks with Reviewed Narration ({rep['covered_items_count']} Items)",
         "",
-        "All validated screening items in Module A (0–60 months) and core mandatory risk flags have pre-generated audio files in both English (`en`) and Hindi (`hi`).",
+        "All validated screening items in Module A (0–60 months), the mandatory risk flags and the"
+        " curated Module B bank have pre-generated audio files in both English (`en`) and Hindi (`hi`).",
         "",
         "| Item ID | Bank | Domain | Supported Languages | Clinical Reviewer | Reviewed Date |",
         "|---|---|---|---|---|---|",
@@ -64,14 +65,33 @@ lines.extend(
         "",
         "---",
         "",
-        "## 3. Items Without Audio (Falling Back to Text) (60 Items)",
+        "## 3. Narrated On Demand (Module B Adaptive Bank)",
         "",
-        "The following items are part of Module B (School Age 5–12 years) and rule-out screenings. Consistent with the architectural safety mandate, **written translations and audio narrations remain gated behind specialist clinical review**. These items automatically fall back to validated written text in the UI.",
+        f"The school-age engine serves **{rep.get('ondemand_hindi_items_count', 0)}** adaptive items from"
+        " `backend/data/module_b/question_bank_b.csv`. That bank is English-only and far too large to"
+        " pre-record, so each Hindi clip is synthesized once on first play with the neural hi-IN voice"
+        " and cached on disk. The Hindi text is machine-translated and **pending clinical review**, and"
+        " those clip entries are returned flagged `unreviewed`.",
+    ]
+)
+
+lines.extend(
+    [
+        "",
+        "---",
+        "",
+        f"## 4. Items Without Audio (Written-Text Fallback) ({rep['uncovered_items_count']} Items)",
+        "",
+        "These items have neither a reviewed clip nor an on-demand narration, so the UI falls back to"
+        " validated written text.",
         "",
         "| Item ID | Bank | Domain | Question Text | Fallback Status | Reason |",
         "|---|---|---|---|---|---|",
     ]
 )
+
+if not rep["uncovered_items"]:
+    lines.append("| _(none)_ | — | — | — | — | — |")
 
 for item in rep["uncovered_items"]:
     # Truncate very long text slightly if needed
@@ -85,7 +105,7 @@ lines.extend(
         "",
         "---",
         "",
-        "## 4. Unreviewed & Hidden Items Gate",
+        "## 5. Unreviewed & Hidden Items Gate",
         "",
         "| Entry | Status | Enforced Policy |",
         "|---|---|---|",

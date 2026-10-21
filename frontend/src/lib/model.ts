@@ -167,6 +167,41 @@ export function domainKeys(scores: Scores | undefined | null): string[] {
  *  per-module axes (e.g. a brand-new, unspecified check-in). */
 export const DOMAIN_KEYS: string[] = ["gross", "fine", "comm", "social", "cog", "adaptive"];
 
+export const MODULE_A_DOMAINS: string[] = DOMAIN_KEYS;
+
+/** Module B (school age) axis set. */
+export const MODULE_B_DOMAINS: string[] = [
+  "attention",
+  "listening_speaking",
+  "reading",
+  "writing",
+  "numbers",
+  "motor",
+  "social",
+  "emotion_conduct",
+];
+
+/** Backend domain id → design domain key. Module A ids are remapped to the
+ *  design's short keys; Module B ids are already the design's keys. */
+export const DOMAIN_MAP: Record<string, string> = {
+  gross_motor: "gross",
+  fine_motor: "fine",
+  communication: "comm",
+  personal_social: "social",
+  cognitive: "cog",
+  self_help: "adaptive",
+  attention: "attention",
+  listening_speaking: "listening_speaking",
+  reading: "reading",
+  writing: "writing",
+  numbers: "numbers",
+  motor: "motor",
+  emotion_conduct: "emotion_conduct",
+};
+
+/** Unknown ids pass through unchanged so new backend domains still render. */
+export const designDomain = (key: string): Domain => (DOMAIN_MAP[key] ?? key) as Domain;
+
 /* ------------------------------ display ------------------------------ */
 
 const _sig = (x: number) => 1 / (1 + Math.exp(-x));
@@ -287,6 +322,16 @@ export function developmentalAge(ci: CheckIn) {
   return ci.ageMonths * (1 + meanScore(ci.scores) * 0.08);
 }
 
+/** Standard-normal CDF as a percentile (0–100), for labelling z-score bands.
+ *  Abramowitz & Stegun 7.1.26 — accurate to ~1e-7. */
+export function zToPercentile(z: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp((-z * z) / 2);
+  const p =
+    d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return (z > 0 ? 1 - p : p) * 100;
+}
+
 /* ----------------------------- caseload ------------------------------ */
 
 export type ChildStatus = "ontrack" | "watch" | "refer" | "overdue" | "unscreened";
@@ -309,6 +354,8 @@ export interface Child {
   visits: number;
   lastVisitDays: number | null;
   handoff: "none" | "queued" | "done";
+  /** Next follow-up due (ISO), from the child record; drives calendar reminders. */
+  followUpDueAt?: string | null;
 }
 
 export const AGE_BANDS = ["0–12m", "12–24m", "24–36m", "36–48m", "48–60m", "60–84m", "84–108m", "108–144m"];

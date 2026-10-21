@@ -1,27 +1,6 @@
-import type { CheckIn, Child, ChildStatus, Domain, Scores, Tier } from "./model";
+import { DOMAIN_MAP, designDomain, type CheckIn, type Child, type ChildStatus, type Scores, type Tier } from "./model";
 import type { ChildRecord, ResultPayload } from "../api/types";
 import type { SessionSummary } from "../api/client";
-
-/** Backend domain id → design domain key. Module A ids are remapped to the
- *  design's short keys; Module B ids pass through unchanged. */
-const DOMAIN_MAP: Record<string, Domain> = {
-  gross_motor: "gross",
-  fine_motor: "fine",
-  communication: "comm",
-  personal_social: "social",
-  cognitive: "cog",
-  self_help: "adaptive",
-  // Module B ids (already the design's keys)
-  attention: "attention",
-  listening_speaking: "listening_speaking",
-  reading: "reading",
-  writing: "writing",
-  numbers: "numbers",
-  motor: "motor",
-  emotion_conduct: "emotion_conduct",
-};
-
-const designDomain = (key: string): Domain => DOMAIN_MAP[key] ?? key;
 
 /**
  * Display calibration. The backend returns a real per-domain score in [0,1]
@@ -190,6 +169,7 @@ export function childRecordToChild(rec: ChildRecord): Child {
     regression: false,
     visits: rec.contact_count ?? 0,
     lastVisitDays: daysSince(rec.last_contacted_at ?? rec.last_screened_at),
+    followUpDueAt: rec.follow_up_due_at ?? null,
     handoff: "none",
   };
 }

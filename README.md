@@ -49,7 +49,7 @@
 
 In low- and middle-income regions—and particularly across India and South Asia—over 70% of neurodevelopmental delays, sensory impairments, and learning disabilities are detected only after children enter primary school, missing the critical early intervention window (ages 0–5). Frontline health workers (**ASHA**, **Anganwadi**, and **ANM**) conduct massive door-to-door community surveys, but face paper-based bottlenecks, fragmented referral chains, multi-caregiver disagreement, and intermittent internet connectivity.
 
-**Nirixon** is an open, privacy-by-design, clinical-grade developmental screening platform specifically built to bridge this divide. It couples:
+**Nirixon** is an open, privacy-by-design developmental screening and triage platform specifically built to bridge this divide. It couples:
 - **Calibrated Machine Learning (XGBoost/LightGBM)** with local **SHAP** feature attribution.
 - An **Uncompromising Deterministic Clinical Safety Floor** that overrides statistical models upon detecting developmental regression or severe milestone loss.
 - An **Offline-First Progressive Web App (PWA)** for grassroots workers with automated conflict resolution and zero-PII storage.
@@ -69,14 +69,40 @@ Every feature status in Nirixon strictly reflects the verification proven by the
 | **Deterministic Clinical Safety Floor** | Clinical Safety | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_3_safety_rule_bypass`, `test_regressions.py` | Milestone regression and severe deficit deterministic override forcing immediate Tier 3: Refer triage (overriding ML output) |
 | **Clinician "What-If" Simulation Sandbox** | Clinician Tools | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_4_what_if_simulation`, `test_sandbox.py` | Post-hoc re-scoring via `/api/sandbox/{session_id}/simulate`, hypothetical override testing, dynamic probability & TreeSHAP shifts |
 | **Community Health Worker Referral Lifecycle** | Community Health | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_5_referral_creation_to_outcome`, `test_referrals.py` | 5-stage auditable state machine (`created` ➔ `sent` ➔ `seen` ➔ `outcome recorded` ➔ `closed`), printable 4-field minimal PDF summary |
+| **Caregiver & Facility Handoff** | Health Navigation | **Live · Verified** | `frontend/src/test/handoff.test.ts` | One-tap WhatsApp / SMS / copy handoff built from the same 4-field referral summary, plus helpline routing for feature phones. IVR is roadmap. |
+| **Printable Slip & Caregiver Plan** | Health Navigation | **Live · Verified** | `frontend/src/test/print-sheet.test.ts` | Print-ready referral slip carrying a QR of the compact summary, plus a home-activity plan with bilingual chrome (English activity text pending clinical translation review). |
 | **Frontline Worker Caseload Dashboard** | Community Health | **Live · No dedicated test** | *—* | Mobile-first 360px viewport, ward-wide caseload list, fast filters (tier, overdue, age), high-contrast touch targets. No frontend test covers this view yet. |
-| **Offline Sync (server)** | Field Operations | **Backend live · client offline queue not implemented** | `tests/test_end_to_end.py::test_e2e_flow_6_offline_sync` | `POST /api/chw/sync` with UUID idempotency keys and conflict logging is live and verified. The browser-side service worker + IndexedDB write queue is **not implemented yet** (see Roadmap). |
-| **Multilingual Audio Narration** | Accessibility | **Backend live · UI playback not wired** | `tests/test_audio_narration.py` | Validated Hindi & English clips with 0.8× / 1.0× variants and a manifest review gate (`reviewed_by`, `reviewed_date`). The check-in UI does not play them yet. |
+| **Supervisor Programme Analytics** | Community Health | **Live · Verified** | `tests/test_referrals.py::test_supervisor_programme_analytics` | Area-scoped referral funnel, median screened→referral and referral→seen times, and per-ward coverage computed from real child/referral records (not static demo sectors). |
+| **Offline-First Quick Actions** | Field Operations | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_6_offline_sync`, `frontend/src/test/offline-sync.test.ts` | CHW quick-actions (referral / contact / outcome) are queued in IndexedDB when offline and replayed through `POST /api/chw/sync` (idempotent, conflict-logged). The caseload is cached for offline viewing. Adaptive screening itself stays online. |
+| **Follow-up Reminders** | Field Operations | **Live · Verified** | `frontend/src/test/ics.test.ts` | Follow-ups from `follow_up_due_at` export as RFC-5545 `.ics` (single child or the whole list). Service-worker `push` / `notificationclick` handlers are in place, but delivery needs a server-side VAPID sender, which is not implemented yet. |
+| **Multilingual Audio Narration** | Accessibility | **Live · Verified** | `tests/test_audio_narration.py`, `frontend/src/test/question-audio.test.tsx` | Reviewed clips (Module A + mandatory flags, en-IN / hi-IN) play first. Otherwise the check-in speaks the question with the browser's speech synthesis — in Hindi using the offline machine-translated Module B bank (`backend/scripts/translate_module_b_hi.py`, ~2,400 items, **pending clinical review**), and in English (tagged `EN`) when no Hindi text exists. Speed (0.8× / 1.0×) applies to every path. Human recording sign-off is still pending. |
+| **Bilingual Chrome & Accessibility** | Accessibility | **Live · Partial** | `frontend/src/test/i18n.test.ts` | Dependency-free i18n with a persisted EN/हिं switch in the workspace dock; the app chrome and the check-in (answers, labels, narration) are bilingual. Remaining view copy is English pending translation review. Icon-only controls carry `aria-label`s. |
 | **Area-Level Data Isolation & Privacy Invariants** | Data Governance | **Live · Verified** | `tests/test_referrals.py`, `tests/test_end_to_end.py` | Zero cross-ward leakage; workers strictly restricted to their assigned village/ward; 100% opt-in with consent recorded; pseudonymous IDs only |
 | **Multi-Caregiver Joint Family Triangulation** | Concordance | **Live · Verified** | `tests/test_share_merge.py` | Zero-login 72-hour invite links, zero-PII exposure, clinical combination rule (safety-maximized floor + statistical primary vector), Concordance Index ($0.0 - 1.0$) |
-| **Longitudinal Growth & Plateau Tracking** | Growth Surveillance | **Live · Verified** | `tests/test_growth_sync.py` | Opt-in synced developmental age tracking, automated plateau alerts, right-to-erasure cascade (`DELETE /api/growth/data/{child_id}`) |
-| **Find Help Directory** | Health Navigation | **Live · Verified** | `backend/tests/test_find_help.py`, `backend/tests/test_find_help_route.py`, `frontend/src/test/find-help.test.tsx` | Haversine distance lookup by 6-digit PIN code, age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
+| **Longitudinal Growth & Plateau Tracking** | Growth Surveillance | **Live · Verified** | `tests/test_growth_sync.py`, `frontend/src/test/growth-percentiles.test.ts` | Opt-in synced developmental age tracking, automated plateau alerts, and standard-normal percentile labels on the chart (incl. the −2 SD ICDS/RBSK referral cut-off), right-to-erasure cascade (`DELETE /api/growth/data/{child_id}`) |
+| **Find Help Directory** | Health Navigation | **Live · Verified** | `backend/tests/test_find_help.py`, `backend/tests/test_find_help_route.py`, `frontend/src/test/find-help.test.tsx` | Haversine distance lookup by 6-digit PIN code **or GPS coordinates** (both paths share the same age-stratified ranking), age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
 | **WhatsApp Community Bot / Messaging** | Messaging / Bot | **Coming next · Roadmap** | *In Architecture Design* | Gated for lightweight automated follow-up messages; currently preserved in "Coming next" status per safety governance requirements |
+
+### Evaluator quick start
+
+```bash
+# whole stack (Postgres + Redis + API + frontend)
+docker compose -f docker/docker-compose.yml up --build
+
+# or run locally
+cd backend  && uvicorn app.main:app --reload     # API docs at http://127.0.0.1:8000/docs
+cd frontend && npm install && npm run dev        # http://localhost:5173
+
+# optional: give a fresh workspace a populated demo ward
+cd backend && python scripts/seed_demo_data.py --ward "Ward 12" --count 40
+
+# regenerate API artifacts after route changes
+cd backend && python scripts/export_openapi.py   # docs/openapi.json + Postman collection
+```
+
+Demo accounts (password `changeme`): `parent@example.com`, `chw@example.com`,
+`supervisor@example.com`, `clinician@example.com`. Importable API artifacts live in
+`docs/openapi.json` and `docs/nirixon.postman_collection.json`; the live schema is always at `/openapi.json`.
 
 ---
 
@@ -585,9 +611,10 @@ npm run build
 Nirixon is engineered for transparent, responsible healthcare AI deployment. Evaluators, clinicians, and researchers should note the following explicit system boundaries:
 
 ### 1. Synthetic & Semi-Synthetic Training Data
-The machine learning models (calibrated XGBoost for Module A and TF-IDF NLP classifier for Module B) were trained and evaluated on synthetic and semi-synthetic developmental milestone distributions calibrated to peer-reviewed epidemiological prevalence rates (e.g., CDC, WHO, and Indian National Family Health Survey benchmarks). 
-- While internal validation confirms high discriminative capability on held-out synthetic cohorts, prospective clinical validation across diverse socioeconomic, nutritional, and regional strata across India remains ongoing.
-- Models must not be treated as a definitive diagnostic instrument.
+The machine learning models (calibrated XGBoost for Module A and a TF-IDF NLP router for Module B) were trained and evaluated on synthetic and semi-synthetic developmental milestone distributions. **These numbers measure recovery of the generating rule, not clinical accuracy.**
+- On the held-out synthetic cohort (50,000 children) the Module A model reaches macro AUPRC ≈ **0.79** and Refer-class AUPRC ≈ **0.76** (chance = 0.14), with Refer sensitivity 0.62 / specificity 0.96 at argmax. At the deployed screening threshold (0.20) Refer sensitivity is 0.80 at 0.90 specificity, flagging 19.5%. Labels are a threshold on the true latent severity, so the classifier must infer the construct from noisy items. Null controls (label shuffle, random features, permuted inputs) all collapse to chance — evidence that the pipeline is not leaking. With the classifier disabled, the rule + safety floor still catches **every** regression case.
+- Prospective clinical validation across socioeconomic, nutritional and regional strata **has not been performed**. `docs/pilot_study_protocol.md` defines the study; every real-world accuracy claim is **pilot pending**.
+- Models must not be treated as a definitive diagnostic instrument. See [`docs/VALIDITY.md`](docs/VALIDITY.md) for the full claims table, the model-disabled demonstration, and the list of what is and is not tested.
 
 ### 2. Clinical Review Pending (Screening vs Diagnostic Device)
 Nirixon is strictly categorized as an **AI-assisted developmental screening and triage decision-support tool (Section 0.5 guidelines)**.
