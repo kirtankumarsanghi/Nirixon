@@ -71,9 +71,9 @@ worth understanding the method:
 3. `regression_flag` adds a large (but not 100% guaranteed) boost toward
    Refer — see "What was checked and fixed" below for why it's not a hard
    override.
-4. Final labels are assigned by *population quantile*, so the overall mix
-   lands close to a target split (73% Typical / 20% Monitor / 7% Refer)
-   instead of hoping hand-picked cutoffs happen to land there.
+4. Final labels are a threshold on the *true latent severity* (ASQ-3-style
+   -2 / -1 SD cut-offs), so the resulting mix (~45.5% Typical / 40.6% Monitor /
+   13.9% Refer on the seeded cohort) is an observed outcome, not a target.
 
 ### `generate_synthetic_data.py`
 The script that actually runs everything above, in order, and writes out
@@ -122,7 +122,7 @@ trustworthy, it was checked against its own stated design goals:
 | Overall class balance lands near observed (latent-threshold labels, ASQ-style -2/-1 SD cut-offs) | ✅ 45.5% / 40.6% / 13.9% |
 | `multilingual_home_flag` shows no real effect on communication scores | ✅ 1.581 vs. 1.574 mean — effectively no difference |
 | Domains that should correlate more (communication ↔ personal-social) actually do, *once shared age effects are removed* | ✅ 0.435 vs. ~0.29 baseline, after controlling for age |
-| `regression_flag` is a strong signal but **not** a perfectly separable one | ❌ then ✅ — first version was 100% deterministic (a bug); fixed to ~83% Refer, leaving room for the rest |
+| `regression_flag` is a strong signal but **not** a perfectly separable one | ❌ then ✅ — first version was 100% deterministic (a bug); fixed to ~50% Refer (3.6× the ~14% base rate), leaving room for the rest |
 | Family history modestly raises Monitor/Refer rate, doesn't dominate it | ✅ small, sensible increase (7% → 10% Refer rate) |
 
 **The regression_flag fix is the one worth explaining if asked**, because
