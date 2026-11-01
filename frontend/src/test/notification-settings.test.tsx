@@ -81,8 +81,14 @@ describe("Notification settings", () => {
   it("loads preferences and saves channel choices with consent", async () => {
     const onClose = renderSettings();
     expect(await screen.findByText("Reminders")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /WhatsApp/i }));
+    // Preferences load asynchronously; the channel toggles only exist after
+    // that request resolves. Waiting on the heading alone is racy on CI.
+    const whatsapp = await screen.findByRole(
+      "button",
+      { name: /WhatsApp/i },
+      { timeout: 3000 },
+    );
+    fireEvent.click(whatsapp);
     fireEvent.change(screen.getAllByPlaceholderText("+91 98000 00000")[0], {
       target: { value: "+919800000001" },
     });
@@ -100,7 +106,10 @@ describe("Notification settings", () => {
   it("queues a test notification", async () => {
     renderSettings();
     expect(await screen.findByText("Reminders")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Send test/i }));
+    await screen.findByRole("button", { name: /WhatsApp/i }, { timeout: 3000 });
+    const sendTest = screen.getByRole("button", { name: /Send test/i });
+    await waitFor(() => expect(sendTest).toBeEnabled(), { timeout: 3000 });
+    fireEvent.click(sendTest);
     await waitFor(() => expect(mocks.sendTest).toHaveBeenCalled());
   });
 
