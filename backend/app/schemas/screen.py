@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.nutrition import NutritionEvaluation
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -39,6 +41,9 @@ class StartScreenRequest(BaseModel):
     location_city: str | None = None
     location_state: str | None = None
     location_address: str | None = None
+    # Optional anthropometrics for nutrition screening.
+    sex: Literal["male", "female"] | None = None
+    measurements: dict[str, float] = Field(default_factory=dict)
 
 
 class AnswerRequest(BaseModel):
@@ -47,6 +52,12 @@ class AnswerRequest(BaseModel):
     track: str | None = None
     engine_session: str | None = None
     source: Literal["recall", "observed"] = "recall"
+
+
+class RegressionOverrideRequest(BaseModel):
+    """Caregiver/clinician toggle for the regression safety rule mid-check-in."""
+
+    value: Literal[0, 1]
 
 
 class SessionSummary(BaseModel):
@@ -95,8 +106,13 @@ class QuestionPayload(BaseModel):
     domain: str
     question_number: int
     question_cap: int
-    response_type: Literal["yes_no", "frequency", "yesno", "likert5"] = "frequency"
+    response_type: Literal[
+        "yes_no", "frequency", "yesno", "likert5", "choice", "decimal"
+    ] = "frequency"
     scale_labels: str | None = None
+    options: list[str] = Field(default_factory=list)
+    reverse_scored: bool | None = None
+    item_type: str | None = None
     track: str | None = None
 
 
@@ -177,6 +193,7 @@ class ResultPayload(BaseModel):
     flagged_domains: list[str] = Field(default_factory=list)
     ruleout_flags: list[str] = Field(default_factory=list)
     context_flags: list[str] = Field(default_factory=list)
+    context_answers: dict[str, Any] = Field(default_factory=dict)
     red_flags: list[dict[str, Any]] = Field(default_factory=list)
     help_routes: dict[str, Any] = Field(default_factory=dict)
     safety: bool = False
@@ -205,6 +222,9 @@ class ResultPayload(BaseModel):
     answer_sources: dict[str, str] = Field(default_factory=dict)
     touch_telemetry: list[dict[str, Any]] = Field(default_factory=list)
     touch_telemetry_notice: str = "Exploratory, not used in the result."
+    # Optional anthropometrics and deterministic nutrition flags.
+    measurements: dict[str, float] = Field(default_factory=dict)
+    nutrition: NutritionEvaluation | None = None
 
 
 class ScreenActionResponse(BaseModel):

@@ -241,7 +241,8 @@ async def test_full_patient_screening_journey(e2e_app):
         result_b = None
         steps_b = 0
 
-        while not module_b_complete and curr_b_q is not None and steps_b < 20:
+        # Adaptive loop + the fixed six-question parent-context pass.
+        while not module_b_complete and curr_b_q is not None and steps_b < 40:
             steps_b += 1
             # Caregiver answers Likert (1 to 5) or Yes/No
             rt = curr_b_q.get("response_type", "likert5")

@@ -25,6 +25,7 @@ os.environ["SEED_USER_PASSWORD"] = "changeme"
 
 from app.auth import hash_password
 from app.config import get_settings
+from app.core.sensory_items import SENSORY_IDS
 from app.db.models import RiskResult, User
 from app.db.session import (
     Base,
@@ -146,7 +147,7 @@ async def _run_full_session(
         item_id = action["question"]["item_id"]
         if item_id == "regression_flag":
             answer = regression
-        elif item_id in ("family_history_flag",):
+        elif item_id in ("family_history_flag",) or item_id in SENSORY_IDS:
             answer = 0
         else:
             answer = answer_value

@@ -166,7 +166,7 @@ describe("QuestionAudio", () => {
         itemId="att_start.P.5-7.a0"
         lang="hi"
         text="Your child needs repeated reminders."
-        hindiText="आपके बच्चे को बार-बार याद दिलाने की जरूरत है।"
+        localizedText="आपके बच्चे को बार-बार याद दिलाने की जरूरत है।"
       />,
     );
 

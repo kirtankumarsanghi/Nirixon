@@ -23,6 +23,10 @@ export interface StartScreenRequest {
   question_cap?: 10 | 15 | 20;
   /** Optional: auto-detected from age if omitted. */
   module?: "A" | "B";
+  /** Optional sex, used for weight-for-age screening. */
+  sex?: "male" | "female" | null;
+  /** Optional anthropometrics: weight_kg, muac_cm, height_cm, known_anemia. */
+  measurements?: Record<string, number>;
   /** Must be true; recorded server-side in the session audit trail. */
   consent_given: boolean;
   child_name?: string | null;
@@ -57,11 +61,37 @@ export interface QuestionPayload {
   scale?: string;
   /** Live backend field for Likert scale descriptor */
   scale_labels?: string | null;
+  /** Module B context items: choice options in display order. */
+  options?: string[];
+  /** Whether higher scores mean a better outcome for this item. */
+  reverse_scored?: boolean | null;
+  /** symptom | strength | ruleout | context | safety */
+  item_type?: string | null;
 }
 
 export interface ShapFeature {
   feature: string;
   shap_value: number;
+}
+
+export interface NutritionFlag {
+  code: string;
+  label: string;
+  severity: "monitor" | "refer";
+  detail: string;
+}
+
+export interface NutritionEvaluation {
+  age_months?: number | null;
+  sex?: string | null;
+  weight_kg?: number | null;
+  muac_cm?: number | null;
+  weight_for_age_z?: number | null;
+  muac_status?: string | null;
+  anemia_risk?: string | null;
+  flags: NutritionFlag[];
+  severity: "none" | "monitor" | "refer";
+  disclaimer?: string;
 }
 
 /** Module B: per-domain result detail. */
@@ -122,7 +152,10 @@ export interface ResultPayload {
   rule_out_flags?: Record<string, boolean>;
   ruleout_flags?: string[];
   context_flags?: string[];
+  context_answers?: Record<string, unknown>;
   red_flags?: Record<string, unknown>[];
+  measurements?: Record<string, number>;
+  nutrition?: NutritionEvaluation | null;
   /** Module B: plain-language summary from the API. */
   summary?: string | null;
   /** Module B: practice activities per flagged domain. */
@@ -262,6 +295,13 @@ export interface TeacherItemPayload {
 
 export interface TeacherItemsResponse {
   items: TeacherItemPayload[];
+}
+
+export interface SandboxSimulateRequest {
+  model_name?: string | null;
+  answer_overrides?: Record<string, number>;
+  domain_scores?: Record<string, number>;
+  corrected_age_months?: number | null;
 }
 
 export interface SessionStateResponse {
@@ -897,6 +937,127 @@ export interface AudioCoverageReport {
     fallback_mode: string;
   }>;
   unreviewed_hidden_items: string[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Notifications                                                      */
+/* ------------------------------------------------------------------ */
+
+export interface NotificationChannels {
+  push: boolean;
+  whatsapp: boolean;
+  sms: boolean;
+  ivr: boolean;
+}
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  role?: string;
+  worker_id?: string;
+}
+
+export interface VapidKeyResponse {
+  public_key: string;
+  enabled: boolean;
+}
+
+export interface NotificationPreference {
+  id: string;
+  subject_type: "user" | "worker";
+  subject_id: string;
+  channels: NotificationChannels;
+  phone?: string | null;
+  whatsapp_number?: string | null;
+  locale: string;
+  quiet_start?: string | null;
+  quiet_end?: string | null;
+  reminder_lead_days: number;
+  consent_recorded_at?: string | null;
+  enabled: boolean;
+  updated_at?: string | null;
+}
+
+export interface NotificationPreferenceUpdate {
+  channels: NotificationChannels;
+  phone?: string | null;
+  whatsapp_number?: string | null;
+  locale?: string;
+  quiet_start?: string | null;
+  quiet_end?: string | null;
+  reminder_lead_days: number;
+  enabled: boolean;
+  consent_given: boolean;
+}
+
+export interface NotificationDelivery {
+  id: string;
+  channel: string;
+  template: string;
+  subject_type: string;
+  subject_id: string;
+  child_ref?: string | null;
+  status: string;
+  attempts: number;
+  scheduled_for?: string | null;
+  sent_at?: string | null;
+  error?: string | null;
+  created_at: string;
+}
+
+export interface SweepResponse {
+  scheduled: number;
+  delivered: number;
+  failed: number;
+  suppressed: number;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Caregiver wellbeing (EPDS)                                         */
+/* ------------------------------------------------------------------ */
+
+export interface EpdsOption {
+  value: number;
+  label: string;
+}
+
+export interface EpdsQuestion {
+  item_id: string;
+  number: number;
+  text: string;
+  options: EpdsOption[];
+  reverse_scored: boolean;
+  review_status: string;
+}
+
+export interface EpdsQuestionsResponse {
+  instrument: string;
+  instructions: string;
+  questions: EpdsQuestion[];
+  review_status: string;
+  disclaimer: string;
+}
+
+export interface EpdsAnswer {
+  item_id: string;
+  value: number;
+}
+
+export interface EpdsSubmitRequest {
+  answers: EpdsAnswer[];
+  child_ref?: string | null;
+  consent_given: boolean;
+}
+
+export interface EpdsResult {
+  id: string;
+  total_score: number;
+  classification: "Typical" | "Monitor" | "Refer";
+  safety_flag: boolean;
+  interpretation: string;
+  recommendations: string[];
+  helplines: { name: string; number: string; available: string }[];
+  created_at?: string | null;
 }
 
 

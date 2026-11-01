@@ -12,6 +12,8 @@ export type View =
   | "clinical"
   | "cases"
   | "whatif"
+  | "wellbeing"
+  | "training"
   | "evidence";
 
 export interface RoleConfig {
@@ -35,6 +37,7 @@ export function viewLabel(role: Role, view: View): string {
   if (tab) return tab.label;
   if (view === "checkin") return role === "clinician" ? "Demo check-in" : "Check-in";
   if (view === "clinical") return "Clinical check";
+  if (view === "wellbeing") return "Caregiver wellbeing";
   if (view === "referrals") return "Referrals";
   return view;
 }
@@ -73,6 +76,7 @@ export const ROLES: Record<Role, RoleConfig> = {
       { view: "caseload", label: "Caseload" },
       { view: "referrals", label: "Referrals" },
       { view: "checkin", label: "Screen a child" },
+      { view: "training", label: "Training" },
       { view: "help", label: "Find help" },
     ],
   },
@@ -90,6 +94,7 @@ export const ROLES: Record<Role, RoleConfig> = {
       { view: "caseload", label: "Team & caseload" },
       { view: "referrals", label: "Referrals" },
       { view: "checkin", label: "Screen a child" },
+      { view: "training", label: "Training" },
       { view: "help", label: "Find help" },
     ],
   },

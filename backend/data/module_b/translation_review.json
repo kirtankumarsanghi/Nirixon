@@ -1,0 +1,42 @@
+{
+  "en": {
+    "status": "reviewed",
+    "reviewer": "Nirixon editorial source",
+    "reviewed_date": "2026-10-31"
+  },
+  "hi": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "mr": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "ta": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "te": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "bn": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "gu": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  },
+  "kn": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewed_date": null
+  }
+}

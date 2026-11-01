@@ -40,6 +40,7 @@ from app.core.safety_floor import (
     get_deterministic_override,
     stopping_blocked_reason,
 )
+from app.core.sensory_items import SENSORY_IDS, record_sensory_answer
 from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion, ScreeningSession
 
 # ---------------------------------------------------------------------------
@@ -132,6 +133,8 @@ def _run_full_session_direct(
             record_mandatory_answer(session, action.item_id, regression_flag_answer)
         elif action.item_id in MANDATORY_IDS:
             record_mandatory_answer(session, action.item_id, 1)
+        elif action.item_id in SENSORY_IDS:
+            record_sensory_answer(session, action.item_id, 0)
         else:
             session.answers[action.item_id] = 1
 
@@ -195,6 +198,8 @@ class TestSafetyFloor:
         session = ScreeningSession("c5", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         # 2 mandatory done, but MIN_REAL_ANSWERS is 6 — need 4 more
         assert not can_stop_early(session)
         reason = stopping_blocked_reason(session)
@@ -204,6 +209,8 @@ class TestSafetyFloor:
         session = ScreeningSession("c6", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         # 4 items across 4 distinct domains to satisfy both count AND domain floor
         for item in ["GM01", "FM01", "CM01", "CG01"]:
             session.answers[item] = 1
@@ -370,6 +377,8 @@ class TestDeterministicMLOverride:
         session = ScreeningSession("c-override-2", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         override = get_deterministic_override(session)
         assert (
             override is None
@@ -411,6 +420,8 @@ class TestDomainCoverageFloor:
         session = ScreeningSession("c-domain-1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         # 4 answers, all from gross_motor — count floor met, domain floor not
         for item in ["GM01", "GM02", "GM03", "GM04"]:
             session.answers[item] = 1
@@ -430,6 +441,8 @@ class TestDomainCoverageFloor:
         session = ScreeningSession("c-domain-2", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         # One item from each of 4 distinct domains
         for item in ["GM01", "FM01", "CM01", "CG01"]:
             session.answers[item] = 1
@@ -535,6 +548,8 @@ class TestMotorConfoundCaveat:
         session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
 
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 0  # Failed confound
@@ -558,6 +573,8 @@ class TestMotorConfoundCaveat:
         session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
 
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 0  # Failed confound
@@ -579,6 +596,8 @@ class TestMotorConfoundCaveat:
         session = ScreeningSession("c1", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
 
         # CG02 has motor_confound=True, CG01 has motor_confound=False
         session.answers["CG02"] = 1  # Passed confound
@@ -622,6 +641,8 @@ class TestAdaptiveDomainCoverageSelection:
         session = ScreeningSession("c-mand-domain", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
 
         # Simulate a domain-touching mandatory answer via the shared counter
         # path (mandatory_answered). GM01 is a real gross_motor item.
@@ -655,6 +676,8 @@ class TestAdaptiveDomainCoverageSelection:
         session = ScreeningSession("c-mand-only", 12.0, 10)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
 
         assert _domains_with_real_answer(session) == set()
         candidates = [item.item_id for item in ITEM_BANK]
@@ -669,6 +692,8 @@ class TestAdaptiveDomainCoverageSelection:
         session = ScreeningSession("c-uncovered", 12.0, 20)
         record_mandatory_answer(session, "regression_flag", 0)
         record_mandatory_answer(session, "family_history_flag", 0)
+        record_sensory_answer(session, "vision_flag", 0)
+        record_sensory_answer(session, "hearing_flag", 0)
         # Cover only one domain
         session.answers["GM01"] = 1
         session.answers["GM02"] = 1
@@ -700,10 +725,13 @@ class TestAdaptiveDomainCoverageSelection:
             flip += 1
             if action.item_id in MANDATORY_IDS:
                 record_mandatory_answer(session, action.item_id, answer)
+            elif action.item_id in SENSORY_IDS:
+                record_sensory_answer(session, action.item_id, 0)
             else:
                 session.answers[action.item_id] = answer
         else:
             pytest.fail("Session failed to terminate within 50 steps")
 
         assert isinstance(action, FinalResult)
-        assert len(questions) <= 10
+        # 2 mandatory + 2 sensory + at most `question_cap` adaptive items.
+        assert len(questions) <= 10 + len(MANDATORY_IDS) + len(SENSORY_IDS)

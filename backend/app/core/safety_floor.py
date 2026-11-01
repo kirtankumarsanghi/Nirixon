@@ -182,6 +182,10 @@ def get_deterministic_override(session: ScreeningSession) -> str | None:
     if session.module == "A":
         if session.mandatory_answered.get("regression_flag") == 1:
             return "Refer"
+        from .sensory_items import sensory_override
+
+        if sensory_override(session) == "Refer":
+            return "Refer"
         return None
 
     # Module B: any rule-out item answered positively forces Refer

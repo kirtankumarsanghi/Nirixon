@@ -14,7 +14,8 @@ export type Route =
 
 /** Views a role may open: its tabs plus the shared check-in flow. */
 export function allowedViews(role: Role): View[] {
-  return [...ROLES[role].tabs.map((t) => t.view), "checkin"];
+  const shared: View[] = ["checkin", "wellbeing", "training"];
+  return [...ROLES[role].tabs.map((t) => t.view), ...shared];
 }
 
 export function parseHash(hash: string): Route {

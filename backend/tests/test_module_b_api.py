@@ -324,14 +324,17 @@ async def test_session_caps_and_floor(api_env):
         answer_fn=_likert_high_for("attention"),
     )
 
-    # A session never exceeds 20 questions
-    assert len(path) <= 20
+    # The adaptive loop never exceeds 20 questions. The fixed parent-context
+    # pass (prematurity, screen time, home environment) is additive and is not
+    # part of that cap.
+    adaptive_path = [entry for entry in path if entry[0] != "context"]
+    assert len(adaptive_path) <= 20
     # Respects MIN_REAL_ANSWERS_B
-    assert len(path) >= MIN_REAL_ANSWERS_B
+    assert len(adaptive_path) >= MIN_REAL_ANSWERS_B
     # Respects MIN_DOMAINS_COVERED_B
     asked_domains = {
         track
-        for track, _, _ in path
+        for track, _, _ in adaptive_path
         if track not in ("safety", "rule_out", "vision_hearing")
     }
     assert len(asked_domains) >= MIN_DOMAINS_COVERED_B

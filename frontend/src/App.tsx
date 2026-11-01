@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Check, LogOut } from "lucide-react";
+import { Check, GraduationCap, HeartHandshake, LogOut } from "lucide-react";
 import { AppFooter } from "./components/AppFooter";
 import { Crumbs } from "./components/Crumbs";
 import { MenuOverlay, Nav } from "./components/Nav";
@@ -7,6 +7,7 @@ import { RoleDock } from "./components/RoleDock";
 import { SyncStatus } from "./components/SyncStatus";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ServerSettingsButton } from "./components/ServerSettings";
+import { NotificationSettingsButton } from "./components/NotificationSettings";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
 import { AppProvider, useApp } from "./store";
 import { cn } from "./utils/cn";
@@ -24,6 +25,8 @@ import { ClinicalReview } from "./views/ClinicalReview";
 import { Cases } from "./views/Cases";
 import { WhatIf } from "./views/WhatIf";
 import { ParentWhatIf } from "./views/ParentWhatIf";
+import { Wellbeing } from "./views/Wellbeing";
+import { Training } from "./views/Training";
 import { Evidence } from "./views/Evidence";
 
 function Screen({ view }: { view: View }) {
@@ -65,6 +68,10 @@ function Screen({ view }: { view: View }) {
       return <Cases />;
     case "whatif":
       return role === "parent" ? <ParentWhatIf /> : <WhatIf />;
+    case "wellbeing":
+      return <Wellbeing />;
+    case "training":
+      return <Training />;
     case "evidence":
       return <Evidence />;
   }
@@ -158,6 +165,29 @@ function Workspace() {
                 ))}
               </div>
             </div>
+            <button
+              type="button"
+              tabIndex={menuOpen ? 0 : -1}
+              onClick={() => {
+                setMenuOpen(false);
+                go("wellbeing");
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10"
+            >
+              <HeartHandshake className="size-4" /> Caregiver wellbeing
+            </button>
+            <button
+              type="button"
+              tabIndex={menuOpen ? 0 : -1}
+              onClick={() => {
+                setMenuOpen(false);
+                go("training");
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10"
+            >
+              <GraduationCap className="size-4" /> Training
+            </button>
+            <NotificationSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
             <ServerSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
             <button
               type="button"

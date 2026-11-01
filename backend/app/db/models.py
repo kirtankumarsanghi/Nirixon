@@ -555,3 +555,149 @@ class ConflictLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow
     )
+
+
+# ---------------------------------------------------------------------------
+# Notifications: Web Push, WhatsApp/SMS outbox, IVR
+# ---------------------------------------------------------------------------
+
+
+class PushSubscription(Base):
+    """A browser/device Web Push subscription.
+
+    Endpoint + keys are opaque transport credentials, not patient data.
+    """
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True, index=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("workers.id"), nullable=True, index=True
+    )
+    role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(Text)
+    auth: Mapped[str] = mapped_column(Text)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class NotificationPreference(Base):
+    """Opt-in channel preferences for a user or frontline worker.
+
+    Channels: {"push": bool, "whatsapp": bool, "sms": bool, "ivr": bool}.
+    Phone numbers are optional and only stored after explicit consent.
+    """
+
+    __tablename__ = "notification_preferences"
+    __table_args__ = (
+        UniqueConstraint(
+            "subject_type", "subject_id", name="uq_notification_pref_subject"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    subject_type: Mapped[str] = mapped_column(String(16))  # user | worker
+    subject_id: Mapped[str] = mapped_column(String(36), index=True)
+    channels: Mapped[dict] = mapped_column(
+        JsonType,
+        default=lambda: {"push": False, "whatsapp": False, "sms": False, "ivr": False},
+    )
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # SHA-256 of the normalised phone, used by the inbound bot without storing
+    # a second raw number or exposing it in queries.
+    phone_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    locale: Mapped[str] = mapped_column(String(8), default="en")
+    quiet_start: Mapped[str | None] = mapped_column(String(5), nullable=True)  # HH:MM
+    quiet_end: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    reminder_lead_days: Mapped[int] = mapped_column(Integer, default=3)
+    consent_recorded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
+class NotificationDelivery(Base):
+    """Outbox + delivery audit for every push/WhatsApp/SMS/IVR attempt."""
+
+    __tablename__ = "notification_deliveries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    channel: Mapped[str] = mapped_column(String(16))  # push | whatsapp | sms | ivr
+    template: Mapped[str] = mapped_column(String(64))
+    subject_type: Mapped[str] = mapped_column(String(16))  # user | worker
+    subject_id: Mapped[str] = mapped_column(String(36), index=True)
+    child_ref: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    payload: Mapped[dict] = mapped_column(JsonType, default=dict)
+    status: Mapped[str] = mapped_column(
+        String(16), default="queued"
+    )  # queued | sent | failed | suppressed
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    scheduled_for: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    provider_message_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )
+
+
+class NotificationConversation(Base):
+    """Menu state for the WhatsApp/SMS bot, keyed by a hash — never the raw phone."""
+
+    __tablename__ = "notification_conversations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    phone_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    state: Mapped[str] = mapped_column(String(32), default="menu")
+    context: Mapped[dict] = mapped_column(JsonType, default=dict)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+
+class MaternalScreening(Base):
+    """Optional EPDS caregiver wellbeing screening (separate from child scores)."""
+
+    __tablename__ = "maternal_screenings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    subject_user_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True, index=True
+    )
+    child_ref: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    answers: Mapped[dict] = mapped_column(JsonType, default=dict)
+    total_score: Mapped[int] = mapped_column(Integer, default=0)
+    classification: Mapped[str] = mapped_column(String(32), default="Typical")
+    safety_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow
+    )

@@ -6,7 +6,6 @@ import { ThemeToggle } from "./ThemeContext";
 import { cn } from "../utils/cn";
 
 const LINKS = [
-  { label: "Results", href: "#proof" },
   { label: "Try it", href: "#try" },
   { label: "Age groups", href: "#modules" },
   { label: "Toolkit", href: "#toolkit" },

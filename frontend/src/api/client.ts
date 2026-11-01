@@ -5,6 +5,7 @@ import type {
   LoginResponse,
   RecallRequest,
   ResultPayload,
+  SandboxSimulateRequest,
   ScreenActionResponse,
   SessionStateResponse,
   StartScreenRequest,
@@ -47,6 +48,15 @@ import type {
   AudioItemQueryResponse,
   AudioCoverageReport,
   FacilitiesResponse,
+  EpdsQuestionsResponse,
+  EpdsResult,
+  EpdsSubmitRequest,
+  NotificationDelivery,
+  NotificationPreference,
+  NotificationPreferenceUpdate,
+  PushSubscriptionPayload,
+  SweepResponse,
+  VapidKeyResponse,
 } from "./types";
 
 // Same-origin by default: both the Vite dev server and nginx proxy /api and
@@ -265,6 +275,17 @@ export const api = {
         body: JSON.stringify(body),
       },
       { retry: true },
+    );
+  },
+
+  /** Make the in-quiz regression toggle authoritative for the final result. */
+  setRegression(
+    sessionId: string,
+    value: 0 | 1,
+  ): Promise<{ status: string; regression: string }> {
+    return request<{ status: string; regression: string }>(
+      `/api/screen/${sessionId}/regression`,
+      { method: "POST", body: JSON.stringify({ value }) },
     );
   },
 
@@ -704,9 +725,88 @@ export interface EvidenceResponse {
   dataset_note: string;
 }
 
+export const sandboxApi = {
+  /** Completed sessions available to the clinician sandbox (cross-family). */
+  sessions(limit = 50): Promise<SessionSummary[]> {
+    return request<SessionSummary[]>(`/api/sandbox/sessions?limit=${limit}`);
+  },
+
+  /** Re-score a completed session with real overrides on the backend. */
+  simulate(
+    sessionId: string,
+    body: SandboxSimulateRequest,
+  ): Promise<ResultPayload> {
+    return request<ResultPayload>(`/api/sandbox/${sessionId}/simulate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+};
+
 export const evidenceApi = {
   get(): Promise<EvidenceResponse> {
     return request<EvidenceResponse>("/api/evidence");
+  },
+};
+
+export const maternalApi = {
+  getQuestions(): Promise<EpdsQuestionsResponse> {
+    return request<EpdsQuestionsResponse>("/api/maternal/questions");
+  },
+  score(body: EpdsSubmitRequest): Promise<EpdsResult> {
+    return request<EpdsResult>("/api/maternal/score", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+  history(): Promise<EpdsResult[]> {
+    return request<EpdsResult[]>("/api/maternal/history");
+  },
+};
+
+export const notificationApi = {
+  getVapidKey(): Promise<VapidKeyResponse> {
+    return request<VapidKeyResponse>("/api/notifications/vapid-public-key");
+  },
+
+  subscribe(body: PushSubscriptionPayload): Promise<void> {
+    return request<void>("/api/notifications/subscribe", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  unsubscribe(endpoint: string): Promise<void> {
+    return request<void>("/api/notifications/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    });
+  },
+
+  getPreferences(): Promise<NotificationPreference> {
+    return request<NotificationPreference>("/api/notifications/preferences");
+  },
+
+  updatePreferences(body: NotificationPreferenceUpdate): Promise<NotificationPreference> {
+    return request<NotificationPreference>("/api/notifications/preferences", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
+
+  getDeliveries(limit = 50): Promise<NotificationDelivery[]> {
+    return request<NotificationDelivery[]>(`/api/notifications/?limit=${limit}`);
+  },
+
+  sendTest(channel: string, template = "activity_tip"): Promise<SweepResponse> {
+    return request<SweepResponse>("/api/notifications/test", {
+      method: "POST",
+      body: JSON.stringify({ channel, template }),
+    });
+  },
+
+  runSweep(): Promise<SweepResponse> {
+    return request<SweepResponse>("/api/notifications/run-sweep", { method: "POST" });
   },
 };
 

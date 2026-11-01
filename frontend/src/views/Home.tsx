@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, FlaskConical, Lightbulb, MapPin, Share2, ShieldAlert } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, FlaskConical, HeartHandshake, Lightbulb, MapPin, Share2, ShieldAlert } from "lucide-react";
 import { Radar } from "../components/Radar";
 import { Photo } from "../components/Photo";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
@@ -105,6 +105,9 @@ export function Home() {
               </Btn>
               <Btn variant="ghostDark" size="lg" onClick={() => go("whatif")}>
                 <FlaskConical className="size-4" /> Parent what-if
+              </Btn>
+              <Btn variant="ghostDark" size="lg" onClick={() => go("wellbeing")}>
+                <HeartHandshake className="size-4" /> Your wellbeing
               </Btn>
             </div>
           </div>

@@ -34,6 +34,8 @@ def _question_from_action(
     else:
         ui_rt = response_type
     domain = str(action.get("domain") or action.get("track") or "")
+    scale = action.get("scale") if isinstance(action.get("scale"), str) else None
+    options = scale.split("|") if ui_rt == "choice" and scale else []
     return QuestionPayload(
         item_id=str(action["item_id"]),
         question_text=str(action.get("text") or ""),
@@ -41,9 +43,14 @@ def _question_from_action(
         question_number=answered + 1,
         question_cap=int(progress.get("max", question_cap)),
         response_type=ui_rt,  # type: ignore[arg-type]
-        scale_labels=(
-            action.get("scale") if isinstance(action.get("scale"), str) else None
+        scale_labels=scale,
+        options=options,
+        reverse_scored=(
+            bool(action["reverse_scored"])
+            if action.get("reverse_scored") is not None
+            else None
         ),
+        item_type=(str(action.get("item_type")) if action.get("item_type") else None),
         track=domain,
     )
 
@@ -230,6 +237,9 @@ def build_result_payload(raw: dict[str, Any]) -> ResultPayload:
         guard_flags=guard_flags,
         guard_advisories=guard_advisories,
         differential_masking=diff_masking,
+        context_flags=list(mapped.get("context_flags") or []),
+        context_answers=dict(mapped.get("context_answers") or {}),
+        red_flags=list(mapped.get("red_flags") or []),
     )
 
 

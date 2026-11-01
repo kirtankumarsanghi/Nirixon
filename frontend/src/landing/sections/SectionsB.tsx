@@ -96,9 +96,9 @@ export function Faq() {
 /* ================================================================== */
 
 const COLS = [
-  { h: "Product", links: [["Key results", "#proof"], ["Safety rule", "#safety"], ["Try it", "#try"], ["Two age groups", "#modules"]] },
-  { h: "For", links: [["Parents", "#audience"], ["ASHA & Anganwadi", "#audience"], ["Clinicians", "#audience"], ["WhatsApp (Roadmap)", "#audience"]] },
-  { h: "Trust", links: [["Answer checks", "#intake"], ["Paper vs Nirixon", "#compare"], ["FAQ", "#faq"], ["Book a demo", "#cta"]] },
+  { h: "Product", links: [["Safety rule", "#safety"], ["Try it", "#try"], ["Two age groups", "#modules"]] },
+  { h: "For", links: [["Parents", "#audience"], ["ASHA & Anganwadi", "#audience"], ["Clinicians", "#audience"], ["WhatsApp follow-ups", "#audience"]] },
+  { h: "Trust", links: [["Answer checks", "#intake"], ["FAQ", "#faq"], ["Book a demo", "#cta"]] },
 ];
 
 export function CtaFooter() {

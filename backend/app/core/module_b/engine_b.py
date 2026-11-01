@@ -104,6 +104,17 @@ SAFETY_QUEUE: dict[str, str] = {
     "em_self_hurt": "sf_selfharm_act",
 }
 
+# Fixed, short parent-context pass asked after the adaptive questions. These are
+# recorded separately and never enter the domain scores.
+CONTEXT_ORDER: tuple[str, ...] = (
+    "cx_preterm",
+    "cx_screen",
+    "cx_sleep",
+    "cx_home_books",
+    "cx_home_play",
+    "cx_home_caregiver",
+)
+
 
 def _get_helpline_text(key: str) -> str:
     try:
@@ -163,6 +174,7 @@ class Bank:
             for b in ("5-7", "8-10", "11-12"):
                 self.pool[(dom, form, b)] = g[g.bands.apply(lambda x, b=b: b in x)]
         self.safety = df[df.domain == "safety"]
+        self.context = df[df.item_type == "context"]
         self.acts = pd.read_csv(str(act_path))
 
     def row(self, item_id: str) -> Any:
@@ -183,6 +195,7 @@ class Session:
     safety_queue: list[str] = field(default_factory=list)
     boost: dict[str, float] = field(default_factory=dict)
     answers: list[dict[str, Any]] = field(default_factory=list)
+    context_answers: dict[str, Any] = field(default_factory=dict)
     red_flags: list[dict[str, Any]] = field(default_factory=list)
     referral_notes: list[str] = field(default_factory=list)
     router_evidence: dict[str, list[str]] = field(default_factory=dict)
@@ -492,6 +505,9 @@ class Engine:
                 ) % len(rows)
                 return self._q(s, rows.iloc[pick_idx], "safety")
         if self._stop(s):
+            context_row = self._next_context(s)
+            if context_row is not None:
+                return self._q(s, context_row, "context")
             return {"type": "done"}
         order = sorted(ALL_TRACKS, key=lambda t: -self._priority(s, t))
         for t in order:
@@ -501,6 +517,32 @@ class Engine:
             if iid:
                 return self._q(s, self.bank.row(iid), t)
         return {"type": "done"}
+
+    @staticmethod
+    def _context_value(s: Session, concept: str) -> Any | None:
+        if concept in s.context_answers:
+            return s.context_answers[concept]
+        for key, value in s.context_answers.items():
+            if key.startswith(f"{concept}."):
+                return value
+        return None
+
+    def _next_context(self, s: Session) -> Any | None:
+        """Next fixed context question for this band, or None when complete."""
+        rows = self.bank.context
+        if rows.empty:
+            return None
+        for concept in CONTEXT_ORDER:
+            if self._context_value(s, concept) is not None:
+                continue
+            match = rows[rows.concept_id == concept]
+            match = match[match.form == s.form] if "form" in match else match
+            if match.empty:
+                continue
+            match = match[match.bands.apply(lambda bands: s.band in bands)]
+            if not match.empty:
+                return match.iloc[0]
+        return None
 
     def _q(self, s: Session, row: Any, track: str) -> dict[str, Any]:
         return {
@@ -512,7 +554,22 @@ class Engine:
             "scale": (
                 str(row["scale_labels"]) if pd.notna(row["scale_labels"]) else None
             ),
-            "progress": {"answered": len(s.answers), "max": self.cfg["max_questions"]},
+            # Direction matters: symptom items are worse at higher frequency,
+            # strength items are better. The client uses this for both the
+            # answer labels and the live preview.
+            "reverse_scored": (
+                bool(int(row["reverse_scored"]))
+                if pd.notna(row["reverse_scored"])
+                else False
+            ),
+            "item_type": str(row["item_type"]),
+            "progress": {
+                "answered": len(s.answers) + len(s.context_answers),
+                # Context questions are additive and must not push the progress
+                # denominator past the adaptive cap.
+                "max": self.cfg["max_questions"]
+                + (len(CONTEXT_ORDER) if track == "context" else 0),
+            },
         }
 
     # ---------------------------------------------------------------- answer
@@ -524,6 +581,9 @@ class Engine:
         track: str | None = None,
     ) -> Session:
         row = self.bank.row(item_id)
+        if str(row["item_type"]) == "context":
+            s.context_answers[item_id] = value
+            return s
         c = concern_of(row, value)
         trk = track or (
             "safety"
@@ -755,14 +815,30 @@ class Engine:
         if diff_advisories:
             summary = summary + " " + " ".join(diff_advisories)
 
+        context_flags = list(s.context_flags)
+        preterm = str(self._context_value(s, "cx_preterm") or "").strip().lower()
+        if preterm in {"yes", "1", "true"}:
+            context_flags.append("prematurity")
+        screen = self._context_value(s, "cx_screen")
+        if isinstance(screen, int) and screen >= 2:
+            context_flags.append("high_screen_time")
+        for concept, label in (
+            ("cx_home_books", "no_home_learning_materials"),
+            ("cx_home_play", "no_safe_study_space"),
+        ):
+            value = str(self._context_value(s, concept) or "").strip().lower()
+            if value in {"no", "0", "false"}:
+                context_flags.append(label)
+
         return {
             "age": s.age,
-            "questions_asked": len(s.answers),
+            "questions_asked": len(s.answers) + len(s.context_answers),
+            "context_answers": dict(s.context_answers),
+            "context_flags": context_flags,
             "domains": {t: tracks[t] for t in DOMAINS},
             "ruleouts": {t: tracks[t] for t in RULEOUTS},
             "flagged_domains": flagged,
             "ruleout_flags": ro,
-            "context_flags": s.context_flags,
             "red_flags": s.red_flags,
             "referral_notes": s.referral_notes,
             "safety": s.safety,

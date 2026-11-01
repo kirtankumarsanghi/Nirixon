@@ -75,6 +75,13 @@ def get_next_action(
     if mandatory_q is not None:
         return mandatory_q
 
+    # Step 1b — Module A vision/hearing quick screen, before the adaptive set.
+    from .sensory_items import next_sensory_question
+
+    sensory_q = next_sensory_question(session)
+    if sensory_q is not None:
+        return sensory_q
+
     # Step 2 — Check stopping conditions (only after mandatory items done)
     floor_reason = stopping_blocked_reason(session)
     floor_met = floor_reason is None
@@ -165,7 +172,9 @@ def _get_next_action_b(
                 item_id=str(action["item_id"]),
                 question_text=str(action["text"]),
                 domain=to_api_domain(str(action.get("track", ""))),
-                question_number=len(eng_sess.answers) + 1,
+                question_number=(
+                    len(eng_sess.answers) + len(eng_sess.context_answers) + 1
+                ),
                 question_cap=session.question_cap,
             )
 

@@ -4,9 +4,9 @@ Audio Narration API Router
 Enforces:
 1. Manifest keyed by item_id and language.
 2. Unreviewed audio files are strictly hidden by default (require reviewed_by and reviewed_date).
-3. Reviewed narration is pre-generated. Single documented exception: Module B Hindi
-   is synthesized on first request and cached on disk (the bank is English-only and
-   ~2,400 items), and is returned flagged as unreviewed.
+3. Reviewed narration is pre-generated. Missing languages — Module A's 40 strings
+   and Module B's ~2,400-item bank — are synthesized on first request and cached
+   on disk in every supported language, and are returned flagged as unreviewed.
 4. Preload and fallback support.
 5. Audio coverage report generation.
 """
@@ -104,39 +104,96 @@ def is_entry_reviewed(entry: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 _DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-HINDI_TEXT_PATH = _DATA_DIR / "module_b" / "question_bank_b_hi.json"
 ENGLISH_BANK_PATH = _DATA_DIR / "module_b" / "question_bank_b.csv"
+MODULE_A_DIR = _DATA_DIR / "module_a"
 # Runtime synthesis cache. Deliberately outside the reviewed clip tree and
 # gitignored: these files are disposable and regenerate on demand.
 _STATIC_AUDIO_DIR = Path(__file__).resolve().parent.parent.parent / "static" / "audio"
-HINDI_AUDIO_DIR = _STATIC_AUDIO_DIR / "generated" / "hi"
-ENGLISH_AUDIO_DIR = _STATIC_AUDIO_DIR / "generated" / "en"
-HINDI_AUDIO_URL_PREFIX = "/audio/generated/hi"
-ENGLISH_AUDIO_URL_PREFIX = "/audio/generated/en"
-HINDI_VOICE = "hi-IN-SwaraNeural"
-ENGLISH_VOICE = "en-IN-NeerjaNeural"
-HINDI_LABEL = "हिन्दी (Hindi)"
-ENGLISH_LABEL = "English"
-GENERATED_BY_HI = (
-    "Machine-generated narration (edge-tts hi-IN) - pending clinical review"
-)
-GENERATED_BY_EN = (
-    "Machine-generated narration (edge-tts en-IN) - pending clinical review"
-)
+_GENERATED_DIR = _STATIC_AUDIO_DIR / "generated"
 
-_hindi_file = _JsonFileCache(HINDI_TEXT_PATH, fallback={})
+# language -> (edge-tts voice, human label). Hindi/English were the original
+# set; the rest follow the workspace language expansion.
+LANGUAGE_VOICES: dict[str, tuple[str, str]] = {
+    "en": ("en-IN-NeerjaNeural", "English"),
+    "hi": ("hi-IN-SwaraNeural", "हिन्दी (Hindi)"),
+    "mr": ("mr-IN-AarohiNeural", "मराठी (Marathi)"),
+    "ta": ("ta-IN-PallaviNeural", "தமிழ் (Tamil)"),
+    "te": ("te-IN-ShrutiNeural", "తెలుగు (Telugu)"),
+    "bn": ("bn-IN-TanishaaNeural", "বাংলা (Bengali)"),
+    "gu": ("gu-IN-DhwaniNeural", "ગુજરાતી (Gujarati)"),
+    "kn": ("kn-IN-SapnaNeural", "ಕನ್ನಡ (Kannada)"),
+}
+
 _english_texts: dict[str, str] | None = None
+_localized_b_files: dict[str, _JsonFileCache] = {}
+_localized_a_files: dict[str, _JsonFileCache] = {}
+
+
+def _module_a_texts(language: str) -> dict[str, str]:
+    """Module A (early-years) question text for a language, when generated."""
+    if language == "en":
+        return get_module_a_english_texts()
+    cache = _localized_a_files.get(language)
+    if cache is None:
+        path = MODULE_A_DIR / f"question_bank_a_{language}.json"
+        cache = _JsonFileCache(path, fallback={})
+        _localized_a_files[language] = cache
+    return cache.get()
+
+
+def get_localized_texts(language: str) -> dict[str, str]:
+    """Item text for a language across both question banks.
+
+    Module B is the large adaptive bank; Module A has 40 spoken strings. Both
+    maps share the same ``item_id -> text`` shape, so merging them lets the
+    on-demand narration path serve either module with one lookup.
+    """
+    if language == "en":
+        return get_english_texts()
+    if language not in LANGUAGE_VOICES:
+        return {}
+    cache = _localized_b_files.get(language)
+    if cache is None:
+        path = _DATA_DIR / "module_b" / f"question_bank_b_{language}.json"
+        cache = _JsonFileCache(path, fallback={})
+        _localized_b_files[language] = cache
+    merged = dict(_module_a_texts(language))
+    merged.update(cache.get())
+    return merged
 
 
 def get_hindi_texts() -> dict[str, str]:
-    return _hindi_file.get()
+    return get_localized_texts("hi")
+
+
+_module_a_english_texts: dict[str, str] | None = None
+
+
+def get_module_a_english_texts() -> dict[str, str]:
+    """English Module A item text (36 milestones + mandatory + sensory)."""
+    global _module_a_english_texts
+    if _module_a_english_texts is None:
+        texts: dict[str, str] = {}
+        try:
+            from data.generator.item_bank import ITEM_BANK
+
+            from app.core.mandatory_items import MANDATORY_QUESTION_TEXTS
+            from app.core.sensory_items import SENSORY_QUESTION_TEXTS
+
+            texts.update({itm.item_id: itm.text for itm in ITEM_BANK})
+            texts.update(MANDATORY_QUESTION_TEXTS)
+            texts.update(SENSORY_QUESTION_TEXTS)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not load Module A question text: %s", exc)
+        _module_a_english_texts = texts
+    return _module_a_english_texts
 
 
 def get_english_texts() -> dict[str, str]:
-    """English Module B item text, read once from the source CSV."""
+    """English item text across both banks."""
     global _english_texts
     if _english_texts is None:
-        texts: dict[str, str] = {}
+        texts: dict[str, str] = dict(get_module_a_english_texts())
         try:
             with ENGLISH_BANK_PATH.open(newline="", encoding="utf-8") as fh:
                 for row in csv.DictReader(fh):
@@ -152,29 +209,17 @@ def get_english_texts() -> dict[str, str]:
 
 async def ensure_generated_clip(item_id: str, language: str) -> str | None:
     """Synthesize (once, then reuse the cached file) a narration clip."""
-    if language == "hi":
-        text = get_hindi_texts().get(item_id)
-        voice, folder, prefix, label = (
-            HINDI_VOICE,
-            HINDI_AUDIO_DIR,
-            HINDI_AUDIO_URL_PREFIX,
-            HINDI_LABEL,
-        )
-    elif language == "en":
-        text = get_english_texts().get(item_id)
-        voice, folder, prefix, label = (
-            ENGLISH_VOICE,
-            ENGLISH_AUDIO_DIR,
-            ENGLISH_AUDIO_URL_PREFIX,
-            ENGLISH_LABEL,
-        )
-    else:
+    voice_label = LANGUAGE_VOICES.get(language)
+    if voice_label is None:
         return None
+    voice, label = voice_label
+    text = get_localized_texts(language).get(item_id)
     if not text:
         return None
 
+    folder = _GENERATED_DIR / language
     target = folder / f"{item_id}.mp3"
-    if not target.exists():
+    if not target.exists() or target.stat().st_size == 0:
         try:
             import edge_tts
 
@@ -185,7 +230,7 @@ async def ensure_generated_clip(item_id: str, language: str) -> str | None:
                 "Could not synthesize %s clip for %s: %s", label, item_id, exc
             )
             return None
-    return f"{prefix}/{item_id}.mp3"
+    return f"/audio/generated/{language}/{item_id}.mp3"
 
 
 @router.get("/manifest", response_model=AudioManifestResponse)
@@ -230,8 +275,9 @@ async def get_audio_item(
     """
     Retrieves reviewed narration audio for a given question item.
     If audio is missing or unreviewed, returns a graceful fallback_to_text payload.
-    Manifest audio is only served when reviewed; Module B narration is the sole
-    on-demand exception (English and Hindi) and comes back flagged unreviewed.
+    Manifest audio is only served when reviewed; missing Module A/Module B
+    narration is synthesized on demand (all supported languages) and comes back
+    flagged unreviewed.
     """
     raw = get_raw_manifest()
     item_dict = raw.get("items", {}).get(item_id) or {}
@@ -243,12 +289,9 @@ async def get_audio_item(
     lang_entry = item_dict.get(language)
     if not lang_entry or not is_entry_reviewed(lang_entry):
         generated_url = await ensure_generated_clip(item_id, language)
-        generated_text = (
-            get_hindi_texts().get(item_id)
-            if language == "hi"
-            else get_english_texts().get(item_id)
-        )
+        generated_text = get_localized_texts(language).get(item_id)
         if generated_url and generated_text:
+            label = LANGUAGE_VOICES.get(language, (None, language))[1]
             return AudioItemQueryResponse(
                 item_id=item_id,
                 has_audio=True,
@@ -257,12 +300,13 @@ async def get_audio_item(
                 audio=AudioItemEntry(
                     item_id=item_id,
                     language=language,
-                    language_label=HINDI_LABEL if language == "hi" else ENGLISH_LABEL,
+                    language_label=label,
                     audio_url=generated_url,
                     text=generated_text,
                     duration_ms=0,
                     reviewed_by=(
-                        GENERATED_BY_HI if language == "hi" else GENERATED_BY_EN
+                        f"Machine-generated narration (edge-tts {language}) - "
+                        "pending clinical review"
                     ),
                     reviewed_date=datetime.now(UTC).date().isoformat(),
                     status="unreviewed",
@@ -283,6 +327,10 @@ async def get_audio_item(
             has_audio=False,
             fallback_to_text=True,
             reason=reason,
+            # Keep the text we do have (e.g. the Module B Hindi map) so a client
+            # can still narrate it with the browser's speech synthesis when the
+            # on-demand clip could not be generated.
+            text=generated_text,
             available_languages=available_reviewed_langs,
         )
 
@@ -302,6 +350,7 @@ def _collect_all_system_items() -> list[dict[str, Any]]:
 
     # Mandatory
     from app.core.mandatory_items import MANDATORY_QUESTION_TEXTS
+    from app.core.sensory_items import SENSORY_QUESTION_TEXTS
 
     for mid, text in MANDATORY_QUESTION_TEXTS.items():
         items.append(
@@ -309,6 +358,15 @@ def _collect_all_system_items() -> list[dict[str, Any]]:
                 "item_id": mid,
                 "domain": "background",
                 "bank": "Mandatory Screening Flags",
+                "text": text,
+            }
+        )
+    for sid, text in SENSORY_QUESTION_TEXTS.items():
+        items.append(
+            {
+                "item_id": sid,
+                "domain": "sensory",
+                "bank": "Module A Sensory Quick Screen",
                 "text": text,
             }
         )
@@ -462,8 +520,8 @@ async def get_audio_coverage_report() -> AudioCoverageReport:
         clinical_review_date=raw.get("clinical_review_date", "2026-03-20"),
         gating_rules=[
             "Reviewed narration is pre-generated and clinically gated (reviewed_by + reviewed_date).",
-            "Module B adaptive items are narrated in Hindi on first play by a neural hi-IN voice; those entries are returned flagged unreviewed.",
-            "Module B Hindi text is machine-translated and pending clinical review.",
+            "Module A and Module B items without a reviewed clip are narrated on first play by the requested neural voice; those entries are returned flagged unreviewed.",
+            "Machine-translated question text for Module A/Module B is pending clinical review.",
             "Files missing reviewed_by or reviewed_date are hidden by default in the manifest.",
             "Missing or unreviewed audio automatically falls back to validated written text.",
             "Audio playback is non-blocking and caregiver response is never constrained.",

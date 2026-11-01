@@ -287,7 +287,9 @@ async def test_e2e_flow_2_module_b_screening(e2e_harness):
     result_b = None
     steps = 0
 
-    while not completed and curr_q is not None and steps < 15:
+    # Module B now adds a fixed six-question parent-context pass after the
+    # adaptive loop, so allow enough steps for both.
+    while not completed and curr_q is not None and steps < 40:
         steps += 1
         rt = curr_q.get("response_type", "likert5")
         b_ans = "Yes" if rt == "yesno" else 3  # moderate difficulty

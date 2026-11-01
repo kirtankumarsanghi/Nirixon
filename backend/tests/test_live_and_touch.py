@@ -297,8 +297,8 @@ async def test_result_is_identical_with_and_without_touch_data(env):
         while curr_action.get("type") == "question":
             q = curr_action["question"]
             item_id = q["item_id"]
-            # Answer 0 for mandatory flags, 2 for all milestone questions
-            val = 0 if item_id in ("regression_flag", "family_history_flag") else 2
+            # Answer 0 for mandatory/sensory yes-no flags, 2 for milestones
+            val = 0 if q.get("response_type") == "yes_no" else 2
             ans_res = await client.post(
                 f"/api/screen/{sid}/answer",
                 json={"item_id": item_id, "answer": val, "source": "recall"},

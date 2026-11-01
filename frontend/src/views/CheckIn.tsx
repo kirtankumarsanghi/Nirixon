@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, GraduationCap, Lightbulb, MapPin, Printer, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
+import { ArrowLeft, ArrowRight, Baby, BatteryFull, Check, ChevronDown, GraduationCap, Lightbulb, MapPin, Printer, RotateCcw, Share2, ShieldAlert, Signal, TrendingUp, Wifi } from "lucide-react";
 import { LogoMark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { QuestionAudio } from "../components/QuestionAudio";
+import { LangPicker } from "../components/LangPicker";
 import { caregiverPlanBody, printSheet } from "../lib/printSheet";
-import { loadModuleBHindi } from "../lib/moduleBHi";
+import { loadModuleAText, loadModuleBText } from "../lib/moduleBText";
+import { t, type Lang } from "../lib/i18n";
 import { Radar } from "../components/Radar";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page } from "../components/ui";
 import {
@@ -29,7 +31,6 @@ import type { ResultPayload, ScreenActionResponse } from "../api/types";
 import { scoresFromResult, irtFromResult } from "../lib/apiAdapters";
 
 type DesignVal = 0 | 1 | 2;
-type Lang = "en" | "hi";
 type Module = "A" | "B";
 type Phase = "setup" | "intake" | "recall" | "safety" | "quiz" | "result";
 type IntakeSetting = "home" | "school" | "both";
@@ -42,6 +43,91 @@ interface BackendQuestion {
   question_cap: number;
   response_type?: string;
   scale_labels?: string | null;
+  options?: string[];
+  reverse_scored?: boolean | null;
+  item_type?: string | null;
+}
+
+interface QuizOption {
+  key: string;
+  label: string;
+  answer: number | string;
+  /** Live-preview design value (0 = poor, 2 = good); null means unscored. */
+  preview: number | null;
+}
+
+/** The bank's own scale labels, e.g. "1=Never|2=Rarely|...". */
+function scaleOptions(question: BackendQuestion): { value: number; label: string }[] {
+  const parsed = (question.scale_labels ?? "")
+    .split("|")
+    .map((part) => {
+      const [rawValue, ...rest] = part.split("=");
+      const value = Number(rawValue);
+      const label = rest.join("=").trim() || rawValue.trim();
+      return { value, label };
+    })
+    .filter((option) => Number.isFinite(option.value));
+  return parsed.length
+    ? parsed
+    : [1, 2, 3, 4, 5].map((value) => ({ value, label: String(value) }));
+}
+
+function previewFromConcern(concern: number): number {
+  return Math.max(0, Math.min(2, (1 - concern) * 2));
+}
+
+/**
+ * Options must follow the item, not one generic milestone scale. A symptom
+ * item ("skips words") is worse at higher frequency; a strength item is
+ * better. Module A frequency items and yes/no flags keep their own mapping.
+ */
+function buildQuizOptions(question: BackendQuestion, lang: Lang): QuizOption[] {
+  if (question.response_type === "choice") {
+    return (question.options ?? []).map((label, index) => ({
+      key: `choice-${index}`,
+      label,
+      answer: index,
+      preview: null,
+    }));
+  }
+
+  if (question.response_type === "likert5") {
+    return scaleOptions(question).map(({ value, label }) => {
+      const normalized = (value - 1) / 4;
+      const concern = question.reverse_scored ? 1 - normalized : normalized;
+      return {
+        key: `likert-${value}`,
+        label,
+        answer: value,
+        preview: previewFromConcern(concern),
+      };
+    });
+  }
+
+  if (question.response_type === "yesno") {
+    return [
+      { key: "yes", label: t(lang, "checkin.yes"), answer: "Yes", preview: 0 },
+      { key: "no", label: t(lang, "checkin.no"), answer: "No", preview: 2 },
+      { key: "unsure", label: t(lang, "checkin.notSure"), answer: "Not sure", preview: 1 },
+    ];
+  }
+
+  if (question.response_type === "yes_no") {
+    // Family history is a background risk modifier, not a referral trigger;
+    // keep it out of the live chart while still recording the backend answer.
+    const affectsPreview = question.item_id !== "family_history_flag";
+    return [
+      { key: "yes", label: t(lang, "checkin.yes"), answer: 1, preview: affectsPreview ? 0 : null },
+      { key: "no", label: t(lang, "checkin.no"), answer: 0, preview: affectsPreview ? 2 : null },
+    ];
+  }
+
+  return ANSWER_OPTIONS.map((option) => ({
+    key: `frequency-${option.val}`,
+    label: t(lang, option.key),
+    answer: option.val,
+    preview: option.val,
+  }));
 }
 
 const modules: Record<Module, { label: string; age: string; min: number; max: number; subtitle: string; note: string }> = {
@@ -63,36 +149,51 @@ const modules: Record<Module, { label: string; age: string; min: number; max: nu
   },
 };
 
-const ANSWER_OPTIONS: { val: DesignVal; en: string; hi: string }[] = [
-  { val: 2, en: "Yes, does this consistently", hi: "हाँ, हमेशा करता/करती है" },
-  { val: 1, en: "Sometimes or with help", hi: "कभी-कभी या मदद से" },
-  { val: 0, en: "Not yet / significant difficulty", hi: "अभी नहीं / काफ़ी कठिनाई" },
+const ANSWER_OPTIONS: {
+  val: DesignVal;
+  key: "checkin.answerYes" | "checkin.answerSometimes" | "checkin.answerNotYet";
+}[] = [
+  { val: 2, key: "checkin.answerYes" },
+  { val: 1, key: "checkin.answerSometimes" },
+  { val: 0, key: "checkin.answerNotYet" },
 ];
 
-const UI: Record<Lang, Record<string, string>> = {
-  en: { question: "Question", tag: "Developmental check", back: "Back", complete: "complete" },
-  hi: { question: "प्रश्न", tag: "विकासात्मक जाँच", back: "पीछे", complete: "पूर्ण" },
+const CONTEXT_LABELS: Record<string, string> = {
+  prematurity: "Born early or small",
+  high_screen_time: "High screen time",
+  no_home_learning_materials: "Few learning materials at home",
+  no_safe_study_space: "No safe study space",
+  ctx_screen: "Screen time",
+  ctx_sleep: "Sleep",
+  ctx_language: "Home language",
+  ctx_bullying: "Bullying concern",
+  ctx_school_refusal: "School refusal",
+  ctx_pressure: "Academic pressure",
 };
 
-const REGRESSION_Q: Record<Lang, string> = {
-  en: "Has the child stopped doing something they used to do?",
-  hi: "क्या बच्चे ने कोई ऐसा काम करना बंद कर दिया जो पहले करता था?",
-};
+function overrideReason(result: ResultPayload | null, fallback: string): string {
+  switch (result?.override_rule) {
+    case "regression_flag":
+      return "A lost skill was reported. The safety rule refers directly and skips the model.";
+    case "sensory_flag":
+      return "A vision or hearing concern was reported. The safety rule refers directly.";
+    case "nutrition_flag":
+      return "A nutrition red flag was recorded. The safety rule refers directly.";
+    case "rule_out_item":
+      return "A vision, hearing or developmental rule-out was positive. The safety rule refers directly.";
+    case "safety_helpline":
+      return result.summary || fallback;
+    default:
+      return fallback;
+  }
+}
 
 const moduleForAge = (m: number): Module => (m >= 60 ? "B" : "A");
 const barW = (z: number) => `${((Math.max(-3, Math.min(1, z)) + 3) / 4) * 100}%`;
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Connection problem — please try again.");
 
-/** Map the design's 3-option answer onto the backend's expected value. */
-function toBackendAnswer(responseType: string | undefined, val: DesignVal): number | string {
-  if (responseType === "likert5") return val === 2 ? 5 : val === 1 ? 3 : 1;
-  if (responseType === "yesno") return val === 2 ? "Yes" : val === 1 ? "Not sure" : "No";
-  if (responseType === "yes_no") return val === 0 ? 0 : 1;
-  return val; // frequency (0/1/2)
-}
-
 export function CheckIn() {
-  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast, lang, setLang } = useApp();
+  const { role, children, checkInTarget, setCheckInTarget, patchChild, reload, go, showToast, lang } = useApp();
   const assisting = role !== "parent";
   const initialChild = children.find((c) => c.id === checkInTarget);
   const initialAge = initialChild?.ageMonths ?? (assisting ? 30 : 39);
@@ -104,7 +205,13 @@ export function CheckIn() {
   const [module, setModule] = useState<Module>(() => moduleForAge(initialAge));
   const [age, setAge] = useState(() => Math.max(1, Math.min(144, initialAge)));
   const [regression, setRegression] = useState(false);
-  const [picked, setPicked] = useState<DesignVal | null>(null);
+  const [pickedKey, setPickedKey] = useState<string | null>(null);
+  const [preterm, setPreterm] = useState(false);
+  const [gestWeeks, setGestWeeks] = useState(36);
+  const [sex, setSex] = useState<"male" | "female" | "">("");
+  const [weightKg, setWeightKg] = useState("");
+  const [muacCm, setMuacCm] = useState("");
+  const [knownAnemia, setKnownAnemia] = useState(false);
   const [result, setResult] = useState<CheckInT | null>(null);
   const [backendResult, setBackendResult] = useState<ResultPayload | null>(null);
 
@@ -123,18 +230,31 @@ export function CheckIn() {
   const [recallPicked, setRecallPicked] = useState<string[]>([]);
   const [safetyMessage, setSafetyMessage] = useState("");
   const [helplines, setHelplines] = useState<Record<string, string>>({});
-  const [moduleBHi, setModuleBHi] = useState<Record<string, string> | null>(null);
+  const [moduleAText, setModuleAText] = useState<Record<string, string> | null>(null);
+  const [moduleBText, setModuleBText] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
-    if (module !== "B") return;
+    if (lang === "en") {
+      setModuleAText(null);
+      setModuleBText(null);
+      return;
+    }
     let cancelled = false;
-    void loadModuleBHindi().then((map) => {
-      if (!cancelled) setModuleBHi(map);
-    });
+    if (module === "A") {
+      setModuleBText(null);
+      void loadModuleAText(lang).then((map) => {
+        if (!cancelled) setModuleAText(map);
+      });
+    } else {
+      setModuleAText(null);
+      void loadModuleBText(lang).then((map) => {
+        if (!cancelled) setModuleBText(map);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [module]);
+  }, [module, lang]);
 
   useEffect(() => () => setCheckInTarget(null), [setCheckInTarget]);
 
@@ -148,6 +268,10 @@ export function CheckIn() {
   );
 
   const expectedDomains = module === "A" ? MODULE_A_DOMAINS : MODULE_B_DOMAINS;
+  const quizOptions = useMemo(
+    () => (question ? buildQuizOptions(question, lang) : []),
+    [question, lang],
+  );
   const previewScores = useMemo(() => {
     const s: Scores = {};
     for (const [dom, { sum, n }] of Object.entries(answers)) {
@@ -160,7 +284,7 @@ export function CheckIn() {
   const liveMeta = TIER_META[liveEv.tier];
   const qNumber = question?.question_number ?? 1;
   const qCap = question?.question_cap ?? 10;
-  const pct = Math.round(((qNumber - 1) / Math.max(1, qCap)) * 100);
+  const pct = Math.min(100, Math.round(((qNumber - 1) / Math.max(1, qCap)) * 100));
   const doneCount = Object.keys(answers).length;
   const moduleMeta = modules[module];
 
@@ -273,16 +397,26 @@ export function CheckIn() {
   const begin = async () => {
     if (busy) return;
     setBusy(true);
-    setPicked(null);
+    setPickedKey(null);
     setResult(null);
     setBackendResult(null);
     setAnswers({});
     setQuestion(null);
     try {
+      const measurements: Record<string, number> = {};
+      if (weightKg.trim() && Number.isFinite(Number(weightKg))) measurements.weight_kg = Number(weightKg);
+      if (muacCm.trim() && Number.isFinite(Number(muacCm))) measurements.muac_cm = Number(muacCm);
+      if (knownAnemia) measurements.known_anemia = 1;
+      const correctedAge =
+        module === "A" && preterm
+          ? Math.max(1, age - (40 - gestWeeks) / 4.33)
+          : age;
       const res = await api.startScreen({
-        corrected_age_months: age,
+        corrected_age_months: correctedAge,
         question_cap: 10,
         module,
+        sex: sex || undefined,
+        measurements,
         consent_given: true,
         child_ref: targetChild?.id ?? "",
         child_name: !targetChild && name.trim() ? name.trim() : undefined,
@@ -295,33 +429,51 @@ export function CheckIn() {
     }
   };
 
-  const submit = async (val: DesignVal) => {
-    if (picked !== null || busy || !question || !sessionId) return;
-    setPicked(val);
+  const toggleRegression = async () => {
+    const next = !regression;
+    setRegression(next);
+    if (!sessionId) return;
+    try {
+      await api.setRegression(sessionId, next ? 1 : 0);
+    } catch (e) {
+      setRegression(!next);
+      showToast(errMsg(e));
+    }
+  };
+
+  const submitOption = async (option: QuizOption) => {
+    if (pickedKey !== null || busy || !question || !sessionId) return;
+    setPickedKey(option.key);
     setBusy(true);
     const dom = designDomain(question.domain);
-    setAnswers((prev) => {
-      const cur = prev[dom] ?? { sum: 0, n: 0 };
-      return { ...prev, [dom]: { sum: cur.sum + val, n: cur.n + 1 } };
-    });
+    const preview = option.preview;
+    const countPreview = preview !== null && question.domain !== "context";
+    if (countPreview) {
+      setAnswers((prev) => {
+        const cur = prev[dom] ?? { sum: 0, n: 0 };
+        return { ...prev, [dom]: { sum: cur.sum + preview, n: cur.n + 1 } };
+      });
+    }
     try {
       const res = await api.submitAnswer(sessionId, {
         item_id: question.item_id,
-        answer: toBackendAnswer(question.response_type, val) as unknown as number,
+        answer: option.answer as unknown as number,
         source: "recall",
       });
-      setPicked(null);
+      setPickedKey(null);
       await applyAction(res, age);
     } catch (e) {
-      setAnswers((prev) => {
-        const cur = prev[dom];
-        if (!cur) return prev;
-        const next = { ...prev };
-        if (cur.n <= 1) delete next[dom];
-        else next[dom] = { sum: cur.sum - val, n: cur.n - 1 };
-        return next;
-      });
-      setPicked(null);
+      if (countPreview) {
+        setAnswers((prev) => {
+          const cur = prev[dom];
+          if (!cur) return prev;
+          const next = { ...prev };
+          if (cur.n <= 1) delete next[dom];
+          else next[dom] = { sum: cur.sum - preview, n: cur.n - 1 };
+          return next;
+        });
+      }
+      setPickedKey(null);
       showToast(errMsg(e));
     } finally {
       setBusy(false);
@@ -459,23 +611,24 @@ export function CheckIn() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // `submit` closes over live state, so reference the latest one through a ref
-  // rather than re-registering the key listener on every render.
-  const submitRef = useRef(submit);
+  // `submitOption` closes over live state, so reference the latest one through
+  // a ref rather than re-registering the key listener on every render.
+  const submitOptionRef = useRef(submitOption);
   useEffect(() => {
-    submitRef.current = submit;
+    submitOptionRef.current = submitOption;
   });
 
   useEffect(() => {
     if (phase !== "quiz") return;
     const k = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-      const i = ["1", "2", "3"].indexOf(e.key);
-      if (i >= 0) void submitRef.current(ANSWER_OPTIONS[i].val);
+      const index = ["1", "2", "3", "4", "5"].indexOf(e.key);
+      const option = index >= 0 ? quizOptions[index] : undefined;
+      if (option) void submitOptionRef.current(option);
     };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
-  }, [phase]);
+  }, [phase, quizOptions]);
 
   const chooseModule = (next: Module) => {
     setModule(next);
@@ -581,7 +734,7 @@ export function CheckIn() {
 
             <div>
               <div className="mb-3 flex items-end justify-between">
-                <span className="font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Corrected age</span>
+                <span className="font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Age at check-in</span>
                  <span className="font-mono text-[11px] text-muted">Module {module} · bracket {ageBand(age)}</span>
               </div>
               <p className="font-display text-[84px] leading-none">
@@ -597,27 +750,102 @@ export function CheckIn() {
                 onChange={(e) => setAge(Number(e.target.value))}
                 className="nrx-range mt-4"
                 style={{ ["--fill" as string]: `${((age - moduleMeta.min) / (moduleMeta.max - moduleMeta.min)) * 100}%`, ["--fill-color" as string]: "var(--color-ink)", ["--thumb" as string]: "#b9501f" }}
-                aria-label="Corrected age in months"
+                aria-label="Age at check-in in months"
               />
               <div className="flex justify-between font-mono text-[10px] text-muted">
                 <span>{moduleMeta.min} mo</span>
                 <span>{moduleMeta.max} mo</span>
               </div>
+
+              {module === "A" && (
+                <div className="mt-4 rounded-2xl border border-line-2 bg-card-2 p-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={preterm}
+                      onChange={(event) => setPreterm(event.target.checked)}
+                      className="mt-0.5 size-4 accent-[var(--color-rust)]"
+                    />
+                    <span className="text-[12px] leading-relaxed text-ink-2">
+                      <b className="text-ink">Born before 37 weeks?</b> We use the corrected age for children under 24 months.
+                    </span>
+                  </label>
+                  {preterm && (
+                    <label className="mt-3 flex items-center gap-3">
+                      <span className="text-[11.5px] font-semibold text-muted">Weeks at birth</span>
+                      <input
+                        type="number"
+                        min={24}
+                        max={36}
+                        value={gestWeeks}
+                        onChange={(event) => setGestWeeks(Number(event.target.value))}
+                        className="w-24 rounded-xl border border-line-2 bg-card px-3 py-2 text-[13px] font-semibold focus:border-sea focus:outline-none"
+                      />
+                      <span className="font-mono text-[11px] text-muted">
+                        corrected {Math.max(1, age - (40 - gestWeeks) / 4.33).toFixed(1)} mo
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
             </div>
+
+            <details className="group rounded-[26px] border border-dashed border-line-2 bg-card-2 p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                <span className="font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Growth & nutrition (optional)</span>
+                <ChevronDown className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+              </summary>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
+                If you have a MUAC tape or the child's weight, add it here. These are screening prompts for a health worker, not a diagnosis.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-ink-2">Sex</span>
+                  <select
+                    value={sex}
+                    onChange={(event) => setSex(event.target.value as "male" | "female" | "")}
+                    className="nrx-select w-full rounded-xl border border-line-2 bg-card px-3 py-2.5 text-[13px] font-semibold focus:border-sea focus:outline-none"
+                  >
+                    <option value="">Not given</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-ink-2">Weight (kg)</span>
+                  <input
+                    value={weightKg}
+                    onChange={(event) => setWeightKg(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 12.5"
+                    className="w-full rounded-xl border border-line-2 bg-card px-3 py-2.5 text-[13px] font-semibold focus:border-sea focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-ink-2">MUAC (cm)</span>
+                  <input
+                    value={muacCm}
+                    onChange={(event) => setMuacCm(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="e.g. 13.5"
+                    className="w-full rounded-xl border border-line-2 bg-card px-3 py-2.5 text-[13px] font-semibold focus:border-sea focus:outline-none"
+                  />
+                </label>
+              </div>
+              <label className="mt-3 flex items-center gap-2 text-[12px] font-semibold text-ink-2">
+                <input
+                  type="checkbox"
+                  checked={knownAnemia}
+                  onChange={(event) => setKnownAnemia(event.target.checked)}
+                  className="size-4 accent-[var(--color-rust)]"
+                />
+                A doctor has said the child has anemia or low weight
+              </label>
+            </details>
 
             <div>
               <span className="mb-3 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">Language</span>
-              <div className="inline-flex rounded-full border border-line-2 bg-card-2 p-1">
-                {(["en", "hi"] as Lang[]).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setLang(l)}
-                    className={cn("rounded-full px-7 py-3 text-[14px] font-bold transition-all", lang === l ? "bg-ink text-paper" : "text-ink-2")}
-                  >
-                    {l === "en" ? "English" : "हिन्दी"}
-                  </button>
-                ))}
-              </div>
+              <LangPicker />
             </div>
 
             <CtaPill onClick={begin}>Begin check-in</CtaPill>
@@ -660,7 +888,10 @@ export function CheckIn() {
     const tier = override ? "Refer" : (result.tier ?? base.tier);
     const meta = TIER_META[tier];
     const safety = override;
-    const reason = backendResult?.summary || (backendResult?.caveats?.length ? backendResult.caveats.join(" ") : base.reason);
+    const reason =
+      backendResult?.summary ||
+      overrideReason(backendResult, base.reason) ||
+      (backendResult?.caveats?.length ? backendResult.caveats.join(" ") : base.reason);
     const lows = [...Object.keys(result.scores)].sort((a, b) => result.scores[a] - result.scores[b]).slice(0, tier === "Typical" ? 1 : 2);
     const activityFor = (k: string) => {
       const acts = (backendResult?.activities as Record<string, unknown> | undefined)?.[k];
@@ -768,6 +999,23 @@ export function CheckIn() {
             </div>
           </div>
         </div>
+
+        {(backendResult?.context_flags?.length || backendResult?.nutrition?.flags?.length) && (
+          <section className="mt-4 rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
+            <Eyebrow index="04" tone="muted">Context & nutrition</Eyebrow>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {(backendResult?.context_flags ?? []).map((flag) => (
+                <Chip key={flag} tone="lilac">{CONTEXT_LABELS[flag] ?? flag}</Chip>
+              ))}
+              {(backendResult?.nutrition?.flags ?? []).map((flag) => (
+                <Chip key={flag.code} tone={flag.severity === "refer" ? "brick" : "amber"}>{flag.label}</Chip>
+              ))}
+            </div>
+            <p className="mt-4 text-[12px] leading-relaxed text-muted">
+              {backendResult?.nutrition?.disclaimer ?? "These are screening prompts for discussion with a health worker, not a diagnosis."}
+            </p>
+          </section>
+        )}
       </Page>
     );
   }
@@ -960,8 +1208,11 @@ export function CheckIn() {
   }
 
   /* =============================== QUIZ =============================== */
-  const ui = UI[lang];
-  const qText = question?.question_text ?? "";
+  const englishQuestion = question?.question_text ?? "";
+  const localizedQuestion = question
+    ? (module === "A" ? moduleAText : moduleBText)?.[question.item_id]
+    : undefined;
+  const qText = lang !== "en" && localizedQuestion ? localizedQuestion : englishQuestion;
 
   return (
     <Page>
@@ -1003,24 +1254,22 @@ export function CheckIn() {
                     <QuestionAudio
                       itemId={question.item_id}
                       lang={lang}
-                      text={qText}
-                      hindiText={moduleBHi?.[question.item_id]}
+                      text={englishQuestion}
+                      localizedText={localizedQuestion}
                     />
                   )}
-                  <button
-                    onClick={() => setLang(lang === "en" ? "hi" : "en")}
-                    className="rounded-full border border-line-2 px-3.5 py-1.5 text-[12px] font-bold transition-colors hover:bg-sand"
-                    aria-label="Switch language"
-                  >
-                    {lang === "en" ? "हिन्दी" : "EN"}
-                  </button>
+                  <LangPicker compact />
                 </div>
               </div>
 
               <div className="mt-5 px-6">
                 <div className="flex items-center justify-between text-[12px] font-semibold">
-                  <span>{ui.question} {qNumber} {lang === "en" ? `of ~${qCap}` : `/ ~${qCap}`}</span>
-                  <span className="font-mono text-[11px] text-muted">{pct}% {ui.complete}</span>
+                  <span>
+                    {question?.domain === "context"
+                      ? t(lang, "checkin.context")
+                      : `${t(lang, "checkin.question")} ${qNumber} ${lang === "en" ? `of ~${qCap}` : `/ ~${qCap}`}`}
+                  </span>
+                  <span className="font-mono text-[11px] text-muted">{pct}% {t(lang, "checkin.complete")}</span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-sand">
                   <div className="h-full rounded-full bg-ink transition-all duration-700" style={{ width: `${Math.max(4, pct)}%` }} />
@@ -1028,50 +1277,52 @@ export function CheckIn() {
               </div>
 
               <div className="mt-7 flex-1 px-6">
-                <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-rust uppercase">{ui.tag}</p>
+                <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-rust uppercase">{t(lang, "checkin.tag")}</p>
                 <h2 key={qNumber} className="nrx-rise mt-3 min-h-[96px] text-[20px] leading-snug font-bold">{qText}</h2>
                 <div className="mt-5 space-y-2.5">
-                  {ANSWER_OPTIONS.map((a, i) => (
+                  {quizOptions.map((option, index) => (
                     <button
-                      key={a.val}
-                      onClick={() => void submit(a.val)}
+                      key={option.key}
+                      onClick={() => void submitOption(option)}
                       disabled={busy}
                       className={cn(
-                        "group flex w-full items-center gap-3.5 rounded-2xl border px-4 py-4 text-left text-[14.5px] font-semibold transition-all duration-200 disabled:opacity-60",
-                        picked === a.val ? "scale-[0.98] border-ink bg-ink text-paper" : "border-line-2 bg-card-2 hover:border-ink/60"
+                        "group flex w-full items-center gap-3.5 rounded-2xl border px-4 py-4 text-left text-[14px] font-semibold transition-all duration-200 disabled:opacity-60",
+                        pickedKey === option.key ? "scale-[0.98] border-ink bg-ink text-paper" : "border-line-2 bg-card-2 hover:border-ink/60"
                       )}
                     >
-                      <span className={cn("grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors", picked === a.val ? "border-peach bg-peach text-night" : "border-ink/30")}>
-                        {picked === a.val && <Check className="size-3.5" />}
+                      <span className={cn("grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors", pickedKey === option.key ? "border-peach bg-peach text-night" : "border-ink/30")}>
+                        {pickedKey === option.key && <Check className="size-3.5" />}
                       </span>
-                      <span className="flex-1">{a[lang]}</span>
-                      <span className="hidden font-mono text-[10px] text-muted sm:block">{i + 1}</span>
+                      <span className="flex-1">{option.label}</span>
+                      {index < 9 && <span className="hidden font-mono text-[10px] text-muted sm:block">{index + 1}</span>}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="mx-6 mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
-                <p className="text-[12.5px] leading-snug font-semibold">{REGRESSION_Q[lang]}</p>
-                <button
-                  role="switch"
-                  aria-checked={regression}
-                  aria-label={REGRESSION_Q.en}
-                  onClick={() => setRegression((r) => !r)}
-                  className={cn("relative h-7 w-[50px] shrink-0 rounded-full transition-colors duration-300", regression ? "bg-brick" : "bg-sand")}
-                >
-                  <span className={cn("absolute top-1 size-5 rounded-full shadow transition-all duration-300", regression ? "left-[26px] bg-white" : "left-1 bg-ink")} />
-                </button>
-              </div>
+              {question?.item_id !== "regression_flag" && (
+                <div className="mx-6 mt-5 flex items-center justify-between gap-4 border-t border-line pt-4">
+                  <p className="text-[12.5px] leading-snug font-semibold">{t(lang, "checkin.regression")}</p>
+                  <button
+                    role="switch"
+                    aria-checked={regression}
+                    aria-label={t("en", "checkin.regression")}
+                    onClick={() => void toggleRegression()}
+                    className={cn("relative h-7 w-[50px] shrink-0 rounded-full transition-colors duration-300", regression ? "bg-brick" : "bg-sand")}
+                  >
+                    <span className={cn("absolute top-1 size-5 rounded-full shadow transition-all duration-300", regression ? "left-[26px] bg-white" : "left-1 bg-ink")} />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center justify-between px-6 pt-4 pb-6">
                 <button
                   disabled
                   className="flex items-center gap-1.5 text-[13px] font-bold text-ink-2 disabled:opacity-30"
                 >
-                  <ArrowLeft className="size-4" /> {ui.back}
+                  <ArrowLeft className="size-4" /> {t(lang, "checkin.back")}
                 </button>
-                <span className="font-mono text-[10px] text-muted">{doneCount}/{qCap} areas</span>
+                <span className="font-mono text-[10px] text-muted">{doneCount}/{expectedDomains.length} areas</span>
               </div>
             </div>
           </div>

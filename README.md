@@ -67,21 +67,27 @@ Every feature status in Nirixon strictly reflects the verification proven by the
 | **Early Childhood Screening (Module A)** | Screening Engine | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_1_module_a_screening` | 0–60m adaptive IRT-inspired questionnaire, calibrated XGBoost inference, dynamic stopping, SHAP feature attribution |
 | **School-Age Screener (Module B)** | Screening Engine | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_2_module_b_screening`, `test_module_b_api.py` | 5–12y free-text NLP routing (TF-IDF + LogisticRegression), 8 developmental domains, 2 rule-outs, domain radar, 48 evidence-based home activities |
 | **Deterministic Clinical Safety Floor** | Clinical Safety | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_3_safety_rule_bypass`, `test_regressions.py` | Milestone regression and severe deficit deterministic override forcing immediate Tier 3: Refer triage (overriding ML output) |
-| **Clinician "What-If" Simulation Sandbox** | Clinician Tools | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_4_what_if_simulation`, `test_sandbox.py` | Post-hoc re-scoring via `/api/sandbox/{session_id}/simulate`, hypothetical override testing, dynamic probability & TreeSHAP shifts |
+| **Clinician "What-If" Simulation Sandbox** | Clinician Tools | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_4_what_if_simulation`, `test_sandbox.py` | Real completed-session picker via `/api/sandbox/sessions`; post-hoc re-scoring via `/api/sandbox/{session_id}/simulate` with age/domain/answer overrides. Module A uses the XGBoost model; Module B replays its engine and safety rules. |
 | **Community Health Worker Referral Lifecycle** | Community Health | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_5_referral_creation_to_outcome`, `test_referrals.py` | 5-stage auditable state machine (`created` ➔ `sent` ➔ `seen` ➔ `outcome recorded` ➔ `closed`), printable 4-field minimal PDF summary |
 | **Caregiver & Facility Handoff** | Health Navigation | **Live · Verified** | `frontend/src/test/handoff.test.ts` | One-tap WhatsApp / SMS / copy handoff built from the same 4-field referral summary, plus helpline routing for feature phones. IVR is roadmap. |
 | **Printable Slip & Caregiver Plan** | Health Navigation | **Live · Verified** | `frontend/src/test/print-sheet.test.ts` | Print-ready referral slip carrying a QR of the compact summary, plus a home-activity plan with bilingual chrome (English activity text pending clinical translation review). |
-| **Frontline Worker Caseload Dashboard** | Community Health | **Live · No dedicated test** | *—* | Mobile-first 360px viewport, ward-wide caseload list, fast filters (tier, overdue, age), high-contrast touch targets. No frontend test covers this view yet. |
+| **Frontline Worker Caseload Dashboard** | Community Health | **Live · Verified** | `frontend/src/test/caseload.test.tsx` | Mobile-first 360px viewport, ward-wide caseload list, fast filters (tier, overdue, age), high-contrast touch targets, supervisor analytics vs CHW separation. |
 | **Supervisor Programme Analytics** | Community Health | **Live · Verified** | `tests/test_referrals.py::test_supervisor_programme_analytics` | Area-scoped referral funnel, median screened→referral and referral→seen times, and per-ward coverage computed from real child/referral records (not static demo sectors). |
 | **Offline-First Quick Actions** | Field Operations | **Live · Verified** | `tests/test_end_to_end.py::test_e2e_flow_6_offline_sync`, `frontend/src/test/offline-sync.test.ts` | CHW quick-actions (referral / contact / outcome) are queued in IndexedDB when offline and replayed through `POST /api/chw/sync` (idempotent, conflict-logged). The caseload is cached for offline viewing. Adaptive screening itself stays online. |
-| **Follow-up Reminders** | Field Operations | **Live · Verified** | `frontend/src/test/ics.test.ts` | Follow-ups from `follow_up_due_at` export as RFC-5545 `.ics` (single child or the whole list). Service-worker `push` / `notificationclick` handlers are in place, but delivery needs a server-side VAPID sender, which is not implemented yet. |
-| **Multilingual Audio Narration** | Accessibility | **Live · Verified** | `tests/test_audio_narration.py`, `frontend/src/test/question-audio.test.tsx` | Reviewed clips (Module A + mandatory flags, en-IN / hi-IN) play first. Otherwise the check-in speaks the question with the browser's speech synthesis — in Hindi using the offline machine-translated Module B bank (`backend/scripts/translate_module_b_hi.py`, ~2,400 items, **pending clinical review**), and in English (tagged `EN`) when no Hindi text exists. Speed (0.8× / 1.0×) applies to every path. Human recording sign-off is still pending. |
-| **Bilingual Chrome & Accessibility** | Accessibility | **Live · Partial** | `frontend/src/test/i18n.test.ts` | Dependency-free i18n with a persisted EN/हिं switch in the workspace dock; the app chrome and the check-in (answers, labels, narration) are bilingual. Remaining view copy is English pending translation review. Icon-only controls carry `aria-label`s. |
+| **Follow-up Reminders** | Field Operations | **Live · Verified** | `frontend/src/test/ics.test.ts`, `backend/tests/test_notifications.py` | Follow-ups from `follow_up_due_at` export as RFC-5545 `.ics` (single child or the whole list) and can now be delivered by the VAPID push sender / notification worker. |
+| **Multilingual Audio Narration** | Accessibility | **Live · Verified** | `tests/test_audio_narration.py`, `frontend/src/test/question-audio.test.tsx` | Reviewed clips (Module A + mandatory flags, en-IN / hi-IN) play first. Otherwise the check-in speaks the question with server-generated or browser narration using the offline Module B maps (`backend/scripts/translate_module_b.py`, ~2,420 items, **pending clinical review**), falling back to English (tagged `EN`) when no translation exists. Speed (0.8× / 1.0×) applies to every path. |
+| **Eight-Language Chrome & Accessibility** | Accessibility | **Live · Partial** | `frontend/src/test/i18n.test.ts` | Persisted language picker for English, Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati and Kannada across chrome and the check-in (answers, labels, narration). Remaining view copy is English pending translation review. Icon-only controls carry `aria-label`s. |
 | **Area-Level Data Isolation & Privacy Invariants** | Data Governance | **Live · Verified** | `tests/test_referrals.py`, `tests/test_end_to_end.py` | Zero cross-ward leakage; workers strictly restricted to their assigned village/ward; 100% opt-in with consent recorded; pseudonymous IDs only |
 | **Multi-Caregiver Joint Family Triangulation** | Concordance | **Live · Verified** | `tests/test_share_merge.py` | Zero-login 72-hour invite links, zero-PII exposure, clinical combination rule (safety-maximized floor + statistical primary vector), Concordance Index ($0.0 - 1.0$) |
 | **Longitudinal Growth & Plateau Tracking** | Growth Surveillance | **Live · Verified** | `tests/test_growth_sync.py`, `frontend/src/test/growth-percentiles.test.ts` | Opt-in synced developmental age tracking, automated plateau alerts, and standard-normal percentile labels on the chart (incl. the −2 SD ICDS/RBSK referral cut-off), right-to-erasure cascade (`DELETE /api/growth/data/{child_id}`) |
 | **Find Help Directory** | Health Navigation | **Live · Verified** | `backend/tests/test_find_help.py`, `backend/tests/test_find_help_route.py`, `frontend/src/test/find-help.test.tsx` | Haversine distance lookup by 6-digit PIN code **or GPS coordinates** (both paths share the same age-stratified ranking), age-stratified routing (<6y DEIC/RBSK vs 6-12y District Hospitals/CRCs), official toll-free helpline fallbacks |
-| **WhatsApp Community Bot / Messaging** | Messaging / Bot | **Coming next · Roadmap** | *In Architecture Design* | Gated for lightweight automated follow-up messages; currently preserved in "Coming next" status per safety governance requirements |
+| **WhatsApp / SMS Follow-up Bot** | Messaging / Bot | **Live · Provider-gated** | `backend/tests/test_notifications.py` | Menu-driven reminders for re-screening, referral status and home-activity tips. Provider-agnostic outbox works locally; Twilio adapter enabled by env. Consent, quiet hours, frequency caps and STOP/START opt-out. |
+| **Server-side VAPID Push** | Notifications | **Live · Verified** | `backend/tests/test_notifications.py`, `frontend/src/test/notification-settings.test.tsx` | Device push subscriptions, VAPID sender, preference UI, per-device unsubscribe and `pushsubscriptionchange` recovery. |
+| **IVR / Voice Helpline** | Access for feature phones | **Live · Provider-gated** | `backend/tests/test_notifications.py` | Twilio TwiML inbound language menu + signed, short-lived outbound reminder scripts. No PII in voice scripts. |
+| **Eight-Language Workspace** | Accessibility | **Live · Translation review pending** | `frontend/src/test/i18n.test.ts` | English, Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati, Kannada. Module A and Module B question maps are generated offline and marked pending clinical review. |
+| **Vision/Hearing Quick Screen + Nutrition Flags** | Screening Engine | **Live · Verified** | `backend/tests/test_clinical_additions.py` | Module A sensory rule-outs force referral; MUAC and weight-for-age produce deterministic monitor/refer flags with a screening-only disclaimer. |
+| **Parent Context + Caregiver Wellbeing (EPDS)** | Screening / Wellbeing | **Live · Review pending** | `backend/tests/test_clinical_additions.py` | Prematurity, screen time, home-learning environment context; separate EPDS module with item-10 safety path. |
+| **Frontline Training Mode** | Frontline Tools | **Live · Verified** | `frontend/src/test/training.test.tsx` | Curated sample cases with tier reveal and a 10-question quiz; progress stored on-device. |
 
 ### Evaluator quick start
 
@@ -294,9 +300,9 @@ For developmental pediatricians, psychologists, and clinical researchers, Nirixo
 ## 🎙️ Multilingual Audio Narration Engine
 
 To guarantee equity across diverse literacy levels and regional linguistic communities, Nirixon includes a pre-recorded audio narration engine (`/api/audio/*`):
-- **Languages Supported / Ready:** English, Hindi (हिन्दी), Tamil (தமிழ்), Telugu (తెలుగు), Bengali (বাংলা), Marathi (मराठी).
-- **Strict Clinical Verification Gate:** Unreviewed audio files are strictly hidden by default. An audio file can only be served if it possesses an explicit `reviewed_by` and `reviewed_date` recorded by a certified pediatric or linguistic specialist.
-- **Zero Unverified AI Translation:** Runtime machine translation or unverified synthetic text-to-speech for clinical questions is strictly prohibited to prevent mistranslations that could alter clinical diagnostic sensitivity.
+- **Languages Supported / Ready:** English, Hindi (हिन्दी), Marathi (मराठी), Tamil (தமிழ்), Telugu (తెలుగు), Bengali (বাংলা), Gujarati (ગુજરાતી), Kannada (ಕನ್ನಡ). Module A and Module B question maps are generated offline and marked `pending clinical review`; see `backend/data/module_a/translation_review.json` and `backend/data/module_b/translation_review.json`.
+- **Strict Clinical Verification Gate:** Pre-recorded clips are hidden unless they carry an explicit `reviewed_by` and `reviewed_date`. Missing Module A/Module B clips are synthesized on demand in the requested language, returned flagged `unreviewed`, and remain labelled as pending clinical review.
+- **No Runtime Translation:** Translation happens offline (resumable script + review registry), never at request time. The frontend falls back to English with an `EN` badge when a reviewed/localized rendition is unavailable.
 
 ---
 
@@ -409,7 +415,8 @@ Interactive Swagger documentation is available at `http://localhost:8000/docs` w
 ### Clinician Sandbox
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| `POST` | `/api/sandbox/{id}/simulate` | Clinician | Re-score session with hypothetical overrides and compare ML models. |
+| `GET` | `/api/sandbox/sessions` | Clinician | Completed sessions available to the real what-if picker (cross-family, read-only). |
+| `POST` | `/api/sandbox/{id}/simulate` | Clinician | Re-score a real session with answer/domain/age overrides. Module A uses the ML model; Module B replays its engine with the same safety rules. |
 
 ### Audio Narration & Accessibility
 | Method | Endpoint | Access | Description |
@@ -417,6 +424,29 @@ Interactive Swagger documentation is available at `http://localhost:8000/docs` w
 | `GET` | `/api/audio/item/{id}` | Public | Retrieve verified audio narration metadata for an item and language. |
 | `GET` | `/api/audio/manifest` | Public | Fetch entire reviewed audio catalog for offline preloading. |
 | `GET` | `/api/audio/coverage-report` | Public | Audit clinical audio coverage across languages and milestone banks. |
+
+### Notifications, Push & IVR
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/notifications/vapid-public-key` | Public | Public VAPID key for browser push subscription. |
+| `POST` | `/api/notifications/subscribe` | Auth | Register a device push subscription. |
+| `POST` | `/api/notifications/unsubscribe` | Auth | Revoke a device push subscription. |
+| `GET/PUT` | `/api/notifications/preferences` | Auth | Channel, phone, quiet-hours and consent preferences. |
+| `GET` | `/api/notifications/` | Auth | Delivery log for the current user/worker. |
+| `POST` | `/api/notifications/test` | Auth | Queue a test notification. |
+| `POST` | `/api/notifications/run-sweep` | Internal | Run one scheduling/delivery sweep. |
+| `POST` | `/api/notifications/whatsapp/webhook` | Public (signed) | Inbound WhatsApp/SMS bot menu. |
+| `POST` | `/api/notifications/status` | Public (signed) | Provider delivery status callback. |
+| `GET/POST` | `/api/voice/twiml/inbound` | Public | IVR language menu. |
+| `POST` | `/api/voice/twiml/menu` | Public | IVR keypress routing. |
+| `GET/POST` | `/api/voice/twiml/outbound/{token}` | Signed | Outbound reminder script and acknowledgement. |
+
+### Caregiver Wellbeing (EPDS)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/maternal/questions` | Public | EPDS items and response options. |
+| `POST` | `/api/maternal/score` | Parent | Score and persist a consented EPDS screening. |
+| `GET` | `/api/maternal/history` | Parent | The caller's previous wellbeing screenings. |
 
 ### System Health & Telemetry
 | Method | Endpoint | Access | Description |
@@ -585,7 +615,9 @@ To run the comprehensive test suite across all sub-systems (referrals, growth sy
 
 ```bash
 cd backend
-pytest tests/test_referrals.py tests/test_growth_sync.py tests/test_module_b_api.py tests/test_share_merge.py tests/test_help.py -v
+pytest tests/test_referrals.py tests/test_growth_sync.py tests/test_module_b_api.py \
+  tests/test_share_merge.py tests/test_help.py tests/test_notifications.py \
+  tests/test_clinical_additions.py tests/test_audio_narration.py -v
 ```
 
 ### 2. Frontend Vitest & TypeScript Verification

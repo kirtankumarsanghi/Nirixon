@@ -44,6 +44,8 @@ services:
       SEED_USER_EMAIL: parent@example.com
       SEED_USER_PASSWORD: changeme
       RATE_LIMIT_ENABLED: "true"
+      NOTIFICATION_PROVIDER: outbox
+      PUBLIC_APP_URL: http://localhost:3000
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +56,28 @@ services:
       sh -c "cd /app/backend &&
       alembic upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"
+
+  # Single-process sweeper. Kept out of the 4-worker API so reminders are not
+  # sent more than once.
+  notifier:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+asyncpg://nirixon:nirixon@db:5432/nirixon
+      JWT_SECRET: docker-dev-secret-change-me
+      ML_ARTIFACTS_DIR: /app/backend/ml/artifacts
+      NOTIFICATION_PROVIDER: outbox
+      PUBLIC_APP_URL: http://localhost:3000
+      NOTIFICATION_SWEEP_SECONDS: "300"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "cd /app/backend &&
+      alembic upgrade head &&
+      python -m app.workers.notification_worker"
 
   frontend:
     build:

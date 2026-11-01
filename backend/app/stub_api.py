@@ -31,6 +31,7 @@ from pydantic import BaseModel
 
 from app.core.mandatory_items import record_mandatory_answer
 from app.core.orchestrator import get_next_action
+from app.core.sensory_items import SENSORY_IDS, record_sensory_answer
 from app.core.session import MANDATORY_IDS, ScreeningSession
 
 app = FastAPI(title="Nirixon Stage 3 Stub API")
@@ -97,6 +98,10 @@ def submit_answer(req: AnswerRequest):
     # Route answer to mandatory or milestone storage
     if req.item_id in MANDATORY_IDS:
         record_mandatory_answer(session, req.item_id, req.answer)
+    elif req.item_id in SENSORY_IDS:
+        if req.answer not in (0, 1):
+            raise HTTPException(status_code=422, detail="Sensory answer must be 0 or 1")
+        record_sensory_answer(session, req.item_id, req.answer)
     else:
         if req.answer not in (0, 1, 2):
             raise HTTPException(

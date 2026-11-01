@@ -29,11 +29,14 @@ from app.routers import (
     evidence,
     growth,
     help,
+    maternal,
+    notifications,
     predict,
     referrals,
     sandbox,
     screen,
     share,
+    voice,
 )
 
 logger = logging.getLogger(__name__)
@@ -296,6 +299,9 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
     app.include_router(referrals.router)
     app.include_router(audio.router)
     app.include_router(evidence.router)
+    app.include_router(notifications.router)
+    app.include_router(voice.router)
+    app.include_router(maternal.router)
     # Public, read-only facility reference data (its own SQLite, no patient data).
     app.include_router(find_help_router)
 

@@ -96,6 +96,34 @@ class Settings(BaseSettings):
     # Growth sync tracking (opt-in; can be disabled entirely by configuration)
     growth_sync_enabled: bool = Field(default=True, alias="GROWTH_SYNC_ENABLED")
 
+    # --- Notifications: push, WhatsApp/SMS, IVR ---
+    # Public origin used in reminder links (no trailing slash).
+    public_app_url: str = Field(default="http://localhost:5173", alias="PUBLIC_APP_URL")
+    # "outbox" logs deliveries only; "twilio" performs live sends.
+    notification_provider: str = Field(default="outbox", alias="NOTIFICATION_PROVIDER")
+    # VAPID keypair for Web Push. Generate with scripts/generate_vapid_keys.py.
+    vapid_public_key: str = Field(default="", alias="VAPID_PUBLIC_KEY")
+    vapid_private_key: str = Field(default="", alias="VAPID_PRIVATE_KEY")
+    vapid_subject: str = Field(
+        default="mailto:admin@nirixon.local", alias="VAPID_SUBJECT"
+    )
+    # Twilio (WhatsApp/SMS/voice). Leave blank to keep the outbox adapter.
+    twilio_account_sid: str = Field(default="", alias="TWILIO_ACCOUNT_SID")
+    twilio_auth_token: str = Field(default="", alias="TWILIO_AUTH_TOKEN")
+    twilio_whatsapp_from: str = Field(default="", alias="TWILIO_WHATSAPP_FROM")
+    twilio_sms_from: str = Field(default="", alias="TWILIO_SMS_FROM")
+    twilio_voice_from: str = Field(default="", alias="TWILIO_VOICE_FROM")
+    # Worker loop (single process; do not enable inside a multi-worker API).
+    notification_worker_enabled: bool = Field(
+        default=False, alias="NOTIFICATION_WORKER_ENABLED"
+    )
+    notification_sweep_seconds: int = Field(
+        default=300, alias="NOTIFICATION_SWEEP_SECONDS"
+    )
+    notification_max_per_child_per_day: int = Field(
+        default=1, alias="NOTIFICATION_MAX_PER_CHILD_PER_DAY"
+    )
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { X } from "lucide-react";
 import { PHOTOS } from "../data";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -30,8 +31,6 @@ const GRID_IMAGES = [
 ];
 
 const ZONE_DEFS = [
-  { section: "#proof", lane: "proof", shape: "arch" },
-  { section: "#compare", lane: "compare", shape: "circle" },
   { section: "#toolkit", lane: "toolkit", shape: "circle" },
   { section: "#audience", lane: "audience", shape: "rounded" },
 ] as const;
@@ -64,10 +63,6 @@ function clipGeometry(progress: number): Geometry {
 }
 
 function targetSize(shape: ZoneShape, width: number, height: number) {
-  if (shape === "arch") {
-    const w = Math.min(width * 0.88, height * 0.68 * 0.78);
-    return { sx: w / 320, sy: (w / 0.78) / 400 };
-  }
   if (shape === "circle") {
     // The source frame is 320x400; a 10% vertical inset makes the visible crop square.
     const diameter = Math.min(width * 0.76, 82);
@@ -101,9 +96,27 @@ export default function PersistentPortrait() {
   const grid = useRef<HTMLDivElement>(null);
   const fan = useRef<HTMLDivElement>(null);
   const fanCards = useRef<(HTMLDivElement | null)[]>([]);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const [reduced, setReduced] = useState(() => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 899px)").matches);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return sessionStorage.getItem("nirixon-portrait-dismissed") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem("nirixon-portrait-dismissed", "1");
+    } catch {
+      /* restricted storage */
+    }
+  };
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -121,7 +134,8 @@ export default function PersistentPortrait() {
   }, []);
 
   useLayoutEffect(() => {
-    if (reduced || mobile) return;
+    if (reduced || mobile || dismissed) return;
+    const closeEl = closeRef.current;
     const zones: Zone[] = ZONE_DEFS.map((item) => {
       const section = document.querySelector<HTMLElement>(item.section);
       const lane = section?.querySelector<HTMLElement>(`[data-portrait-lane="${item.lane}"]`);
@@ -204,6 +218,14 @@ export default function PersistentPortrait() {
       gridEl.style.opacity = String(gridStrength);
       gridEl.style.transform = `scale(${lerp(0.24, 1, gridStrength)})`;
       gridEl.style.clipPath = `inset(${(1 - gridStrength) * 18}% round ${(1 - gridStrength) * 5}%)`;
+
+      if (closeEl) {
+        const pr = p.getBoundingClientRect();
+        const visible = portraitOpacity > 0.25;
+        closeEl.style.opacity = visible ? "1" : "0";
+        closeEl.style.pointerEvents = visible ? "auto" : "none";
+        closeEl.style.transform = `translate3d(${pr.left + pr.width * 0.84 - 16}px, ${pr.top + pr.height * 0.18 - 16}px, 0)`;
+      }
     };
 
     // Proxy tween supplies a smoothed GSAP scrub; visible element animations remain transform/opacity/clip-path only.
@@ -241,10 +263,14 @@ export default function PersistentPortrait() {
       tween.kill();
       foreground.style.opacity = "";
       foreground.style.pointerEvents = "";
+      if (closeEl) {
+        closeEl.style.opacity = "0";
+        closeEl.style.pointerEvents = "none";
+      }
     };
-  }, [reduced, mobile]);
+  }, [reduced, mobile, dismissed]);
 
-  if (reduced || mobile) return null;
+  if (reduced || mobile || dismissed) return null;
 
   return (
     <>
@@ -273,6 +299,17 @@ export default function PersistentPortrait() {
           <span className="persistent-vignette" />
         </div>
       </div>
+      <button
+        ref={closeRef}
+        type="button"
+        onClick={dismiss}
+        aria-label="Hide the travelling photograph"
+        data-cursor="Hide"
+        className="fixed left-0 top-0 z-[45] grid size-8 place-items-center rounded-full border border-bone/60 bg-night/85 text-bone shadow-[0_10px_30px_-10px_rgba(20,14,8,.7)] backdrop-blur transition-opacity duration-300 hover:bg-night"
+        style={{ opacity: 0, pointerEvents: "none" }}
+      >
+        <X className="size-3.5" />
+      </button>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useId, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 import { cn } from "../utils/cn";
 
 /* ------------------------------------------------------------------ */
@@ -122,6 +123,24 @@ function coversProtected() {
 /** Persistent perspective switch that follows the visitor down the page. */
 export function FloatingViewSwitcher() {
   const [show, setShow] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return sessionStorage.getItem("nirixon-view-pill-dismissed") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem("nirixon-view-pill-dismissed", "1");
+    } catch {
+      /* restricted storage */
+    }
+  };
+
   useEffect(() => {
     let raf = 0;
     const update = () => {
@@ -152,7 +171,7 @@ export function FloatingViewSwitcher() {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex justify-center px-3">
       <AnimatePresence>
-        {show && (
+        {show && !dismissed && (
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -163,6 +182,15 @@ export function FloatingViewSwitcher() {
           >
             <span className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-paper/55 sm:inline">Viewing as</span>
             <ViewSwitcher tone="dark" className="border-0 p-0" />
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Hide view switcher"
+              title="Hide this"
+              className="grid size-7 shrink-0 place-items-center rounded-full text-paper/45 transition-colors hover:bg-paper/10 hover:text-paper"
+            >
+              <X className="size-3.5" />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

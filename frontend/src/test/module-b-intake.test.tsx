@@ -57,6 +57,9 @@ const QUESTION = {
   question_number: 1,
   question_cap: 20,
   response_type: "likert5",
+  scale_labels: "1=Never|2=Rarely|3=Sometimes|4=Often|5=Very often",
+  reverse_scored: false,
+  item_type: "symptom",
 };
 
 const QUESTION_ACTION = {
@@ -111,6 +114,66 @@ describe("Module B intake", () => {
 
     // The flow continues into the adaptive questions.
     await waitFor(() => expect(screen.getByText(/finish what they start/i)).toBeInTheDocument());
+  });
+
+  it("renders the item's own frequency scale, not generic milestone options", async () => {
+    mocks.submitIntake.mockResolvedValue({
+      recall_help_needed: false,
+      recall_help_options: [],
+      detected_domains: ["attention"],
+      rule_out_flagged: false,
+      next_action: "question",
+      action: QUESTION_ACTION,
+      question: QUESTION,
+    });
+    await startModuleB();
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "he loses focus in class" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+
+    await waitFor(() => expect(screen.getByText(/finish what they start/i)).toBeInTheDocument());
+    for (const label of ["Never", "Rarely", "Sometimes", "Often", "Very often"]) {
+      expect(screen.getAllByText(label, { exact: true }).length).toBeGreaterThan(0);
+    }
+    expect(screen.queryByRole("button", { name: /not yet \/ significant difficulty/i })).toBeNull();
+  });
+
+  it("lowers the live preview for an endorsed symptom, not raises it", async () => {
+    const nextQuestion = {
+      ...QUESTION,
+      item_id: "att_next.P.5-7.a0",
+      question_number: 2,
+    };
+    mocks.submitIntake.mockResolvedValue({
+      recall_help_needed: false,
+      recall_help_options: [],
+      detected_domains: ["attention"],
+      rule_out_flagged: false,
+      next_action: "question",
+      action: QUESTION_ACTION,
+      question: QUESTION,
+    });
+    mocks.submitAnswer.mockResolvedValue({
+      type: "question",
+      session_id: "s1",
+      status: "in_progress",
+      question: nextQuestion,
+      result: null,
+    });
+
+    await startModuleB();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "he loses focus in class" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^continue$/i }));
+    await waitFor(() => expect(screen.getByText(/finish what they start/i)).toBeInTheDocument());
+
+    // The test item is a symptom: "Very often" means high concern.
+    fireEvent.click(screen.getByRole("button", { name: /very often/i }));
+    await waitFor(() => expect(screen.getByText(/att_next|does your child finish/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/worth discussing/i).length).toBeGreaterThan(0);
   });
 
   it("sends picked concern areas when no note is written", async () => {
@@ -259,7 +322,14 @@ describe("Module B intake", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue the check-in/i }));
 
     await waitFor(() => expect(screen.getByText(/finish what they start/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /yes, does this consistently/i }));
+    fireEvent.click(screen.getByRole("button", { name: /very often/i }));
+    await waitFor(() =>
+      expect(mocks.submitAnswer).toHaveBeenCalledWith("s1", {
+        item_id: "att_start.P.5-7.a0",
+        answer: 5,
+        source: "recall",
+      }),
+    );
 
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Refer" })).toBeInTheDocument());
     expect(screen.getByText(/tier 3: direct referral/i)).toBeInTheDocument();

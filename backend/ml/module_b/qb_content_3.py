@@ -578,4 +578,48 @@ CONTEXT = [
             "Has your child ever failed a class?",
         ],
     ),
+    (
+        "cx_preterm",
+        "context",
+        "yesno",
+        "P",
+        0,
+        [
+            "Was your child born before 37 weeks, or with a birth weight under 2.5 kg?",
+            "Was your child born early or small at birth?",
+        ],
+    ),
+    (
+        "cx_home_books",
+        "context",
+        "yesno",
+        "P",
+        0,
+        [
+            "Does your child have storybooks, textbooks or other learning materials at home?",
+            "Are there books or learning materials for your child at home?",
+        ],
+    ),
+    (
+        "cx_home_play",
+        "context",
+        "yesno",
+        "P",
+        0,
+        [
+            "Is there a safe, quiet place at home where your child can play and study?",
+            "Does your child have a safe place at home to study or play?",
+        ],
+    ),
+    (
+        "cx_home_caregiver",
+        "context",
+        "yesno",
+        "P",
+        0,
+        [
+            "Does an adult at home spend time reading, talking or helping with schoolwork most days?",
+            "Does someone at home read or help your child with schoolwork most days?",
+        ],
+    ),
 ]

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import require_parent
+from app.auth import require_parent, require_screen_read
 from app.core.mandatory_items import record_mandatory_answer
 from app.core.module_b.age import months_to_module_b_age
 from app.core.module_b.domains import to_api_domain, to_engine_domain
@@ -29,7 +29,9 @@ from app.core.module_b.screen_bridge import (
 )
 from app.core.module_b.service import module_b_service
 from app.core.nlp_router import DomainRouterResult, route_recall_chip, route_text
+from app.core.notifications.service import queue_activity_tip_for_subject
 from app.core.orchestrator import get_next_action
+from app.core.sensory_items import SENSORY_IDS, record_sensory_answer
 from app.core.session import MANDATORY_IDS, FinalResult, NextQuestion
 from app.core.session import ScreeningSession as CoreSession
 from app.core.triage_guard import (
@@ -50,6 +52,7 @@ from app.ml.inference_service import (
     inference_service,
     inference_service_b,
 )
+from app.schemas.nutrition import NutritionEvaluation
 from app.schemas.screen import (
     AnswerRequest,
     DomainTrackPayload,
@@ -57,6 +60,7 @@ from app.schemas.screen import (
     IntakeResponse,
     QuestionPayload,
     RecallChoiceRequest,
+    RegressionOverrideRequest,
     ResultPayload,
     ScreenActionResponse,
     SessionStateResponse,
@@ -116,20 +120,67 @@ async def _get_inference_for_session(
 def _override_rule_name(override: str | None, session: CoreSession) -> str | None:
     if override is None:
         return None
+    # Regression outranks the sensory screen: it is the more severe rule and the
+    # label clinicians see should name the primary trigger.
     if (
         session.module == "A"
         and session.mandatory_answered.get("regression_flag") == 1
         and override == "Refer"
     ):
         return "regression_flag"
+    if (
+        session.module == "A"
+        and session.sensory_answered
+        and any(session.sensory_answered.get(item_id) == 1 for item_id in SENSORY_IDS)
+        and override == "Refer"
+    ):
+        return "sensory_flag"
     if session.module == "B" and override == "Refer":
         return "rule_out_item"
     return "deterministic_override"
 
 
+async def _queue_activity_tip_safely(
+    db: AsyncSession,
+    *,
+    subject_id: str | None,
+    child_ref: str,
+    activity: str | None,
+) -> None:
+    """Completion must never fail because optional notification tables or a
+    provider are unavailable (for example, before the new migration is run)."""
+    try:
+        # A savepoint means a missing optional table or provider error cannot
+        # abort the screening transaction that is about to persist the result.
+        async with db.begin_nested():
+            await queue_activity_tip_for_subject(
+                db,
+                subject_type="user",
+                subject_id=subject_id,
+                child_ref=child_ref,
+                activity=activity,
+            )
+    except Exception as exc:  # noqa: BLE001 - notifications are best-effort
+        logger.warning("activity tip skipped child=%s: %s", child_ref, exc)
+
+
+def _nutrition_for(core: CoreSession) -> dict[str, Any]:
+    from app.core.nutrition import evaluate_nutrition
+
+    return evaluate_nutrition(
+        age_months=core.corrected_age_months,
+        sex=core.sex,
+        weight_kg=core.measurements.get("weight_kg"),
+        muac_cm=core.measurements.get("muac_cm"),
+        known_anemia=bool(core.measurements.get("known_anemia")),
+    )
+
+
 def _question_payload(q: NextQuestion) -> QuestionPayload:
     response_type: Literal["yes_no", "frequency"] = (
-        "yes_no" if q.item_id in MANDATORY_IDS else "frequency"
+        "yes_no"
+        if q.item_id in MANDATORY_IDS or q.item_id in SENSORY_IDS
+        else "frequency"
     )
     return QuestionPayload(
         item_id=q.item_id,
@@ -267,6 +318,39 @@ async def _run_completion_b(
                 payload.triage_tier = "Tier 3: Direct Referral"
                 payload.reflex_branch_recommended = False
 
+            nutrition = _nutrition_for(core)
+            payload.measurements = dict(core.measurements)
+            payload.nutrition = NutritionEvaluation(**nutrition)
+            if nutrition["severity"] == "refer":
+                final_cls = "Refer"
+                override_triggered = True
+                override_rule = override_rule or "nutrition_flag"
+                payload.final_classification = "Refer"
+                payload.ml_classification = "Refer"
+                payload.safety_override_triggered = True
+                payload.override_rule = override_rule
+                payload.triage_tier = "Tier 3: Direct Referral"
+                payload.reflex_branch_recommended = False
+
+            # Module B has no mandatory item, but the in-quiz toggle can still
+            # report a lost skill. Treat it as the same deterministic safety
+            # override rather than letting the engine score it away.
+            if core.mandatory_answered.get("regression_flag") == 1:
+                final_cls = "Refer"
+                override_triggered = True
+                override_rule = override_rule or "regression_flag"
+                payload.final_classification = "Refer"
+                payload.ml_classification = "Refer"
+                payload.safety_override_triggered = True
+                payload.override_rule = override_rule
+                payload.triage_tier = "Tier 3: Direct Referral"
+                payload.reflex_branch_recommended = False
+                if "lost a skill" not in (payload.summary or "").lower():
+                    payload.summary = (
+                        "A lost skill was reported. The safety rule refers directly. "
+                        + (payload.summary or "")
+                    ).strip()
+
             db_row.module_b_state = engine_session.to_dict()
             core.module_b_state = db_row.module_b_state
             db_row.state_json = core.to_dict()
@@ -323,6 +407,19 @@ async def _run_completion_b(
             payload.location_city = db_row.location_city
             payload.location_state = db_row.location_state
             payload.location_address = db_row.location_address
+
+            # Home-activity tip for the caregiver (queued; the worker sends it).
+            first_activity = None
+            for activities in (payload.activities or {}).values():
+                if activities:
+                    first_activity = activities[0].title
+                    break
+            await _queue_activity_tip_safely(
+                db,
+                subject_id=db_row.parent_user_id,
+                child_ref=db_row.child_ref or db_row.id,
+                activity=first_activity,
+            )
             return payload
 
     from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
@@ -531,11 +628,15 @@ async def _run_completion(
         final.real_answers,
     )
 
+    nutrition = _nutrition_for(core)
+    nutrition_refer = nutrition["severity"] == "refer"
+    safety_override = pred.safety_override_triggered or nutrition_refer
+
     # Evaluate 3-tier clinical triage allocation
     prob_refer = float(pred.probabilities.get("Refer", 0.0))
     triage_tier, reflex_rec, target_reflex_domains = evaluate_live_tiered_triage(
         prob_refer=prob_refer,
-        safety_override=pred.safety_override_triggered,
+        safety_override=safety_override,
         domain_scores=domain_scores,
     )
 
@@ -546,9 +647,13 @@ async def _run_completion(
         ml_score=pred.ml_score,
         ml_classification=pred.ml_classification,
         model_name=inference.production_model_name or "unknown",
-        final_classification=pred.final_classification,
-        safety_override_triggered=pred.safety_override_triggered,
-        override_rule=pred.override_rule,
+        final_classification=(
+            "Refer" if nutrition_refer else pred.final_classification
+        ),
+        safety_override_triggered=safety_override,
+        override_rule=(
+            pred.override_rule or ("nutrition_flag" if nutrition_refer else None)
+        ),
         shap_values=pred.shap_values,
         probabilities=pred.probabilities,
         caveats=all_caveats,
@@ -617,6 +722,12 @@ async def _run_completion(
         answer_sources=core.answer_sources,
         touch_telemetry=core.touch_telemetry,
     )
+    res.measurements = dict(core.measurements)
+    res.nutrition = NutritionEvaluation(**nutrition)
+    if nutrition_refer:
+        res.final_classification = "Refer"
+        res.safety_override_triggered = True
+        res.override_rule = res.override_rule or "nutrition_flag"
     flagged_a = [dom for dom, score in domain_scores.items() if score > 0.3]
     suggested_a = await get_suggested_workers(
         db,
@@ -636,6 +747,14 @@ async def _run_completion(
     res.location_city = db_row.location_city
     res.location_state = db_row.location_state
     res.location_address = db_row.location_address
+
+    # Home-activity tip for the caregiver (queued; the worker sends it).
+    await _queue_activity_tip_safely(
+        db,
+        subject_id=db_row.parent_user_id,
+        child_ref=db_row.child_ref or db_row.id,
+        activity=None,
+    )
     return res
 
 
@@ -695,6 +814,8 @@ async def start_screen(
         age_bracket=age_bracket,
         question_cap=body.question_cap,
         module=module,  # type: ignore[arg-type]
+        sex=body.sex,
+        measurements=dict(body.measurements),
         child_name=body.child_name,
         parent_name=body.parent_name,
         parent_phone=body.parent_phone,
@@ -921,6 +1042,12 @@ async def submit_answer(
     try:
         if body.item_id in MANDATORY_IDS:
             record_mandatory_answer(core, body.item_id, body.answer)
+        elif body.item_id in SENSORY_IDS:
+            if body.answer not in (0, 1):
+                raise HTTPException(
+                    status_code=422, detail="Sensory answer must be 0 or 1"
+                )
+            record_sensory_answer(core, body.item_id, body.answer)
         else:
             if body.answer not in (0, 1, 2):
                 raise HTTPException(
@@ -970,6 +1097,33 @@ async def submit_answer(
         status="in_progress",
         question=_question_payload(action),
     )
+
+
+@router.post("/{session_id}/regression")
+async def set_regression_override(
+    session_id: str,
+    body: RegressionOverrideRequest,
+    user: Annotated[User, Depends(require_parent)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    repo: Annotated[SessionRepository, Depends(get_session_repo)],
+) -> dict[str, str]:
+    """Make the in-quiz regression toggle authoritative for the final result.
+
+    Module A already asks ``regression_flag`` as a mandatory item; this updates
+    that answer when the caregiver flips the toggle later. Module B has no
+    mandatory regression item, so the stored flag is consumed by its completion
+    path as a safety override.
+    """
+    db_row = await _load_owned_session(db, session_id, user.id)
+    if db_row.status == "completed":
+        raise HTTPException(status_code=400, detail="Session already completed")
+
+    core = repo.get(session_id) or CoreSession.from_dict(db_row.state_json)
+    core.mandatory_answered["regression_flag"] = body.value
+    db_row.state_json = core.to_dict()
+    repo.save(session_id, core)
+    await db.flush()
+    return {"status": "ok", "regression": str(body.value)}
 
 
 @router.get("/{session_id}/result", response_model=ResultPayload)
@@ -1051,64 +1205,61 @@ async def get_result(
     )
 
 
+def _session_summary(row: DbSession) -> SessionSummary:
+    """Build the public summary for one completed session.
+
+    Shared by the parent history endpoint and the clinician sandbox so both
+    report the same authoritative classification and real area scores.
+    """
+    rr = row.risk_result
+    answers = (
+        row.state_json.get("answers", {}) if isinstance(row.state_json, dict) else {}
+    )
+    scores = _module_a_domain_scores(answers) if row.module == "A" else {}
+    return SessionSummary(
+        id=row.id,
+        status=row.status,
+        module=row.module,
+        corrected_age_months=row.corrected_age_months,
+        age_bracket=row.age_bracket or "Unknown",
+        completed_at=row.completed_at.isoformat() if row.completed_at else None,
+        started_at=row.started_at.isoformat() if row.started_at else None,
+        child_name=row.child_name,
+        final_classification=rr.final_classification if rr else None,
+        probabilities=dict(rr.probabilities or {}) if rr else {},
+        safety_override_triggered=(bool(rr.safety_override_triggered) if rr else False),
+        domain_classifications=(
+            dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
+        ),
+        domain_scores=scores,
+        domain_details=(dict(getattr(rr, "domain_details", {}) or {}) if rr else {}),
+    )
+
+
 @router.get("/sessions", response_model=list[SessionSummary])
 async def list_sessions(
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_read)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 50,
 ):
-    """List the caller's own completed screening sessions, newest first.
+    """List completed screening sessions, newest first.
 
-    Powers the parent history (Home / Growth / Share). Scoped to the caller so
-    other parents' sessions are never returned. Returns the authoritative
-    classification plus the real per-domain scores for Module A.
+    Parents see only their own history. Clinicians and internal staff see the
+    cross-family list they need for clinical review and the sandbox; their
+    read-only role cannot mutate another family's session.
     """
-    stmt = (
-        select(DbSession)
-        .options(selectinload(DbSession.risk_result))
-        .where(
+    stmt = select(DbSession).options(selectinload(DbSession.risk_result))
+    if user.role in ("clinician", "internal"):
+        stmt = stmt.where(DbSession.status == "completed")
+    else:
+        stmt = stmt.where(
             DbSession.parent_user_id == user.id,
             DbSession.status == "completed",
         )
-        .order_by(DbSession.completed_at.desc())
-        .limit(max(1, min(limit, 200)))
-    )
+    stmt = stmt.order_by(DbSession.completed_at.desc()).limit(max(1, min(limit, 200)))
     rows = (await db.execute(stmt)).scalars().all()
 
-    summaries: list[SessionSummary] = []
-    for row in rows:
-        rr = row.risk_result
-        answers = (
-            row.state_json.get("answers", {})
-            if isinstance(row.state_json, dict)
-            else {}
-        )
-        scores = _module_a_domain_scores(answers) if row.module == "A" else {}
-        summaries.append(
-            SessionSummary(
-                id=row.id,
-                status=row.status,
-                module=row.module,
-                corrected_age_months=row.corrected_age_months,
-                age_bracket=row.age_bracket or "Unknown",
-                completed_at=row.completed_at.isoformat() if row.completed_at else None,
-                started_at=row.started_at.isoformat() if row.started_at else None,
-                child_name=row.child_name,
-                final_classification=rr.final_classification if rr else None,
-                probabilities=dict(rr.probabilities or {}) if rr else {},
-                safety_override_triggered=(
-                    bool(rr.safety_override_triggered) if rr else False
-                ),
-                domain_classifications=(
-                    dict(getattr(rr, "domain_classifications", {}) or {}) if rr else {}
-                ),
-                domain_scores=scores,
-                domain_details=(
-                    dict(getattr(rr, "domain_details", {}) or {}) if rr else {}
-                ),
-            )
-        )
-    return summaries
+    return [_session_summary(row) for row in rows]
 
 
 @router.get("/{session_id}", response_model=SessionStateResponse)

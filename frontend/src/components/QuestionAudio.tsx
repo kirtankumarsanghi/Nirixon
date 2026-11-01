@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Pause, Volume2 } from "lucide-react";
 import { shareApi, resolveApiUrl } from "../api/client";
 import type { AudioItemQueryResponse } from "../api/types";
+import { LANG_META, type Lang } from "../lib/i18n";
 import { cn } from "../utils/cn";
 
 const speechAvailable = () =>
@@ -9,10 +10,34 @@ const speechAvailable = () =>
   "speechSynthesis" in window &&
   typeof SpeechSynthesisUtterance !== "undefined";
 
-function pickVoice(lang: "en" | "hi"): SpeechSynthesisVoice | undefined {
-  if (!speechAvailable()) return undefined;
-  const prefix = lang === "hi" ? "hi" : "en";
-  return window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith(prefix));
+function pickVoice(voices: SpeechSynthesisVoice[], lang: Lang): SpeechSynthesisVoice | undefined {
+  const prefix = LANG_META[lang].speech.split("-")[0].toLowerCase();
+  return voices.find((v) => v.lang.toLowerCase().startsWith(prefix));
+}
+
+/**
+ * Browsers populate `getVoices()` asynchronously. Reading it on the first user
+ * gesture can return an empty list, which previously made Hindi narration
+ * silently do nothing on devices where the voice loads a moment later.
+ */
+function waitForVoices(timeoutMs = 1500): Promise<SpeechSynthesisVoice[]> {
+  if (!speechAvailable()) return Promise.resolve([]);
+  const synth = window.speechSynthesis;
+  const immediate = synth.getVoices();
+  if (immediate.length) return Promise.resolve(immediate);
+  // Older WebViews and test doubles expose getVoices but not voiceschanged.
+  if (typeof synth.addEventListener !== "function") return Promise.resolve(immediate);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      synth.removeEventListener?.("voiceschanged", finish);
+      resolve(synth.getVoices());
+    };
+    synth.addEventListener?.("voiceschanged", finish);
+    window.setTimeout(finish, timeoutMs);
+  });
 }
 
 /**
@@ -28,15 +53,15 @@ export function QuestionAudio({
   itemId,
   lang,
   text,
-  hindiText,
+  localizedText,
   className,
 }: {
   itemId: string;
-  lang: "en" | "hi";
+  lang: Lang;
   /** The question currently on screen; used when no pre-recorded clip exists. */
   text?: string;
-  /** Hindi rendition of the question, when the bank provides one (Module B). */
-  hindiText?: string;
+  /** Localized rendition of the question, when the bank provides one (Module B). */
+  localizedText?: string;
   className?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -94,31 +119,57 @@ export function QuestionAudio({
   // Reviewed clip wins. Otherwise speak the Hindi rendition when one exists
   // (Module A manifest text or the translated Module B map); otherwise fall back
   // to the English source and tag the control rather than showing nothing.
-  const hindiSource = lang === "hi" ? (entry?.text ?? hindiText) : undefined;
+  const localizedSource = lang !== "en" ? (entry?.text ?? localizedText) : undefined;
   const englishText = text ?? entry?.text ?? undefined;
   let speakText: string | undefined;
-  let speechLang: "en" | "hi" = lang;
-  if (!serverAudio) {
-    if (lang === "hi") {
-      if (hindiSource) {
-        speakText = hindiSource;
-      } else if (englishText) {
-        speakText = englishText;
-        speechLang = "en";
-      }
-    } else {
+  let speechLang: Lang = lang;
+  if (lang !== "en") {
+    if (localizedSource) {
+      speakText = localizedSource;
+    } else if (englishText) {
       speakText = englishText;
+      speechLang = "en";
     }
+  } else {
+    speakText = englishText;
   }
-  const englishFallback = !serverAudio && lang === "hi" && speechLang === "en";
+  const englishFallback = !serverAudio && lang !== "en" && speechLang === "en";
   const canSpeak = Boolean(speakText) && speechAvailable();
 
   if (!serverAudio && !canSpeak) return null;
 
+  /** Speak the best text we have; used on its own and as the audio fallback. */
+  const speak = async () => {
+    if (!speakText || !speechAvailable()) {
+      setPlaying(false);
+      return;
+    }
+    const synth = window.speechSynthesis;
+    if (synth.speaking) {
+      synth.cancel();
+      setPlaying(false);
+      return;
+    }
+    const voices = await waitForVoices();
+    const utterance = new SpeechSynthesisUtterance(speakText);
+    utterance.lang = LANG_META[speechLang].speech;
+    const voice = pickVoice(voices, speechLang);
+    if (voice) utterance.voice = voice;
+    utterance.rate = rate;
+    utterance.onend = () => setPlaying(false);
+    utterance.onerror = () => setPlaying(false);
+    synth.cancel();
+    synth.speak(utterance);
+    setPlaying(true);
+  };
+
   const toggle = async () => {
     if (serverAudio && audioSrc) {
       const audio = audioRef.current;
-      if (!audio) return;
+      if (!audio) {
+        await speak();
+        return;
+      }
       if (playing) {
         audio.pause();
         setPlaying(false);
@@ -143,28 +194,14 @@ export function QuestionAudio({
           await audio.play();
           setPlaying(true);
         } catch {
-          setPlaying(false);
+          // Never leave the caregiver with a silent button: speak the same
+          // Hindi/English text the server was supposed to narrate.
+          await speak();
         }
       }
       return;
     }
-
-    const synth = window.speechSynthesis;
-    if (synth.speaking) {
-      synth.cancel();
-      setPlaying(false);
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(speakText as string);
-    utterance.lang = speechLang === "hi" ? "hi-IN" : "en-IN";
-    const voice = pickVoice(speechLang);
-    if (voice) utterance.voice = voice;
-    utterance.rate = rate;
-    utterance.onend = () => setPlaying(false);
-    utterance.onerror = () => setPlaying(false);
-    synth.cancel();
-    synth.speak(utterance);
-    setPlaying(true);
+    await speak();
   };
 
   return (
@@ -179,7 +216,7 @@ export function QuestionAudio({
           playing
             ? "Pause question audio"
             : englishFallback
-              ? "Play question audio in English — Hindi is not available for this question"
+              ? "Play question audio in English — a translation is not available for this question"
               : "Play question audio"
         }
         aria-pressed={playing}
@@ -189,7 +226,7 @@ export function QuestionAudio({
       </button>
       {englishFallback && (
         <span
-          title="हिन्दी ऑडियो इस प्रश्न के लिए उपलब्ध नहीं है — अंग्रेज़ी में सुनाया जाएगा"
+          title="A translation is not available for this question — it will be read in English"
           className="rounded-full border border-line-2 px-1.5 py-0.5 font-mono text-[9px] font-bold text-muted"
         >
           EN

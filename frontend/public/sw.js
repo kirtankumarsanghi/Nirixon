@@ -3,12 +3,13 @@
  * Enables offline dashboard access, screening cache, and sync queue reliability.
  */
 
-const CACHE_NAME = "nirixon-chw-cache-v1";
+const CACHE_NAME = "nirixon-chw-cache-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/favicon.svg",
   "/manifest.webmanifest",
+  "/module-b-hi.json",
 ];
 
 // Install: Cache essential app shell
@@ -140,9 +141,9 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Web push (delivery requires a server-side sender — see README).
+// Web push: the server-side VAPID sender posts {title, body, url, tag}.
 self.addEventListener("push", (event) => {
-  let data = { title: "Nirixon", body: "A follow-up is due." };
+  let data = { title: "Nirixon", body: "A follow-up is due.", url: "/#/chw/caseload", tag: "nirixon" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (err) {
@@ -153,13 +154,53 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/favicon.svg",
       badge: "/favicon.svg",
-      data: { url: "/#/chw/caseload" },
+      tag: data.tag,
+      data: { url: data.url || "/#/chw/caseload" },
+      actions: [
+        { action: "open", title: "Open" },
+        { action: "dismiss", title: "Dismiss" },
+      ],
     })
+  );
+});
+
+// Re-subscribe when the browser rotates the push subscription.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const response = await fetch("/api/notifications/vapid-public-key");
+        if (!response.ok) return;
+        const { public_key } = await response.json();
+        if (!public_key) return;
+        const padding = "=".repeat((4 - (public_key.length % 4)) % 4);
+        const base64 = (public_key + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(base64);
+        const key = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i += 1) key[i] = raw.charCodeAt(i);
+        await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key,
+        });
+      } catch (err) {
+        // The next app open can request permission again.
+      }
+    })()
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  if (event.action === "dismiss") return;
   const url = (event.notification.data && event.notification.data.url) || "/#/chw/caseload";
-  event.waitUntil(self.clients.openWindow(url));
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => "focus" in client);
+      if (existing) {
+        existing.navigate(url);
+        return existing.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });

@@ -11,11 +11,11 @@ import { ThemeProvider } from "./components/ThemeContext";
 import { FloatingViewSwitcher, ViewProvider } from "./components/ViewContext";
 import { GapCards, Modules, TrustMarquee } from "./sections/SectionsA";
 import { CtaFooter, Faq } from "./sections/SectionsB";
-import { Proof, SafetyBand } from "./sections/Proof";
+import { SafetyBand } from "./sections/Proof";
 import { Demo } from "./sections/Demo";
 import { Intake } from "./sections/Intake";
 import { Toolkit } from "./sections/Toolkit";
-import { Audience, Compare } from "./sections/Reach";
+import { Audience } from "./sections/Reach";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -92,14 +92,12 @@ export default function App() {
               <Hero key={introRun} />
               <CinematicSequence />
               <TrustMarquee />
-              <Proof />
               <SafetyBand />
               <Demo />
               <GapCards />
               <Modules />
               <Intake />
               <Toolkit />
-              <Compare />
               <Audience />
               <Faq />
             </main>

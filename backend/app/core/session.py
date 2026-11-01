@@ -41,6 +41,8 @@ class ScreeningSession:
     question_cap: Literal[10, 15, 20]
     age_bracket: str = "Unknown"
     model_name: str | None = None
+    # "male" | "female" — needed for weight-for-age screening.
+    sex: str | None = None
 
     # "A" = early-childhood screener (0–60 months)
     # "B" = school-age screener (60–144 months)
@@ -58,6 +60,14 @@ class ScreeningSession:
 
     # tracks which mandatory items are done; keys are always MANDATORY_IDS
     mandatory_answered: dict[str, int] = field(default_factory=dict)
+
+    # Module A: sensory rule-out answers (vision_flag / hearing_flag), kept out
+    # of the ML answers just like mandatory flags.
+    sensory_answered: dict[str, int] = field(default_factory=dict)
+
+    # Optional anthropometrics entered by a caregiver or frontline worker.
+    # Keys are stable labels ("weight_kg", "muac_cm", "height_cm").
+    measurements: dict[str, float] = field(default_factory=dict)
 
     # Module B: functioning domains detected by the NLP router.
     # Populated from IntakeRequest; used by adaptive_tree to filter item pool.
@@ -165,12 +175,15 @@ class ScreeningSession:
             "age_bracket": self.age_bracket,
             "question_cap": self.question_cap,
             "model_name": self.model_name,
+            "sex": self.sex,
             "module": self.module,
             "answers": self.answers.copy(),
             "answer_sources": self.answer_sources.copy(),
             "observed_answers": self.observed_answers.copy(),
             "recall_answers": self.recall_answers.copy(),
             "mandatory_answered": self.mandatory_answered.copy(),
+            "sensory_answered": self.sensory_answered.copy(),
+            "measurements": dict(self.measurements),
             "detected_domains": list(self.detected_domains),
             "teacher_answers": self.teacher_answers.copy(),
             "microtask_telemetry": dict(self.microtask_telemetry),
@@ -211,12 +224,15 @@ class ScreeningSession:
             age_bracket=age_bracket,
             question_cap=data["question_cap"],
             model_name=data.get("model_name"),
+            sex=data.get("sex"),
             module=data.get("module", "A"),
             answers=data.get("answers", {}).copy(),
             answer_sources=data.get("answer_sources", {}).copy(),
             observed_answers=data.get("observed_answers", {}).copy(),
             recall_answers=data.get("recall_answers", {}).copy(),
             mandatory_answered=data.get("mandatory_answered", {}).copy(),
+            sensory_answered=data.get("sensory_answered", {}).copy(),
+            measurements=dict(data.get("measurements", {})),
             detected_domains=list(data.get("detected_domains", [])),
             teacher_answers=data.get("teacher_answers", {}).copy(),
             microtask_telemetry=dict(data.get("microtask_telemetry", {})),

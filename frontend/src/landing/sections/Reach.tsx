@@ -2,76 +2,9 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Wifi, WifiOff } from "lucide-react";
 import { PHOTOS } from "../data";
-import { EASE, Kicker, MaskedHeadline, StrikeText } from "../components/editorial";
+import { EASE, Kicker, MaskedHeadline } from "../components/editorial";
 import { useView } from "../components/ViewContext";
 import { cn } from "../utils/cn";
-
-import claimsRegister from "../claims_register.json";
-
-const claims = claimsRegister.claims;
-
-/* ================================================================== */
-/*  [10] Paper checklist vs Nirixon — qualitative literature ledger    */
-/* ================================================================== */
-
-const ROWS: { label: string; paper: string; nirixon: string }[] = [
-  { label: "Questions asked", paper: "Fixed 30–36 universal items", nirixon: `${claims.module_a_questions_range.display}` },
-  { label: "Administration time", paper: "10–15+ minutes manual completion", nirixon: "Under 5 minutes" },
-  { label: "Refer cohort recall", paper: "Fixed age-cutoff threshold", nirixon: `${claims.module_a_refer_recall.display} (${claims.module_a_refer_breakdown.classified_as_refer}/${claims.module_a_refer_breakdown.true_refer_total} caught)` },
-  { label: "Refer precision", paper: "High false-referrals in literature", nirixon: `${claims.module_a_refer_precision.display} on held-out test` },
-  { label: "Refer specificity", paper: "Variable in primary care studies", nirixon: `${claims.module_a_refer_specificity.display} (n=${claims.module_a_test_n.value})` },
-  { label: "Discrimination (AUROC)", paper: "Uncalibrated manual score", nirixon: `${claims.module_a_macro_auroc.display} (Macro AUROC)` },
-  { label: "Over-optimistic answers", paper: "Undetected on paper", nirixon: "Acquiescence guard" },
-  { label: "Contradictory answers", paper: "Undetected on paper", nirixon: "Guttman inversion guard" },
-  { label: "Red-flag override", paper: "Post-hoc clinician review only", nirixon: "Deterministic −2.0 SD rule" },
-  { label: "Scoring speed", paper: "Manual lookup table", nirixon: `${claims.latency_p50.display} instant` },
-];
-
-export function Compare() {
-  return (
-    <section id="compare" className="relative py-20 md:py-28" aria-labelledby="compare-title">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <Kicker index="10">Side by side · Literature comparison</Kicker>
-        <MaskedHeadline
-          id="compare-title"
-          lines={[{ text: "Paper checklist" }, { text: "vs Nirixon.", className: "text-apricot" }]}
-          className="mt-6 text-[clamp(2.6rem,6vw,5.2rem)]"
-        />
-
-        <div className="mt-14 grid gap-8 lg:grid-cols-[88px_minmax(0,1fr)] lg:items-stretch">
-          <aside data-portrait-lane="compare" aria-hidden="true" className="compare-portrait-lane relative hidden lg:block" />
-          <div data-overlay-protect className="min-w-0">
-          <div className="grid grid-cols-2 gap-4 border-b-2 border-bone pb-3 text-[11px] font-bold uppercase tracking-[0.2em] sm:grid-cols-[1.35fr_1fr_1fr]">
-            <span className="hidden text-bone/60 sm:block">Dimension</span>
-            <span className="text-bone/70">Paper checklist (ASQ-3 literature)</span>
-            <span className="text-apricot font-extrabold">Nirixon (Evaluated)</span>
-          </div>
-          {ROWS.map((r, i) => (
-            <div key={r.label} className="group relative grid grid-cols-2 items-baseline gap-x-4 gap-y-1 border-b border-bone/15 py-5 sm:grid-cols-[1.35fr_1fr_1fr]">
-              <span className="absolute -left-4 top-0 hidden h-full w-[3px] origin-top scale-y-0 bg-apricot transition-transform duration-300 group-hover:scale-y-100 sm:block" aria-hidden="true" />
-              <span className="col-span-2 text-[15px] font-bold text-bone sm:col-span-1">{r.label}</span>
-              <span className="text-[15px] font-semibold text-bone/85">
-                <StrikeText delay={0.15 + (i % 4) * 0.06} color="var(--color-apricot)">
-                  {r.paper}
-                </StrikeText>
-              </span>
-              <motion.span
-                initial={{ opacity: 0, x: 14 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: "-8% 0px" }}
-                transition={{ duration: 0.6, delay: 0.45 + (i % 4) * 0.06, ease: EASE }}
-                className="font-display text-[clamp(1.15rem,1.9vw,1.6rem)] uppercase leading-tight tracking-wide text-bone font-bold"
-              >
-                {r.nirixon}
-              </motion.span>
-            </div>
-          ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ================================================================== */
 /*  [11] Built for everyone — four arched doorways that open           */
@@ -87,7 +20,7 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
     photo: PHOTOS.motherInfant,
     alt: "An Indian mother holding her infant",
     title: "A 5-minute check, a plain result",
-    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio narration in Hindi & English at 0.8× or 1.0× speed (Live)"],
+    points: ["A 5-minute check, a plain result", "Home activities while you wait for an appointment", "Audio narration in 8 languages at 0.8× or 1.0× speed (Live)"],
   },
   {
     id: "worker",
@@ -110,11 +43,16 @@ const AUDIENCES: { id: AudienceId; n: string; label: string; photo: string; alt:
   {
     id: "whatsapp",
     n: "04",
-    label: "WhatsApp (Coming next)",
+    label: "WhatsApp & SMS (Live)",
     photo: PHOTOS.ruralMom,
     alt: "A woman in traditional attire in a rural field in Kanpur, India",
-    title: "Coming next · Roadmap",
-    points: ["Coming next — currently in architecture design", "Planned for lightweight text sessions", "Same adaptive questions, same deterministic safety rule"],
+    title: "Reminders that reach the family",
+    points: [
+      "Automated re-screen reminders, referral nudges and home-activity tips (Live · provider-gated)",
+      "Menu-driven WhatsApp/SMS follow-up bot",
+      "IVR voice reminders for feature phones",
+      "Consent, quiet hours and STOP opt-out built in",
+    ],
   },
 ];
 
@@ -174,7 +112,7 @@ function Extra({ id }: { id: AudienceId }) {
   return (
     <div className="mt-5 max-w-[320px] space-y-1.5 text-[12.5px]">
       <div className="flex items-center gap-2 mb-2">
-        <span className="rounded bg-bone/20 px-2 py-0.5 text-[10.5px] font-bold text-paper">Coming next · In Architecture Design</span>
+        <span className="rounded bg-bone/20 px-2 py-0.5 text-[10.5px] font-bold text-paper">Live · Provider-gated</span>
       </div>
       <p className="w-fit rounded-2xl rounded-bl-sm px-3.5 py-2 font-semibold" style={{ background: "#fff1d4", color: "#211709" }}>Can your child pick up a toy from the floor without holding on? 1 Yes · 2 Tried · 3 Not yet</p>
       <p className="ml-auto w-fit rounded-2xl rounded-br-sm px-3.5 py-2 font-semibold" style={{ background: "var(--wa-bg)", color: "var(--wa-text)" }}>1</p>

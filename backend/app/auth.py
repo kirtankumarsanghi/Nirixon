@@ -90,6 +90,17 @@ async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> 
     return user
 
 
+async def require_screen_read(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Read access to completed screenings.
+
+    Parents see only their own history; clinicians and internal staff need the
+    cross-family list to review the latest check-in and open the sandbox.
+    """
+    if user.role not in ("parent", "internal", "clinician"):
+        raise HTTPException(status_code=403, detail="Screening read role required")
+    return user
+
+
 async def require_worker(user: Annotated[User, Depends(get_current_user)]) -> User:
     if user.role not in ("chw", "supervisor", "internal"):
         raise HTTPException(

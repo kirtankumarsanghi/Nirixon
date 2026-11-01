@@ -5,7 +5,7 @@ import { parseHash, toHash, type Route } from "./lib/router";
 import { api, onUnauthorized, referralApi, setAuthToken } from "./api/client";
 import type { ChildRecord, CHWSyncItem } from "./api/types";
 import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
-import type { Lang } from "./lib/i18n";
+import { LANGS, type Lang } from "./lib/i18n";
 import { clearAllOfflineData, enqueue, getCache, isNetworkError, newKey, putCache, queueCount } from "./lib/offlineQueue";
 import { flushQueue } from "./lib/offlineSync";
 
@@ -20,6 +20,10 @@ export interface WhatIfSeed {
   scores: Scores;
   regression: boolean;
   label: string;
+  /** Completed session id when seeded from a real check-in. */
+  sessionId?: string;
+  /** Screening module the scores came from; inferred from the score keys when omitted. */
+  module?: "A" | "B";
 }
 
 interface AppCtx {
@@ -136,7 +140,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   const timer = useRef<number | undefined>(undefined);
   const [lang, setLang] = useState<Lang>(() => {
     try {
-      return window.localStorage.getItem("nirixon-lang") === "hi" ? "hi" : "en";
+      const saved = window.localStorage.getItem("nirixon-lang") as Lang | null;
+      return saved && LANGS.some((entry) => entry.id === saved) ? saved : "en";
     } catch {
       return "en";
     }
