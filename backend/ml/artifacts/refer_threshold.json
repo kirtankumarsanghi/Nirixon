@@ -1,5 +1,5 @@
 {
-  "refer_threshold": 0.643171,
+  "refer_threshold": 0.527184,
   "target_recall": 0.85,
   "selected_on": "validation"
 }
