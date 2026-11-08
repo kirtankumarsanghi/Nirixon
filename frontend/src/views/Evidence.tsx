@@ -61,25 +61,42 @@ export function Evidence() {
   const monitorTriaged = referRow[monitorIdx] ?? 0;
   const typicalMissed = referRow[typicalIdx] ?? 0;
 
-  const maMetrics: [string, string][] = [
-    [tr("Model"), ma.model_name],
-    [tr("Test accuracy"), `${(ma.accuracy * 100).toFixed(1)}%`],
-    [tr("Refer recall"), `${(ma.refer_recall * 100).toFixed(1)}%`],
-    [tr("Refer precision"), `${(ma.refer_precision * 100).toFixed(1)}%`],
-    [tr("Refer specificity"), `${(ma.refer_specificity * 100).toFixed(1)}%`],
-    [tr("Monitor recall"), `${(ma.monitor_recall * 100).toFixed(1)}%`],
-    [tr("Typical recall"), `${(ma.typical_recall * 100).toFixed(1)}%`],
-    [tr("Macro F1"), ma.macro_f1.toFixed(3)],
-    [tr("Macro AUROC"), ma.macro_auroc.toFixed(3)],
-    [tr("Macro AUPRC"), ma.macro_auprc.toFixed(3)],
-    [tr("Latency p50 / p95 / p99"), `${ma.latency_p50_ms.toFixed(1)} / ${ma.latency_p95_ms.toFixed(1)} / ${ma.latency_p99_ms.toFixed(1)} ms`],
+  const maTiles: { label: string; value: string; helper: string; tone: string }[] = [
+    { label: tr("Test accuracy"), value: `${(ma.accuracy * 100).toFixed(1)}%`, helper: tr("Held-out accuracy across 3 tiers."), tone: "text-sea" },
+    { label: tr("Refer recall"), value: `${(ma.refer_recall * 100).toFixed(1)}%`, helper: tr("High-risk cases captured."), tone: "text-rust" },
+    { label: tr("Refer precision"), value: `${(ma.refer_precision * 100).toFixed(1)}%`, helper: tr("Refer flags that are correct."), tone: "text-moss" },
+    { label: tr("Refer specificity"), value: `${(ma.refer_specificity * 100).toFixed(1)}%`, helper: tr("Typical children correctly cleared."), tone: "text-lilac" },
+    { label: tr("Monitor recall"), value: `${(ma.monitor_recall * 100).toFixed(1)}%`, helper: tr("Monitor cases recovered."), tone: "text-sea" },
+    { label: tr("Typical recall"), value: `${(ma.typical_recall * 100).toFixed(1)}%`, helper: tr("Typical children correctly identified."), tone: "text-moss" },
+    { label: tr("Macro F1"), value: ma.macro_f1.toFixed(3), helper: tr("Balanced across all 3 tiers."), tone: "text-rust" },
+    { label: tr("Macro AUROC"), value: ma.macro_auroc.toFixed(3), helper: tr("Ranking quality across thresholds."), tone: "text-lilac" },
+    { label: tr("Macro AUPRC"), value: ma.macro_auprc.toFixed(3), helper: tr("Precision-recall balance for Refer."), tone: "text-sea" },
+    { label: tr("p50 latency"), value: `${ma.latency_p50_ms.toFixed(1)} ms`, helper: tr("Median inference latency."), tone: "text-moss" },
+    { label: tr("p95 latency"), value: `${ma.latency_p95_ms.toFixed(1)} ms`, helper: tr("Tail inference latency."), tone: "text-rust" },
+    { label: tr("p99 latency"), value: `${ma.latency_p99_ms.toFixed(1)} ms`, helper: tr("Worst-case inference latency."), tone: "text-lilac" },
   ];
   if (ma.operating_point_refer_recall != null) {
-    maMetrics.push([tr("Operating-point refer recall"), `${(ma.operating_point_refer_recall * 100).toFixed(1)}%`]);
+    maTiles.push({
+      label: tr("Operating-point refer recall"),
+      value: `${(ma.operating_point_refer_recall * 100).toFixed(1)}%`,
+      helper: tr("Recall at the deployed threshold."),
+      tone: "text-sea",
+    });
   }
   if (ma.operating_point_threshold != null) {
-    maMetrics.push([tr("Operating-point threshold"), ma.operating_point_threshold.toFixed(3)]);
+    maTiles.push({
+      label: tr("Operating-point threshold"),
+      value: ma.operating_point_threshold.toFixed(3),
+      helper: tr("Score threshold used at deployment."),
+      tone: "text-lilac",
+    });
   }
+
+  const classTone: Record<string, string> = {
+    Typical: "text-moss",
+    Monitor: "text-amber",
+    Refer: "text-rust",
+  };
 
   return (
     <Page>
@@ -248,19 +265,25 @@ export function Evidence() {
           index="05"
           eyebrow={tr("Module A metrics")}
           title={tr("Reported held-out metrics for the early-years screening model.")}
-          action={<Chip tone="sea">{tr("n = {n}", { n: ma.n_test.toLocaleString() })}</Chip>}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone="moss">{ma.model_name}</Chip>
+              <Chip tone="sea">{tr("n = {n}", { n: ma.n_test.toLocaleString() })}</Chip>
+            </div>
+          }
         >
-          <div className="grid gap-4 p-6 sm:p-8 lg:grid-cols-[1fr_1.2fr]">
-            <dl className="divide-y divide-line rounded-[26px] border border-line-2 bg-card-2 px-5 py-1">
-              {maMetrics.map(([term, value]) => (
-                <div key={term} className="flex items-center justify-between gap-4 py-2.5">
-                  <dt className="text-[12.5px] font-bold">{term}</dt>
-                  <dd className="text-right font-mono text-[12.5px] font-semibold text-ink-2">{value}</dd>
+          <div className="p-6 sm:p-8">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {maTiles.map((t) => (
+                <div key={t.label} className="rounded-[26px] border border-line-2 bg-card-2 p-5">
+                  <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted uppercase">{t.label}</p>
+                  <p className={cn("mt-3 font-display text-[clamp(38px,4.2vw,56px)] leading-none", t.tone)}>{t.value}</p>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-ink-2">{t.helper}</p>
                 </div>
               ))}
-            </dl>
+            </div>
 
-            <div className="rounded-[26px] border border-line-2 bg-card-2 p-5">
+            <div className="mt-4 rounded-[26px] border border-line-2 bg-card-2 p-5 sm:p-6">
               <p className="font-mono text-[10px] font-semibold tracking-[0.18em] text-muted uppercase">{tr("Per-class metrics")}</p>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-left text-[13px]">
@@ -279,10 +302,15 @@ export function Evidence() {
                       if (!m) return null;
                       return (
                         <tr key={label} className="border-b border-line/60 last:border-0">
-                          <td className="py-3 pr-3 font-semibold">{tr(label)}</td>
+                          <td className="py-3 pr-3 font-semibold">
+                            <span className={cn("inline-flex items-center gap-2", classTone[label])}>
+                              <span className="size-2 rounded-full bg-current" />
+                              {tr(label)}
+                            </span>
+                          </td>
                           <td className="py-3 text-right font-mono">{(m.precision * 100).toFixed(1)}%</td>
                           <td className="py-3 text-right font-mono">{(m.recall * 100).toFixed(1)}%</td>
-                          <td className="py-3 text-right font-mono">{(m.f1 * 100).toFixed(1)}%</td>
+                          <td className={cn("py-3 text-right font-mono font-semibold", classTone[label])}>{(m.f1 * 100).toFixed(1)}%</td>
                           <td className="py-3 text-right font-mono text-ink-2">{m.support}</td>
                         </tr>
                       );
