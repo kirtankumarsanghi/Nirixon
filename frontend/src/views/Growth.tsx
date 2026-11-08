@@ -65,16 +65,16 @@ export function Growth() {
       {/* stat tiles */}
       <div className="mt-12 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { k: "Check-ins", v: String(n), s: `since ${fmtDate(ordered[0].date, true)}` },
-          { k: "Chronological age", v: `${latest.ageMonths} mo`, s: "at latest check-in" },
-          { k: "Developmental age", v: `${dev.toFixed(0)} mo`, s: "estimated from area scores" },
-          { k: "Pace", v: pace === null ? "—" : `${pace.toFixed(2)}×`, s: pace === null ? "needs two check-ins" : pace >= 1 ? "catching up" : "slower than expected" },
+          { k: "Check-ins", v: String(n), s: `since ${fmtDate(ordered[0].date, true)}`, c: "#ea8f63" },
+          { k: "Chronological age", v: `${latest.ageMonths} mo`, s: "at latest check-in", c: "#7cc1dc" },
+          { k: "Developmental age", v: `${dev.toFixed(0)} mo`, s: "estimated from area scores", c: "#8fbf5a" },
+          { k: "Pace", v: pace === null ? "—" : `${pace.toFixed(2)}×`, s: pace === null ? "needs two check-ins" : pace >= 1 ? "catching up" : "slower than expected", c: "#c79ad0" },
         ].map((t, i) => (
           <Reveal key={t.k} delay={i * 70}>
-            <div className="h-full rounded-[28px] border border-line-2 bg-card p-6">
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">{tr(t.k)}</p>
-              <p className="mt-3 font-display text-[clamp(40px,4.4vw,64px)] leading-none">{t.v}</p>
-              <p className="mt-2 text-[12px] text-ink-2">{tr(t.s)}</p>
+            <div className="h-full rounded-[28px] bg-night p-6 text-paper">
+              <p className="font-mono text-[10px] tracking-[0.2em] text-paper/50 uppercase">{tr(t.k)}</p>
+              <p className="mt-3 font-display text-[clamp(40px,4.4vw,64px)] leading-none" style={{ color: t.c }}>{t.v}</p>
+              <p className="mt-2 text-[12px] text-paper/60">{tr(t.s)}</p>
             </div>
           </Reveal>
         ))}

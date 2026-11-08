@@ -111,9 +111,7 @@ async def _attach_latest_domain_scores(
         setattr(child, "domain_scores", latest.get(child.id, {}))
 
 
-async def _attach_handoff_state(
-    db: AsyncSession, children: list[ChildRecord]
-) -> None:
+async def _attach_handoff_state(db: AsyncSession, children: list[ChildRecord]) -> None:
     """Attach each child's persisted referral handoff state for the UI chips.
 
     "queued" while a referral is still open (created/sent/seen), "done" once the
@@ -261,7 +259,10 @@ async def get_current_worker(
         if worker:
             # Older internal accounts may have been auto-provisioned to one ward;
             # clinicians are cross-area oversight, so widen them once.
-            if user.role == "internal" and worker.area.strip().lower() not in ("all", "*"):
+            if user.role == "internal" and worker.area.strip().lower() not in (
+                "all",
+                "*",
+            ):
                 worker.area = "all"
                 if worker.role == "chw":
                     worker.role = "supervisor"
@@ -1538,25 +1539,33 @@ async def record_child_outcome(
     # A child can have several referral rows over time, so never use
     # scalar_one_or_none() here — it raises MultipleResultsFound.
     referral = (
-        await db.execute(
-            select(Referral)
-            .where(
-                Referral.child_id == child.id,
-                Referral.status != STATUS_CLOSED,
-            )
-            .order_by(Referral.created_at.desc())
-            .limit(1)
-        )
-    ).scalars().first()
-    if referral is None:
-        referral = (
+        (
             await db.execute(
                 select(Referral)
-                .where(Referral.child_id == child.id)
+                .where(
+                    Referral.child_id == child.id,
+                    Referral.status != STATUS_CLOSED,
+                )
                 .order_by(Referral.created_at.desc())
                 .limit(1)
             )
-        ).scalars().first()
+        )
+        .scalars()
+        .first()
+    )
+    if referral is None:
+        referral = (
+            (
+                await db.execute(
+                    select(Referral)
+                    .where(Referral.child_id == child.id)
+                    .order_by(Referral.created_at.desc())
+                    .limit(1)
+                )
+            )
+            .scalars()
+            .first()
+        )
 
     now = _utcnow()
     if not referral:

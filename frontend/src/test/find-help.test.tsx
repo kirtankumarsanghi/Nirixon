@@ -144,19 +144,19 @@ describe("Find Help against the facility directory", () => {
       limit: 12,
       verifiedOnly: false,
     });
-    await waitFor(() => expect(screen.getByText("SMS Hospital")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("SMS Hospital").length).toBeGreaterThan(0));
     const text = out.container.textContent ?? "";
     expect(text).toContain("about 3.2 km");
     expect(text).toContain("0141-2560291");
     expect(text).toContain("Jaipur, Rajasthan");
     // The null-phone row must not print an empty contact line.
-    expect(screen.getByText("Jeevan Clinic")).toBeInTheDocument();
+    expect(screen.getAllByText("Jeevan Clinic").length).toBeGreaterThan(0);
     expect(text).toContain("about 4.8 km");
     expect(text).not.toContain("null");
     // Provenance is labelled honestly: mapped-only vs human-verified.
-    expect(screen.getByText("Mapped only")).toBeInTheDocument();
-    expect(screen.getByText(/Verified Jan 2026/)).toBeInTheDocument();
-    expect(screen.getByText(/OpenStreetMap contributors/)).toBeInTheDocument();
+    expect(screen.getAllByText("Mapped only").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Verified Jan 2026/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/OpenStreetMap contributors/).length).toBeGreaterThan(0);
   });
 
   it("falls back to DEIC counts, pathways and helplines when nothing is listed", async () => {

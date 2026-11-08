@@ -98,6 +98,13 @@ export function Evidence() {
     Refer: "text-rust",
   };
 
+  const recallTiles: { n: number; label: string; sub: string; color: string; decimals?: number; suffix?: string }[] = [
+    { n: ma.refer_recall * 100, label: tr("Refer recall"), sub: tr("True Refer cohort"), color: "var(--color-peach)", decimals: 1, suffix: "%" },
+    { n: referCaptured, label: tr("Classified Refer"), sub: `${share(referCaptured, referTotal).toFixed(1)}% ${tr("captured")}`, color: "var(--color-moss)" },
+    { n: monitorTriaged, label: tr("Classified Monitor"), sub: tr("Triaged for watch"), color: "var(--color-amber)" },
+    { n: typicalMissed, label: tr("Classified Typical"), sub: tr("Missed cases"), color: "var(--color-brick)" },
+  ];
+
   return (
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
@@ -180,33 +187,21 @@ export function Evidence() {
               <Chip tone="night">{tr("Held-out n = {n}", { n: ma.n_test })}</Chip>
             </div>
 
-            <div className="mt-7 grid items-end gap-5 sm:grid-cols-[auto_1fr]">
-              <p className="font-display text-[clamp(64px,8vw,112px)] leading-[0.82] text-peach">
-                <CountUp value={ma.refer_recall * 100} decimals={1} suffix="%" duration={1800} />
-              </p>
-              <div className="max-w-[440px] pb-2">
-                <p className="font-mono text-[10.5px] font-semibold tracking-[0.22em] text-paper/55 uppercase">{tr("Refer recall")}</p>
-                <p className="mt-2 text-[13px] leading-relaxed text-paper/70">
-                  {tr("High recall on the high-risk Refer cohort means children who need clinical evaluation are captured early.")}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {[
-                { n: referCaptured, label: tr("Classified Refer"), sub: `${share(referCaptured, referTotal).toFixed(1)}% ${tr("captured")}`, hex: "#8fbf5a" },
-                { n: monitorTriaged, label: tr("Classified Monitor"), sub: tr("Triaged for watch"), hex: "#e8b13a" },
-                { n: typicalMissed, label: tr("Classified Typical"), sub: tr("Missed cases"), hex: "#ee6a4f" },
-              ].map((c) => (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {recallTiles.map((c) => (
                 <div key={c.label} className="rounded-[22px] bg-white/[0.06] p-4">
                   <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-paper/50 uppercase">{c.label}</p>
-                  <p className="mt-2 font-display text-[clamp(34px,4vw,52px)] leading-none" style={{ color: c.hex }}>
-                    <CountUp value={c.n} />
+                  <p className="mt-2 font-display text-[clamp(30px,3.2vw,42px)] leading-none" style={{ color: c.color }}>
+                    <CountUp value={c.n} decimals={c.decimals ?? 0} suffix={c.suffix ?? ""} />
                   </p>
                   <p className="mt-1 text-[11px] text-paper/50">{c.sub}</p>
                 </div>
               ))}
             </div>
+
+            <p className="mt-4 text-[12.5px] leading-relaxed text-paper/60">
+              {tr("High recall on the high-risk Refer cohort means children who need clinical evaluation are captured early.")}
+            </p>
 
             <p className="mt-auto flex items-start gap-2.5 rounded-2xl bg-white/[0.06] p-4 pt-4 text-[12.5px] leading-relaxed text-paper/70">
               <Info className="mt-0.5 size-4 shrink-0 text-peach" />
@@ -507,15 +502,16 @@ export function Evidence() {
       <Reveal className="mt-4">
         <SectionCard
           index="08"
+          tone="dark"
           eyebrow={tr("Module B · NLP router & safety recall (ages 5–12)")}
           title={tr("Router and safety-recall results on held-out scenarios.")}
         >
           <div className="p-6 sm:p-8">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {[
-                { k: "Safety recall (crisis phrases)", v: mb.safety_recall * 100, d: 0, suf: "%", s: tr("Tested on {n} crisis phrases with zero misses.", { n: mb.n_safety }), c: "text-rust" },
-                { k: "Safety precision", v: mb.safety_precision * 100, d: 1, suf: "%", s: tr("Precision of crisis-phrase safety flags."), c: "text-sea" },
-                { k: "Any-true-domain hit rate", v: mb.any_true_domain_hit_rate * 100, d: 1, suf: "%", s: tr("Evaluated across {n} held-out test scenarios.", { n: mb.n_test.toLocaleString() }), c: "text-moss" },
+                { k: "Safety recall (crisis phrases)", v: mb.safety_recall * 100, d: 0, suf: "%", s: tr("Tested on {n} crisis phrases with zero misses.", { n: mb.n_safety }), c: "#ea8f63" },
+                { k: "Safety precision", v: mb.safety_precision * 100, d: 1, suf: "%", s: tr("Precision of crisis-phrase safety flags."), c: "#7cc1dc" },
+                { k: "Any-true-domain hit rate", v: mb.any_true_domain_hit_rate * 100, d: 1, suf: "%", s: tr("Evaluated across {n} held-out test scenarios.", { n: mb.n_test.toLocaleString() }), c: "#8fbf5a" },
                 {
                   k: "Handwritten clinical notes",
                   v: mb.handwritten_notes,
@@ -524,37 +520,37 @@ export function Evidence() {
                   s: mb.handwritten_notes
                     ? `${((mb.handwritten_any_domain_hit_rate ?? 0) * 100).toFixed(1)}% any-domain hit rate, ${((mb.handwritten_micro_f1 ?? 0) * 100).toFixed(1)}% micro F1.`
                     : tr("Not available in the current artifact."),
-                  c: "text-lilac",
+                  c: "#c79ad0",
                 },
               ].map((m) => (
-                <div key={m.k} className="rounded-[26px] border border-line-2 bg-card-2 p-5">
-                  <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted uppercase">{tr(m.k)}</p>
-                  <p className={cn("mt-3 font-display text-[clamp(38px,4.2vw,56px)] leading-none", m.c)}>
+                <div key={m.k} className="rounded-[26px] bg-white/[0.06] p-5">
+                  <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-paper/50 uppercase">{tr(m.k)}</p>
+                  <p className="mt-3 font-display text-[clamp(38px,4.2vw,56px)] leading-none" style={{ color: m.c }}>
                     <CountUp value={m.v} decimals={m.d} suffix={m.suf} />
                   </p>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-ink-2">{m.s}</p>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-paper/60">{m.s}</p>
                 </div>
               ))}
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {([
-                ["Domain micro precision", mb.domain_micro_precision * 100, "text-sea"],
-                ["Domain micro recall", mb.domain_micro_recall * 100, "text-moss"],
-                ["Domain micro F1", mb.domain_micro_f1 * 100, "text-lilac"],
-                ["ML-only safety recall", mb.ml_only_safety_recall * 100, "text-brick"],
-              ] as [string, number, string][]).map(([label, value, tone]) => (
-                <div key={label} className="rounded-[22px] border border-line-2 bg-card-2 p-4">
-                  <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted uppercase">{tr(label)}</p>
-                  <p className={cn("mt-2 font-display text-[32px] leading-none", tone)}>{value.toFixed(1)}%</p>
+                ["Domain micro precision", mb.domain_micro_precision * 100, "#7cc1dc"],
+                ["Domain micro recall", mb.domain_micro_recall * 100, "#8fbf5a"],
+                ["Domain micro F1", mb.domain_micro_f1 * 100, "#c79ad0"],
+                ["ML-only safety recall", mb.ml_only_safety_recall * 100, "#ee6a4f"],
+              ] as [string, number, string][]).map(([label, value, color]) => (
+                <div key={label} className="rounded-[22px] bg-white/[0.06] p-4">
+                  <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-paper/50 uppercase">{tr(label)}</p>
+                  <p className="mt-2 font-display text-[32px] leading-none" style={{ color }}>{value.toFixed(1)}%</p>
                 </div>
               ))}
             </div>
-            <div className="mt-5 rounded-[26px] bg-sand/70 p-6">
-              <p className="flex items-center gap-2.5 text-[14px] font-bold">
-                <ShieldCheck className="size-5 text-rust" /> {tr("Safety rule + ML classifier hybrid rationale")}
+            <div className="mt-5 rounded-[26px] bg-white/[0.06] p-6">
+              <p className="flex items-center gap-2.5 text-[14px] font-bold text-paper">
+                <ShieldCheck className="size-5 text-peach" /> {tr("Safety rule + ML classifier hybrid rationale")}
               </p>
-              <p className="mt-3 text-[14px] leading-relaxed text-ink-2">
+              <p className="mt-3 text-[14px] leading-relaxed text-paper/70">
                 {tr("In router evaluations the ML classifier alone achieved only {ml}% safety recall on crisis phrases. Combining deterministic rule scanning with multi-label logistic regression, the hybrid reaches {hybrid}% safety recall while delivering {recall}% domain recall (F1 {f1}%) and 8–20 adaptive items.", {
                   ml: (mb.ml_only_safety_recall * 100).toFixed(1),
                   hybrid: (mb.safety_recall * 100).toFixed(0),

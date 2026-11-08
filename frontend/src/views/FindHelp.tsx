@@ -718,14 +718,12 @@ export function FindHelp() {
     [activeChild, latestRefByChild],
   );
 
-  // Sync clinician note draft when activeReferral changes
+  const activeReferralNotes = activeReferral?.clinical_notes ?? "";
+
+  // Sync clinician note draft when the active referral's notes change.
   useEffect(() => {
-    if (activeReferral) {
-      setClinicalNoteDraft(activeReferral.clinical_notes ?? "");
-    } else {
-      setClinicalNoteDraft("");
-    }
-  }, [activeReferral?.id, activeReferral?.clinical_notes]);
+    setClinicalNoteDraft(activeReferralNotes);
+  }, [activeReferralNotes]);
 
   // Fetch live suggested workers from /api/screen/{sessionId}/workers for Parent role
   useEffect(() => {
@@ -794,7 +792,7 @@ export function FindHelp() {
       const r = await facilitiesApi.get(d, {
         ageGroup,
         result: resultOverride,
-        limit: 15,
+        limit: 12,
         verifiedOnly: only,
       });
       setRes(r);
@@ -808,21 +806,12 @@ export function FindHelp() {
     }
   };
 
-  const didInitialSearch = useRef(false);
-  useEffect(() => {
-    if (!didInitialSearch.current) {
-      didInitialSearch.current = true;
-      void search("110029", false, screeningResult);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const searchNear = async (coords: { lat: number; lng: number }, only = verifiedOnly) => {
     try {
       const r = await facilitiesApi.getNear(coords, {
         ageGroup,
         result: screeningResult,
-        limit: 15,
+        limit: 12,
         verifiedOnly: only,
       });
       setRes(r);
@@ -863,7 +852,7 @@ export function FindHelp() {
     );
   };
 
-  const rawList = res?.facilities ?? [];
+  const rawList = useMemo(() => res?.facilities ?? [], [res]);
   const list = useMemo(() => {
     return rawList.filter((f) => {
       if (tierFilter === "deic_rbsk" && f.type !== "DEIC" && f.type !== "RBSK") return false;
@@ -894,11 +883,12 @@ export function FindHelp() {
   }, [activeReferral, rawList]);
 
   // When switching children, if their live referral already points to a facility in the list, select it on the map!
+  const activeHandoffFacilityId = activeHandoffFacility?.id ?? null;
   useEffect(() => {
-    if (activeHandoffFacility) {
-      setSelectedFacilityId(activeHandoffFacility.id);
+    if (activeHandoffFacilityId != null) {
+      setSelectedFacilityId(activeHandoffFacilityId);
     }
-  }, [activeHandoffFacility?.id]);
+  }, [activeHandoffFacilityId]);
 
   const selectedFacility: Facility | null = useMemo(
     () => list.find((f) => f.id === selectedFacilityId) ?? list[0] ?? rawList[0] ?? null,
@@ -1751,6 +1741,11 @@ export function FindHelp() {
                         : `No DEIC is reported as operational in ${res.state_deic.state}. Go to the district hospital instead.`
                       : "No facility directory data covers this area yet. Start with your district hospital or PHC."}
                 </p>
+                {res.resolved?.approximate && (
+                  <p className="mt-3 text-[12.5px] text-muted">
+                    {tr("Approximate location (exact coordinates unavailable for this PIN).")}
+                  </p>
+                )}
                 {res.verified_only && (
                   <Btn variant="light" className="mt-5" onClick={() => setTrustFilter(false)}>
                     {tr("Show all listings")}

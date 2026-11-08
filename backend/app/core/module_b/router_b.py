@@ -50,6 +50,10 @@ CONTEXT = [
 ]
 LABELS = DOMAINS + RULEOUTS + ["safety"] + CONTEXT
 
+# Below this classifier score (when no rule fired) a note is treated as vague and
+# routed to Recall Help instead of silently picking a domain.
+MIN_CLF_DOMAIN_PROB = 0.2
+
 # --------------------------------------------------------------------------- rules
 # Lower-cased regex fragments. Latin (English/Hinglish) and Devanagari together.
 RULES = {
@@ -344,12 +348,13 @@ SAFETY_RULES = [
     r"harm(s|ing)? (him|her)self",
     r"self.?harm",
     r"cut(s|ting)? (him|her)self",
+    r"cut(s|ting)? (her|his|their) (arms?|wrists?|thighs?|legs?|skin|body)",
     r"(on purpose).{0,30}(hurt|cut|injur)|(hurt|cut|injur).{0,30}on purpose",
     r"does(n'?t| not) want to (live|be alive)",
     r"better off (dead|without)",
     r"no reason to live",
     r"khud ko (khatam|hurt|chot|maar|nuksan)",
-    r"jeena nahi (chahta|chahti)",
+    r"jeena nahi",
     r"jeene ka mann nahi",
     r"mar(na)? jaun|marna (chahta|chahti)|mar jana chahta|mar jaana chahta",
     r"apni jaan",
@@ -648,10 +653,13 @@ class DomainRouter:
             # classifier when no rule fired at all, so we never go silent.
             flagged_set = {lab for lab in hits if lab in LABELS and lab != "safety"}
             if not flagged_set and not saf:
+                # A very low classifier score is not enough to route a vague note;
+                # ask for recall-help chips instead of guessing a domain.
                 flagged_set = {
                     lab
                     for lab in LABELS
-                    if lab != "safety" and probs[lab] >= self.thr[lab]
+                    if lab != "safety"
+                    and probs[lab] >= max(self.thr[lab], MIN_CLF_DOMAIN_PROB)
                 }
         elif use_rules:
             # Hybrid blend: trust every non-negated rule hit, and supplement with

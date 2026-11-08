@@ -156,7 +156,9 @@ def apply_refer_threshold(proba: np.ndarray, threshold: float) -> list[str]:
     return out
 
 
-def tune_f1_thresholds(proba_val: np.ndarray, y_val: pd.Series | np.ndarray) -> tuple[float, float]:
+def tune_f1_thresholds(
+    proba_val: np.ndarray, y_val: pd.Series | np.ndarray
+) -> tuple[float, float]:
     """Tune (refer_threshold, monitor_threshold) on VALIDATION set to maximize Macro F1 + Refer recall."""
     from sklearn.metrics import f1_score, recall_score
 
@@ -170,8 +172,14 @@ def tune_f1_thresholds(proba_val: np.ndarray, y_val: pd.Series | np.ndarray) -> 
                 "Refer",
                 np.where(proba_val[:, 1] >= t_mon, "Monitor", "Typical"),
             )
-            mf1 = float(f1_score(y_true, preds, labels=LABEL_ORDER, average="macro", zero_division=0))
-            r_rec = float(recall_score(y_true == "Refer", preds == "Refer", zero_division=0))
+            mf1 = float(
+                f1_score(
+                    y_true, preds, labels=LABEL_ORDER, average="macro", zero_division=0
+                )
+            )
+            r_rec = float(
+                recall_score(y_true == "Refer", preds == "Refer", zero_division=0)
+            )
             # Prefer high Macro F1 with strong clinical Refer sensitivity (>= 80%)
             obj = mf1 + 0.08 * min(r_rec, 0.85)
             if obj > best_obj:
@@ -180,7 +188,9 @@ def tune_f1_thresholds(proba_val: np.ndarray, y_val: pd.Series | np.ndarray) -> 
     return best_pair
 
 
-def apply_f1_thresholds(proba: np.ndarray, thresholds: tuple[float, float]) -> list[str]:
+def apply_f1_thresholds(
+    proba: np.ndarray, thresholds: tuple[float, float]
+) -> list[str]:
     t_ref, t_mon = thresholds
     return [
         "Refer" if row[2] >= t_ref else ("Monitor" if row[1] >= t_mon else "Typical")
@@ -918,18 +928,14 @@ def main():
     )
     stress_summary_path.parent.mkdir(parents=True, exist_ok=True)
     stress_tests_data = {
-        "label_noise": stress_test_label_noise(
-            test_df, winner_model, feature_columns
-        ),
+        "label_noise": stress_test_label_noise(test_df, winner_model, feature_columns),
         "reporting_bias": stress_test_reporting_bias(
             test_df, winner_model, feature_columns
         ),
         "missingness": stress_test_missing_answers(
             test_df, winner_model, feature_columns
         ),
-        "generator_shift": stress_test_generator_shift(
-            winner_model, feature_columns
-        ),
+        "generator_shift": stress_test_generator_shift(winner_model, feature_columns),
     }
     with open(stress_summary_path, "w", encoding="utf-8") as f:
         json.dump(stress_tests_data, f, indent=2)

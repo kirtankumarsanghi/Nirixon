@@ -242,7 +242,9 @@ def evaluate_rule_vs_xgboost(
     # XGBoost with domain-aware peer imputation (2 age-appropriate items answered per domain = 12 items)
     X_imputed = df[feature_columns].copy().astype(float)
     mean_by_bracket = df.groupby("age_bracket")[all_item_cols].mean()
-    std_by_bracket = df.groupby("age_bracket")[all_item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    std_by_bracket = (
+        df.groupby("age_bracket")[all_item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    )
     bracket_means_df = pd.DataFrame(
         list(df["age_bracket"].map(mean_by_bracket.to_dict(orient="index"))),
         index=df.index,
@@ -258,9 +260,13 @@ def evaluate_rule_vs_xgboost(
         unasked_cols = [c for c in cols if c not in asked_cols]
         obs_vals = df[asked_cols].to_numpy(dtype=float)
         peer_asked_m = bracket_means_df[asked_cols].to_numpy(dtype=float)
-        peer_asked_s = np.maximum(bracket_stds_df[asked_cols].to_numpy(dtype=float), 0.25)
+        peer_asked_s = np.maximum(
+            bracket_stds_df[asked_cols].to_numpy(dtype=float), 0.25
+        )
         peer_unasked_m = bracket_means_df[unasked_cols].to_numpy(dtype=float)
-        peer_unasked_s = np.maximum(bracket_stds_df[unasked_cols].to_numpy(dtype=float), 0.25)
+        peer_unasked_s = np.maximum(
+            bracket_stds_df[unasked_cols].to_numpy(dtype=float), 0.25
+        )
 
         # Estimate child's standardized domain z-shift from the 2 answered items
         z_dom = ((obs_vals - peer_asked_m) / peer_asked_s).mean(axis=1, keepdims=True)
@@ -289,7 +295,10 @@ def evaluate_rule_vs_xgboost(
     else:
         xgb_imp_raw = model.predict(X_imputed)
         xgb_imp_preds = np.array(
-            [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_imp_raw]
+            [
+                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+                for i in xgb_imp_raw
+            ]
         )
     xgb_imp_macro_f1 = float(
         f1_score(

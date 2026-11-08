@@ -293,7 +293,9 @@ def stress_test_missing_answers(
     y_true = df["risk_label"].to_numpy()
 
     mean_by_bracket = df.groupby("age_bracket")[item_cols].mean()
-    std_by_bracket = df.groupby("age_bracket")[item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    std_by_bracket = (
+        df.groupby("age_bracket")[item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    )
     bracket_means_df = pd.DataFrame(
         list(df["age_bracket"].map(mean_by_bracket.to_dict(orient="index"))),
         index=df.index,
@@ -342,7 +344,9 @@ def stress_test_missing_answers(
                 if asked_d:
                     obs_d = df[asked_d].to_numpy(dtype=float)
                     pm_d = bracket_means_df[asked_d].to_numpy(dtype=float)
-                    ps_d = np.maximum(bracket_stds_df[asked_d].to_numpy(dtype=float), 0.25)
+                    ps_d = np.maximum(
+                        bracket_stds_df[asked_d].to_numpy(dtype=float), 0.25
+                    )
                     z_dom = ((obs_d - pm_d) / ps_d).mean(axis=1, keepdims=True)
                 else:
                     obs_d = np.empty((len(df), 0))

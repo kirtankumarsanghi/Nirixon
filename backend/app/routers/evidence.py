@@ -88,30 +88,54 @@ def _build_module_a(data: dict) -> EvidenceModuleA:
 
     rb_raw = data.get("rule_baseline_comparison", {})
     rb_full = rb_raw.get("full_data", {}) if isinstance(rb_raw, dict) else {}
-    rb_sparse = rb_raw.get("sparse_adaptive_data", {}) if isinstance(rb_raw, dict) else {}
+    rb_sparse = (
+        rb_raw.get("sparse_adaptive_data", {}) if isinstance(rb_raw, dict) else {}
+    )
     rule_baseline = (
         EvidenceRuleBaseline(
             asq_rule_macro_f1=float(rb_full.get("asq_rule_macro_f1", 0.0)),
-            asq_rule_refer_sensitivity=float(rb_full.get("asq_rule_refer_sensitivity", 0.0)),
-            asq_rule_refer_precision=float(rb_full.get("asq_rule_refer_precision", 0.0)),
-            asq_rule_typical_specificity=float(rb_full.get("asq_rule_typical_specificity", 0.0)),
+            asq_rule_refer_sensitivity=float(
+                rb_full.get("asq_rule_refer_sensitivity", 0.0)
+            ),
+            asq_rule_refer_precision=float(
+                rb_full.get("asq_rule_refer_precision", 0.0)
+            ),
+            asq_rule_typical_specificity=float(
+                rb_full.get("asq_rule_typical_specificity", 0.0)
+            ),
             xgb_macro_f1=float(rb_full.get("xgb_macro_f1", 0.0)),
             xgb_refer_sensitivity=float(rb_full.get("xgb_refer_sensitivity", 0.0)),
             xgb_refer_precision=float(rb_full.get("xgb_refer_precision", 0.0)),
             xgb_typical_specificity=float(rb_full.get("xgb_typical_specificity", 0.0)),
             sparse_naive_macro_f1=float(rb_sparse.get("naive_rule_macro_f1", 0.0)),
-            sparse_prorated_macro_f1=float(rb_sparse.get("prorated_rule_macro_f1", 0.0)),
-            sparse_prorated_refer_precision=float(rb_sparse.get("prorated_rule_refer_precision", 0.0)),
+            sparse_prorated_macro_f1=float(
+                rb_sparse.get("prorated_rule_macro_f1", 0.0)
+            ),
+            sparse_prorated_refer_precision=float(
+                rb_sparse.get("prorated_rule_refer_precision", 0.0)
+            ),
             sparse_xgb_macro_f1=float(rb_sparse.get("xgb_imputed_macro_f1", 0.0)),
-            sparse_xgb_typical_specificity=float(rb_sparse.get("xgb_imputed_typical_specificity", 0.0)),
-            sparse_xgb_refer_precision=float(rb_sparse.get("xgb_imputed_refer_precision", 0.0)),
+            sparse_xgb_typical_specificity=float(
+                rb_sparse.get("xgb_imputed_typical_specificity", 0.0)
+            ),
+            sparse_xgb_refer_precision=float(
+                rb_sparse.get("xgb_imputed_refer_precision", 0.0)
+            ),
         )
         if rb_full
         else None
     )
 
-    fairness = data.get("fairness_check", {}) if isinstance(data.get("fairness_check"), dict) else {}
-    op = data.get("operating_point", {}) if isinstance(data.get("operating_point"), dict) else {}
+    fairness = (
+        data.get("fairness_check", {})
+        if isinstance(data.get("fairness_check"), dict)
+        else {}
+    )
+    op = (
+        data.get("operating_point", {})
+        if isinstance(data.get("operating_point"), dict)
+        else {}
+    )
 
     return EvidenceModuleA(
         model_name=winner,
@@ -138,7 +162,9 @@ def _build_module_a(data: dict) -> EvidenceModuleA:
         fairness_status=str(fairness.get("status", "PASS")),
         fairness_gap=float(fairness.get("refer_prob_gap", 0.0)),
         operating_point_refer_recall=(
-            float(op["test_refer_sensitivity"]) if "test_refer_sensitivity" in op else None
+            float(op["test_refer_sensitivity"])
+            if "test_refer_sensitivity" in op
+            else None
         ),
         operating_point_threshold=(
             float(op["refer_threshold"]) if "refer_threshold" in op else None
