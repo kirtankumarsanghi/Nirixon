@@ -1,4 +1,5 @@
 import { Loader2, RefreshCw, SearchX, TriangleAlert } from "lucide-react";
+import { Localize } from "../lib/localize";
 
 /**
  * Loading / error / empty placeholder for data-driven views. Built from the
@@ -26,6 +27,7 @@ export function PageState({
     kind === "loading" ? "Loading" : kind === "error" ? "Something went wrong" : "Nothing here yet";
 
   return (
+    <Localize>
     <div className="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-center justify-center px-6 text-center">
       <div className="grid size-14 place-items-center rounded-full border border-line-2 bg-card">{icon}</div>
       <h2 className="mt-6 font-display text-[clamp(28px,4vw,46px)] leading-[0.95] text-ink uppercase">{title}</h2>
@@ -40,5 +42,6 @@ export function PageState({
         </button>
       )}
     </div>
+    </Localize>
   );
 }

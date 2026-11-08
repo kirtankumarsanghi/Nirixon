@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CalendarClock, CalendarPlus, MapPinned, ScanLine, Search, Send } from "lucide-react";
 import { ChildDrawer } from "../components/ChildDrawer";
 import { Btn, Chip, CountUp, Display, Eyebrow, Page, Reveal } from "../components/ui";
-import { AGE_BANDS, SECTORS, STATUS_META, ageBand, evaluate, type Child, type ChildStatus, type Sector } from "../lib/model";
+import { AGE_BANDS, SECTORS, STATUS_META, ageBand, childLabel, evaluate, type Child, type ChildStatus, type Sector } from "../lib/model";
 import { ROLES } from "../lib/roles";
-import { referralApi } from "../api/client";
-import type { CHWAnalytics } from "../api/types";
+import { useT } from "../lib/useT";
 import { downloadIcs, remindersIcs } from "../lib/ics";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -21,25 +20,8 @@ function statusFromScores(c: Child): ChildStatus {
 
 export function Caseload() {
   const { role, children, referChild, contactChild, outcomeChild, setCheckInTarget, go, showToast } = useApp();
+  const tr = useT();
   const user = ROLES[role].user;
-  const isSup = role === "supervisor";
-  const [analytics, setAnalytics] = useState<CHWAnalytics | null>(null);
-
-  useEffect(() => {
-    if (!isSup) return;
-    let cancelled = false;
-    referralApi
-      .getAnalytics()
-      .then((a) => {
-        if (!cancelled) setAnalytics(a);
-      })
-      .catch(() => {
-        /* analytics are supplementary — keep the caseload usable */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isSup]);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [sector, setSector] = useState<"all" | Sector>("all");
@@ -63,7 +45,7 @@ export function Caseload() {
     (filter === "all" || c.status === filter) &&
     (sector === "all" || c.sector === sector) &&
     (age === "all" || ageBand(c.ageMonths) === age) &&
-    (q === "" || c.id.includes(q.trim().toLowerCase()));
+    (q === "" || `${childLabel(c)} ${c.id}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const filtered = children.filter(matches);
   const selected = children.find((c) => c.id === sel) ?? null;
@@ -92,7 +74,7 @@ export function Caseload() {
 
   const reminderFor = ({ child: c, due }: { child: Child; due: Date }) => ({
     uid: `${c.id}-followup`,
-    title: `Nirixon follow-up · ${c.id}`,
+    title: `Nirixon follow-up · ${childLabel(c)}`,
     date: due,
     description: `${c.ageMonths} months · sector ${c.sector} · home-visit follow-up.`,
   });
@@ -114,8 +96,8 @@ export function Caseload() {
     go("checkin");
   };
   const refer = (c: Child) => {
-    void referChild(c.id, { status: "refer", handoff: "queued", visits: c.visits + 1, lastVisitDays: 0 });
-    showToast(`${c.id} referred · handoff queued`);
+    void referChild(c.id, { status: "refer", handoff: "queued" });
+    showToast(`${childLabel(c)} referred · handoff queued`);
   };
   const contacted = (c: Child) => {
     void contactChild(c.id, {
@@ -123,16 +105,18 @@ export function Caseload() {
       lastVisitDays: 0,
       status: c.status === "overdue" ? statusFromScores(c) : c.status,
     });
-    showToast(`${c.id} marked as contacted`);
+    showToast(`${childLabel(c)} marked as contacted`);
   };
-  const outcome = (c: Child) => {
-    void outcomeChild(c.id, {
-      visits: c.visits + 1,
-      lastVisitDays: 0,
-      handoff: c.handoff === "queued" ? "done" : c.handoff,
-      status: c.status === "overdue" ? statusFromScores(c) : c.status,
-    });
-    showToast(`Outcome recorded for ${c.id}`);
+  const outcome = (c: Child, notes?: string) => {
+    void outcomeChild(
+      c.id,
+      {
+        handoff: c.handoff === "queued" ? "done" : c.handoff,
+        status: c.status === "overdue" ? statusFromScores(c) : c.status,
+      },
+      notes,
+    );
+    showToast(`Outcome recorded for ${childLabel(c)}`);
   };
 
   return (
@@ -142,9 +126,9 @@ export function Caseload() {
         <div>
           <Eyebrow index="01">Community health network · Ward 12</Eyebrow>
           <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
-            {isSup ? "Team view," : "Your ward,"}
+            {tr("Your ward,")}
             <br />
-            <span className="text-rust">{isSup ? "all in sight." : "at a glance."}</span>
+            <span className="text-rust">{tr("at a glance.")}</span>
           </Display>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -205,7 +189,7 @@ export function Caseload() {
                 >
                   <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.16em] text-paper/70 uppercase">
                     <span className="size-2 rounded-full" style={{ background: m.hex }} />
-                    {m.label}
+                    {tr(m.label)}
                   </span>
                   <p className="mt-3 font-display text-[52px] leading-none" style={{ color: m.hex }}>
                     <CountUp value={counts[s]} />
@@ -231,88 +215,15 @@ export function Caseload() {
         </div>
       </section>
 
-      {/* ============================ programme (supervisor) ============================ */}
-      {isSup && (
-        <Reveal className="mt-4">
-          <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-8">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <Eyebrow tone="muted">Programme</Eyebrow>
-                <p className="mt-3 font-display text-[clamp(28px,3.4vw,44px)] leading-none uppercase">
-                  {analytics
-                    ? `${analytics.funnel.screened} screened · ${analytics.funnel.total_referrals} referred`
-                    : "Loading programme data…"}
-                </p>
-              </div>
-              {analytics && (
-                <span className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
-                  median referral → seen {analytics.time_to_intervention.median_referral_to_seen_days ?? "—"} d ·{" "}
-                  {analytics.funnel.overdue} overdue
-                </span>
-              )}
-            </div>
-
-            {analytics && (
-              <>
-                <div className="mt-6 flex h-3 gap-1 overflow-hidden rounded-full">
-                  {[
-                    ["created", analytics.funnel.created, "#cdb98c"],
-                    ["sent", analytics.funnel.sent, "#e8b13a"],
-                    ["seen", analytics.funnel.seen, "#5aa6c4"],
-                    ["outcome", analytics.funnel.outcome_recorded, "#8fbf5a"],
-                    ["closed", analytics.funnel.closed, "#6e9a3a"],
-                  ].map(([label, n, hex]) => (
-                    <span
-                      key={String(label)}
-                      title={`${label}: ${n}`}
-                      className="h-full rounded-full"
-                      style={{ flexGrow: Math.max(Number(n), 0.01), background: String(hex) }}
-                    />
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-mono text-[10px] tracking-[0.14em] text-muted uppercase">
-                  {[
-                    ["created", analytics.funnel.created, "#cdb98c"],
-                    ["sent", analytics.funnel.sent, "#e8b13a"],
-                    ["seen", analytics.funnel.seen, "#5aa6c4"],
-                    ["outcome", analytics.funnel.outcome_recorded, "#8fbf5a"],
-                    ["closed", analytics.funnel.closed, "#6e9a3a"],
-                  ].map(([label, n, hex]) => (
-                    <span key={String(label)} className="flex items-center gap-1.5">
-                      <span className="size-2 rounded-full" style={{ background: String(hex) }} />
-                      {label} {n}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {analytics.coverage_by_ward.map((w) => (
-                    <div key={w.village_ward} className="rounded-2xl bg-sand/60 p-4">
-                      <p className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">{w.village_ward}</p>
-                      <p className="mt-2 font-display text-[26px] leading-none uppercase">
-                        {w.coverage_pct}% <span className="text-[13px] text-ink-2 normal-case">screened</span>
-                      </p>
-                      <p className="mt-1 text-[11.5px] text-ink-2">
-                        {w.screened}/{w.children} children · {w.referrals} referrals
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </Reveal>
-      )}
-
       {/* ============================ map + side ============================ */}
-      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1fr_400px]">
-        <Reveal>
-          <div className="rounded-[44px] bg-night p-6 text-paper sm:p-9">
+      <div className="mt-4 grid items-stretch gap-4 xl:grid-cols-[1fr_400px]">
+        <Reveal className="h-full">
+          <div className="flex h-full flex-col rounded-[44px] bg-night p-6 text-paper sm:p-9">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <Eyebrow tone="peach" index="02">Village map</Eyebrow>
+                <Eyebrow tone="peach" index="02">{tr("Village map")}</Eyebrow>
                 <h2 className="mt-3 font-display text-[clamp(32px,4vw,52px)] leading-none uppercase">
-                  {filtered.length === total ? "Every child, one square." : `${filtered.length} of ${total} children`}
+                  {filtered.length === total ? tr("Every child, one square.") : tr("{n} of {total} children", { n: filtered.length, total })}
                 </h2>
               </div>
               <div className="relative w-full sm:w-[260px]">
@@ -320,7 +231,7 @@ export function Caseload() {
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search child ID…"
+                  placeholder={tr("Search child ID…")}
                   aria-label="Search child ID"
                   className="w-full rounded-full border border-white/15 bg-white/[0.06] py-3 pr-4 pl-11 text-[13px] text-paper placeholder:text-paper/35 focus:border-peach focus:outline-none"
                 />
@@ -341,7 +252,7 @@ export function Caseload() {
                   className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[10.5px] font-semibold tracking-[0.14em] uppercase transition-colors", filter === s ? "bg-white/15 text-paper" : "text-paper/60 hover:text-paper")}
                 >
                   <span className="size-2.5 rounded-[3px]" style={{ background: STATUS_META[s].hex }} />
-                  {STATUS_META[s].label}
+                  {tr(STATUS_META[s].label)}
                 </button>
               ))}
             </div>
@@ -368,7 +279,7 @@ export function Caseload() {
                             onMouseEnter={() => setHoverId(c.id)}
                             onMouseLeave={() => setHoverId(null)}
                             onFocus={() => setHoverId(c.id)}
-                            aria-label={`${c.id}, ${STATUS_META[c.status].label}`}
+                            aria-label={`${childLabel(c)}, ${STATUS_META[c.status].label}`}
                             className={cn(
                               "aspect-square rounded-[5px] transition-all duration-300 hover:z-10 hover:scale-[1.45]",
                               m ? "opacity-100" : "scale-75 opacity-[0.14]",
@@ -383,12 +294,12 @@ export function Caseload() {
               ))}
             </div>
 
-            <div className="mt-8 flex min-h-[56px] items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-5 py-3.5 text-[13px]">
+            <div className="mt-auto flex min-h-[56px] items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-5 py-3.5 pt-3.5 text-[13px]">
               {hovered ? (
                 <>
                   <span className="flex items-center gap-3">
                     <span className="size-3 rounded-[3px]" style={{ background: STATUS_META[hovered.status].hex }} />
-                    <span className="font-mono font-semibold">{hovered.id}</span>
+                    <span className="font-mono font-semibold">{childLabel(hovered)}</span>
                     <span className="text-paper/70">{STATUS_META[hovered.status].label}</span>
                   </span>
                   <span className="hidden font-mono text-[11px] text-paper/55 sm:block">
@@ -408,8 +319,8 @@ export function Caseload() {
           <Reveal delay={80}>
             <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between">
-                <Eyebrow index="03" tone="muted">Today’s route</Eyebrow>
-                <Chip tone="lilac">{route.length} stops</Chip>
+                <Eyebrow index="03" tone="muted">{tr("Today's route")}</Eyebrow>
+                <Chip tone="lilac">{tr("{n} stops", { n: route.length })}</Chip>
               </div>
               <ul className="mt-5 divide-y divide-line">
                 {route.map((c, i) => {
@@ -418,14 +329,18 @@ export function Caseload() {
                     <li key={c.id} className="flex items-center gap-3 py-3.5">
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] font-semibold text-paper">{i + 1}</span>
                       <button onClick={() => setSel(c.id)} className="min-w-0 flex-1 text-left">
-                        <span className="block truncate font-mono text-[12.5px] font-semibold">{c.id}</span>
+                        <span className="block truncate font-mono text-[12.5px] font-semibold">{childLabel(c)}</span>
                         <span className={cn("block text-[11.5px] font-semibold", m.text)}>
-                          {c.status === "overdue" ? `Visit ${c.lastVisitDays}d overdue` : c.status === "refer" ? "Referral not yet sent" : "First screening needed"}
+                          {c.status === "overdue"
+                            ? tr("Visit {n}d overdue", { n: c.lastVisitDays ?? 0 })
+                            : c.status === "refer"
+                              ? tr("Referral not yet sent")
+                              : tr("First screening needed")}
                         </span>
                       </button>
                       <Btn size="xs" variant={c.status === "refer" ? "rust" : "dark"} onClick={() => (c.status === "refer" ? refer(c) : screen(c))}>
                         {c.status === "refer" ? <Send className="size-3" /> : <ScanLine className="size-3" />}
-                        {c.status === "refer" ? "Refer" : "Screen"}
+                        {c.status === "refer" ? tr("Refer") : tr("Screen")}
                       </Btn>
                     </li>
                   );
@@ -436,10 +351,10 @@ export function Caseload() {
           </Reveal>
 
           <Reveal delay={140}>
-            <div className="rounded-[36px] bg-sand/70 p-6 sm:p-7">
-              <div className="flex items-center justify-between">
-                <Eyebrow index="04" tone="muted">Facility handoffs</Eyebrow>
-                <Chip tone={queued.length ? "brick" : "moss"}>{queued.length} waiting</Chip>
+            <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
+              <div className="flex items-center justify-between gap-3">
+                <Eyebrow index="04" tone="muted">{tr("Facility handoffs")}</Eyebrow>
+                <Chip tone={queued.length ? "brick" : "moss"}>{tr("{n} waiting", { n: queued.length })}</Chip>
               </div>
               {queued.length === 0 ? (
                 <p className="mt-5 text-[13px] leading-relaxed text-ink-2">
@@ -448,28 +363,32 @@ export function Caseload() {
               ) : (
                 <ul className="mt-5 space-y-2.5">
                   {queued.slice(0, 5).map((c) => (
-                    <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-card p-3.5">
+                    <li key={c.id} className="flex items-center gap-3 rounded-2xl border border-line-2 bg-card-2 p-3.5">
                       <span className="size-2.5 shrink-0 rounded-full bg-brick" />
-                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-semibold">{c.id}</span>
-                      <Btn size="xs" variant="light" onClick={() => outcome(c)}>Confirm</Btn>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-semibold">{childLabel(c)}</span>
+                      <Btn size="xs" variant="light" onClick={() => outcome(c)}>{tr("Confirm")}</Btn>
                     </li>
                   ))}
                   {queued.length > 5 && <li className="text-center text-[12px] text-muted">+ {queued.length - 5} more in the clinician queue</li>}
                 </ul>
               )}
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Btn size="xs" variant="light" onClick={() => go("referrals")}>{tr("Open referral queue")}</Btn>
+                <Btn size="xs" variant="soft" onClick={() => go("help")}>{tr("RBSK / DEIC directory")}</Btn>
+              </div>
             </div>
           </Reveal>
 
           <Reveal delay={200}>
             <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <Eyebrow index="05" tone="muted">Follow-ups</Eyebrow>
+                <Eyebrow index="05" tone="muted">{tr("Follow-ups")}</Eyebrow>
                 <Btn size="xs" variant="light" onClick={exportReminders} disabled={followUps.length === 0}>
-                  <CalendarPlus className="size-3.5" /> Export .ics
+                  <CalendarPlus className="size-3.5" /> {tr("Export .ics")}
                 </Btn>
               </div>
               {followUps.length === 0 ? (
-                <p className="mt-5 text-[13px] leading-relaxed text-ink-2">No follow-ups scheduled yet.</p>
+                <p className="mt-5 text-[13px] leading-relaxed text-ink-2">{tr("No follow-ups scheduled yet.")}</p>
               ) : (
                 <ul className="mt-4 divide-y divide-line">
                   {followUps.map((entry) => (
@@ -478,13 +397,13 @@ export function Caseload() {
                         <CalendarClock className="size-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-mono text-[12px] font-semibold">{entry.child.id}</span>
+                        <span className="block truncate font-mono text-[12px] font-semibold">{childLabel(entry.child)}</span>
                         <span className="block text-[11.5px] text-muted">
-                          due {entry.due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          {tr("due")} {entry.due.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                         </span>
                       </span>
-                      <Btn size="xs" variant="light" onClick={() => addReminder(entry)} aria-label={`Add calendar reminder for ${entry.child.id}`}>
-                        Add
+                      <Btn size="xs" variant="light" onClick={() => addReminder(entry)} aria-label={`Add calendar reminder for ${childLabel(entry.child)}`}>
+                        {tr("Add")}
                       </Btn>
                     </li>
                   ))}
@@ -499,9 +418,9 @@ export function Caseload() {
       <Reveal className="mt-14">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Eyebrow index="06">Child registry</Eyebrow>
+            <Eyebrow index="06">{tr("Child registry")}</Eyebrow>
             <h2 className="mt-3 font-display text-[clamp(36px,4.6vw,64px)] leading-none uppercase">
-              {filtered.length} <span className="text-sea">matching</span>
+              {filtered.length} <span className="text-sea">{tr("matching")}</span>
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -511,7 +430,7 @@ export function Caseload() {
               className="nrx-select rounded-full border border-line-2 bg-card py-3 pr-11 pl-5 text-[13px] font-semibold focus:outline-none"
               aria-label="Sector"
             >
-              <option value="all">All sectors</option>
+              <option value="all">{tr("All sectors")}</option>
               {SECTORS.map((s) => (
                 <option key={s.id} value={s.id}>Sector {s.id} · {s.worker}</option>
               ))}
@@ -522,7 +441,7 @@ export function Caseload() {
               className="nrx-select rounded-full border border-line-2 bg-card py-3 pr-11 pl-5 text-[13px] font-semibold focus:outline-none"
               aria-label="Age band"
             >
-              <option value="all">All ages</option>
+              <option value="all">{tr("All ages")}</option>
               {AGE_BANDS.map((b) => (
                 <option key={b}>{b}</option>
               ))}
@@ -540,22 +459,23 @@ export function Caseload() {
                 className="group flex w-full items-center gap-4 border-b border-line px-5 py-4 text-left transition-colors last:border-0 hover:bg-card-2 sm:px-7"
               >
                 <span className="size-3 shrink-0 rounded-[4px]" style={{ background: m.hex }} />
-                <span className="w-[210px] shrink-0 truncate font-mono text-[13px] font-semibold sm:w-[250px]">{c.id}</span>
-                <span className={cn("hidden rounded-full px-3 py-1 text-[11.5px] font-bold sm:inline-block", m.soft, m.text)}>{m.label}</span>
+                <span className="w-[210px] shrink-0 truncate font-mono text-[13px] font-semibold sm:w-[250px]" title={c.id}>{childLabel(c)}</span>
+                <span className={cn("hidden rounded-full px-3 py-1 text-[11.5px] font-bold sm:inline-block", m.soft, m.text)}>{tr(m.label)}</span>
                 <span className="hidden flex-1 font-mono text-[11.5px] text-muted md:block">
-                  {c.ageMonths} mo · sector {c.sector} · {c.lastVisitDays === null ? "never visited" : `visited ${c.lastVisitDays}d ago`}
+                  {tr("{n} mo", { n: c.ageMonths })} · {tr("Sector")} {c.sector} ·{" "}
+                  {c.lastVisitDays === null ? tr("never visited") : tr("visited {n}d ago", { n: c.lastVisitDays })}
                 </span>
-                {c.handoff === "queued" && <Chip tone="lilac" className="ml-auto md:ml-0">Queued</Chip>}
+                {c.handoff === "queued" && <Chip tone="lilac" className="ml-auto md:ml-0">{tr("Queued")}</Chip>}
                 <ChevronRight className="ml-auto size-5 text-muted transition-transform group-hover:translate-x-1" />
               </button>
             );
           })}
-          {filtered.length === 0 && <p className="p-10 text-center text-[14px] text-muted">No children match these filters.</p>}
+          {filtered.length === 0 && <p className="p-10 text-center text-[14px] text-muted">{tr("No children match these filters.")}</p>}
         </div>
         {filtered.length > visible && (
           <div className="mt-5 flex justify-center">
             <Btn variant="outline" size="lg" onClick={() => setVisible((v) => v + 15)}>
-              <ChevronDown className="size-4" /> Show more ({filtered.length - visible})
+              <ChevronDown className="size-4" /> {tr("Show more ({n})", { n: filtered.length - visible })}
             </Btn>
           </div>
         )}

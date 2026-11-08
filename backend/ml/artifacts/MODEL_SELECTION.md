@@ -10,48 +10,48 @@ Selection criteria: highest validation-set macro AUPRC. If XGBoost and Random Fo
 
 | Model | Val Macro AUPRC |
 |---|---|
-| xgboost | 0.7965 **(SELECTED)** |
-| ensemble | 0.7726 |
-| random_forest | 0.6718 |
-| logistic_regression | 0.6329 |
+| xgboost | 0.9594 **(SELECTED)** |
+| ensemble | 0.9587 |
+| random_forest | 0.9494 |
+| logistic_regression | 0.9459 |
 
 ## Test Set Metrics (final holdout, touched once)
 
 ### logistic_regression
 
-- Macro AUPRC: **0.6450**
-- Refer AUPRC: **0.5752** ← primary metric
-- Macro F1:    0.6011
-- Macro AUROC: 0.7990
+- Macro AUPRC: **0.9346**
+- Refer AUPRC: **0.9091** ← primary metric
+- Macro F1:    0.8732
+- Macro AUROC: 0.9711
 
 ### random_forest
 
-- Macro AUPRC: **0.6718**
-- Refer AUPRC: **0.5745** ← primary metric
-- Macro F1:    0.6756
-- Macro AUROC: 0.8353
+- Macro AUPRC: **0.9454**
+- Refer AUPRC: **0.9340** ← primary metric
+- Macro F1:    0.8875
+- Macro AUROC: 0.9760
 
 ### xgboost (production)
 
-- Macro AUPRC: **0.7944**
-- Refer AUPRC: **0.7620** ← primary metric
-- Macro F1:    0.7214
-- Macro AUROC: 0.8875
+- Macro AUPRC: **0.9542**
+- Refer AUPRC: **0.9415** ← primary metric
+- Macro F1:    0.8917
+- Macro AUROC: 0.9787
 
 ### ensemble
 
-- Macro AUPRC: **0.7724**
-- Refer AUPRC: **0.7321** ← primary metric
-- Macro F1:    0.7024
-- Macro AUROC: 0.8751
+- Macro AUPRC: **0.9532**
+- Refer AUPRC: **0.9387** ← primary metric
+- Macro F1:    0.8879
+- Macro AUROC: 0.9789
 
 ## Inference Latency (single-row, sequential)
 
 | Model | p50 (ms) | p95 (ms) | p99 (ms) |
 |---|---|---|---|
-| logistic_regression | 7.67 | 9.73 | 11.61 |
-| random_forest | 58.22 | 69.35 | 79.46 |
-| xgboost | 12.93 | 16.37 | 17.44 |
-| ensemble | 108.34 | 123.80 | 143.99 |
+| logistic_regression | 7.92 | 8.98 | 10.10 |
+| random_forest | 31.82 | 34.02 | 35.21 |
+| xgboost | 13.40 | 16.12 | 16.83 |
+| ensemble | 74.23 | 86.38 | 91.23 |
 
 > Latency is measured as sequential single-row `predict_proba()` calls, reflecting the Clinician Sandbox / What-If re-score use case, not batch throughput. n=200 calls per model.

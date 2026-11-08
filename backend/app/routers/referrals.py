@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings, get_settings
+from app.core.notifications.providers import get_notification_provider
 from app.core.referral_service import (
     STATUS_CLOSED,
     STATUS_CREATED,
@@ -110,6 +111,39 @@ async def _attach_latest_domain_scores(
         setattr(child, "domain_scores", latest.get(child.id, {}))
 
 
+async def _attach_handoff_state(
+    db: AsyncSession, children: list[ChildRecord]
+) -> None:
+    """Attach each child's persisted referral handoff state for the UI chips.
+
+    "queued" while a referral is still open (created/sent/seen), "done" once the
+    most recent referral has been closed/outcome recorded, else "none".
+    """
+    ids = [c.id for c in children]
+    if not ids:
+        return
+    stmt = (
+        select(Referral)
+        .where(Referral.child_id.in_(ids))
+        .order_by(Referral.updated_at.desc())
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    latest: dict[str, Referral] = {}
+    for row in rows:
+        latest.setdefault(row.child_id, row)
+    for child in children:
+        ref = latest.get(child.id)
+        if ref is None:
+            state = "none"
+        elif ref.status in (STATUS_CREATED, STATUS_SENT, STATUS_SEEN):
+            state = "queued"
+        elif ref.status in (STATUS_CLOSED, STATUS_OUTCOME_RECORDED):
+            state = "done"
+        else:
+            state = "none"
+        setattr(child, "handoff_state", state)
+
+
 from app.schemas.referral import (
     ChildContactResponse,
     ChildRecordCreate,
@@ -121,7 +155,10 @@ from app.schemas.referral import (
     ConflictLogResponse,
     OneTouchReferralResponse,
     RecordChildOutcomeRequest,
+    ReferralAcknowledgeRequest,
     ReferralCreate,
+    ReferralDispatchRequest,
+    ReferralDispatchResponse,
     ReferralFunnel,
     ReferralOutcomeRequest,
     ReferralResponse,
@@ -167,6 +204,7 @@ def _referral_to_response(ref: Referral) -> ReferralResponse:
         status=ref.status,
         domains_of_concern=list(ref.domains_of_concern or []),
         safety_rule_trigger=ref.safety_rule_trigger,
+        clinical_notes=ref.clinical_notes,
         outcome_notes=ref.outcome_notes,
         created_at=ref.created_at,
         sent_at=ref.sent_at,
@@ -221,16 +259,26 @@ async def get_current_worker(
         worker = w_res.scalar_one_or_none()
 
         if worker:
+            # Older internal accounts may have been auto-provisioned to one ward;
+            # clinicians are cross-area oversight, so widen them once.
+            if user.role == "internal" and worker.area.strip().lower() not in ("all", "*"):
+                worker.area = "all"
+                if worker.role == "chw":
+                    worker.role = "supervisor"
+                await db.commit()
+                await db.refresh(worker)
             return worker
 
         # If user has chw or supervisor role, auto-provision worker profile if missing
         if user.role in ("chw", "supervisor", "internal"):
-            default_area = "Ward 12" if user.role != "supervisor" else "all"
+            # Clinicians and supervisors oversee every ward; a CHW is scoped to theirs.
+            cross_area = user.role in ("supervisor", "internal")
+            default_area = "all" if cross_area else "Ward 12"
             new_worker = Worker(
                 id=user.id,
                 user_id=user.id,
                 name=user.email.split("@")[0].replace(".", " ").title(),
-                role="supervisor" if user.role == "supervisor" else "chw",
+                role="supervisor" if cross_area else "chw",
                 area=default_area,
             )
             db.add(new_worker)
@@ -483,6 +531,7 @@ async def list_children(
     res = await db.execute(stmt)
     rows = list(res.scalars().all())
     await _attach_latest_domain_scores(db, rows)
+    await _attach_handoff_state(db, rows)
     return rows
 
 
@@ -517,6 +566,7 @@ async def get_child_record(
 
     check_worker_area_access(worker, child)
     await _attach_latest_domain_scores(db, [child])
+    await _attach_handoff_state(db, [child])
     return child
 
 
@@ -664,7 +714,17 @@ async def list_referrals(
     stmt = select(Referral).options(selectinload(Referral.child))
 
     if worker.role != "supervisor" or worker.area.strip().lower() not in ("all", "*"):
-        stmt = stmt.join(ChildRecord).where(ChildRecord.village_ward == worker.area)
+        # Match the same sub-ward relationship the caseload uses, so a worker
+        # assigned "Ward 12" also sees children in "Ward 12 - Sector B".
+        worker_area = worker.area.strip()
+        stmt = stmt.join(ChildRecord).where(
+            or_(
+                ChildRecord.village_ward == worker_area,
+                ChildRecord.village_ward.like(f"{worker_area} - %"),
+                ChildRecord.village_ward.like(f"{worker_area} / %"),
+                ChildRecord.village_ward.like(f"{worker_area}: %"),
+            )
+        )
 
     stmt = stmt.order_by(Referral.created_at.desc())
     res = await db.execute(stmt)
@@ -757,6 +817,8 @@ async def update_referral(
         referral.domains_of_concern = body.domains_of_concern
     if body.safety_rule_trigger is not None:
         referral.safety_rule_trigger = body.safety_rule_trigger
+    if body.clinical_notes is not None:
+        referral.clinical_notes = body.clinical_notes
     if body.outcome_notes is not None:
         referral.outcome_notes = body.outcome_notes
 
@@ -834,6 +896,134 @@ async def record_referral_outcome(
     await db.refresh(referral)
 
     return _referral_to_response(referral)
+
+
+@router.post(
+    "/api/referrals/{referral_id}/acknowledge",
+    response_model=ReferralResponse,
+)
+@router.post(
+    "/api/chw/referrals/{referral_id}/acknowledge",
+    response_model=ReferralResponse,
+)
+async def acknowledge_referral(
+    referral_id: str,
+    body: ReferralAcknowledgeRequest,
+    worker: Worker = Depends(get_current_worker),
+    db: AsyncSession = Depends(get_db),
+):
+    """Clinician acknowledges the clinical review of a referral.
+
+    Persists the review note and advances created/sent -> seen, so the handoff
+    the clinician actually picked up is recorded against the referral.
+    """
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
+    referral = (await db.execute(stmt)).scalar_one_or_none()
+
+    if not referral:
+        raise HTTPException(status_code=404, detail="Referral not found")
+
+    check_worker_area_access(worker, referral.child)
+
+    now = _utcnow()
+    current = normalize_status(referral.status)
+    if current in (STATUS_CREATED, STATUS_SENT):
+        referral.status = STATUS_SEEN
+        if not referral.seen_at:
+            referral.seen_at = now
+    if body.clinical_notes is not None:
+        referral.clinical_notes = body.clinical_notes.strip() or None
+    referral.updated_at = now
+
+    await db.commit()
+    await db.refresh(referral)
+    return _referral_to_response(referral)
+
+
+@router.post(
+    "/api/referrals/{referral_id}/send",
+    response_model=ReferralDispatchResponse,
+)
+@router.post(
+    "/api/chw/referrals/{referral_id}/send",
+    response_model=ReferralDispatchResponse,
+)
+async def send_referral(
+    referral_id: str,
+    body: ReferralDispatchRequest,
+    worker: Worker = Depends(get_current_worker),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark a referral sent and dispatch its privacy-minimal summary.
+
+    The transport is the configured notification provider (outbox by default,
+    Twilio when configured). The facility contact comes from the request or the
+    REFERRAL_HANDOFF_PHONE setting; with neither, the referral is only marked
+    sent and ``dispatched`` stays false.
+    """
+    stmt = (
+        select(Referral)
+        .options(selectinload(Referral.child))
+        .where(Referral.id == referral_id.strip())
+    )
+    referral = (await db.execute(stmt)).scalar_one_or_none()
+
+    if not referral:
+        raise HTTPException(status_code=404, detail="Referral not found")
+
+    check_worker_area_access(worker, referral.child)
+
+    current = normalize_status(referral.status)
+    if current == STATUS_CLOSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot send a closed referral.",
+        )
+
+    now = _utcnow()
+    if current == STATUS_CREATED:
+        referral.status = STATUS_SENT
+        referral.sent_at = now
+
+    settings = get_settings()
+    recipient = (body.recipient or settings.referral_handoff_phone or "").strip()
+
+    dispatched = False
+    provider_id: str | None = None
+    if recipient:
+        text = generate_summary_text(referral)
+        provider = get_notification_provider(settings)
+        result = (
+            await provider.send_whatsapp(recipient, text)
+            if body.channel == "whatsapp"
+            else await provider.send_sms(recipient, text)
+        )
+        provider_id = result.provider_id
+        if result.ok and not (result.provider_id or "").startswith("outbox"):
+            dispatched = True
+            detail = "Dispatched to the facility"
+        elif result.ok:
+            detail = "Recorded in the outbox (no live provider configured)"
+        else:
+            detail = f"Delivery failed: {result.error or 'unknown error'}"
+    else:
+        detail = "Marked sent; no facility contact configured"
+
+    referral.updated_at = now
+    await db.commit()
+    await db.refresh(referral)
+
+    return ReferralDispatchResponse(
+        referral=_referral_to_response(referral),
+        dispatched=dispatched,
+        channel=body.channel,
+        provider_id=provider_id,
+        detail=detail,
+    )
 
 
 @router.delete(
@@ -1269,8 +1459,9 @@ async def one_touch_referral(
         .options(selectinload(Referral.child))
         .where(Referral.child_id == child.id, Referral.status != STATUS_CLOSED)
         .order_by(Referral.created_at.desc())
+        .limit(1)
     )
-    existing_ref = (await db.execute(ref_stmt)).scalar_one_or_none()
+    existing_ref = (await db.execute(ref_stmt)).scalars().first()
 
     if existing_ref:
         referral = existing_ref
@@ -1343,12 +1534,29 @@ async def record_child_outcome(
 
     check_worker_area_access(worker, child)
 
-    ref_stmt = (
-        select(Referral)
-        .where(Referral.child_id == child.id)
-        .order_by(Referral.created_at.desc())
-    )
-    referral = (await db.execute(ref_stmt)).scalar_one_or_none()
+    # Prefer the still-open referral; otherwise fall back to the newest one.
+    # A child can have several referral rows over time, so never use
+    # scalar_one_or_none() here — it raises MultipleResultsFound.
+    referral = (
+        await db.execute(
+            select(Referral)
+            .where(
+                Referral.child_id == child.id,
+                Referral.status != STATUS_CLOSED,
+            )
+            .order_by(Referral.created_at.desc())
+            .limit(1)
+        )
+    ).scalars().first()
+    if referral is None:
+        referral = (
+            await db.execute(
+                select(Referral)
+                .where(Referral.child_id == child.id)
+                .order_by(Referral.created_at.desc())
+                .limit(1)
+            )
+        ).scalars().first()
 
     now = _utcnow()
     if not referral:

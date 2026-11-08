@@ -4,6 +4,7 @@ import { Radar } from "../components/Radar";
 import { Photo } from "../components/Photo";
 import { Btn, Chip, CtaPill, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { DOMAINS, domainKeys, TIER_META, domainStatus, evaluate, fmtDate, type Domain } from "../lib/model";
+import { useT } from "../lib/useT";
 import { PHOTO } from "../photos";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -14,6 +15,7 @@ const RHYTHM_WINDOW = 4;
 
 export function Home() {
   const { checkIns, go } = useApp();
+  const tr = useT();
   const latest = checkIns[0];
   const previous = checkIns[1];
   const ev = evaluate(latest.scores, latest.regression);
@@ -50,9 +52,9 @@ export function Home() {
     <Page>
       <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">Family workspace</Eyebrow>
+          <Eyebrow index="01">{tr("Family workspace")}</Eyebrow>
           <Display as="h1" className="mt-5 text-[clamp(52px,8vw,120px)]">
-            Namaste, <span className="text-rust">Priya.</span>
+            {tr("Namaste,")} <span className="text-rust">Priya.</span>
           </Display>
         </div>
         <div className="flex items-center gap-3 rounded-full border border-line-2 bg-card py-2 pr-6 pl-2">
@@ -74,11 +76,11 @@ export function Home() {
         <div className="relative grid items-center gap-10 p-7 sm:p-10 lg:grid-cols-[1fr_1fr] lg:p-14">
           <div>
             <Eyebrow tone="peach" index="02">
-              Latest check-in · {fmtDate(latest.date, true)}
+              {tr("Latest check-in")} · {fmtDate(latest.date, true)}
             </Eyebrow>
             <div className="mt-9 flex items-center gap-5">
               <GlowDot hex={meta.hexLight} glow={meta.glow} size={58} />
-              <span className="font-mono text-[11px] tracking-[0.24em] text-paper/60 uppercase">Result tier</span>
+              <span className="font-mono text-[11px] tracking-[0.24em] text-paper/60 uppercase">{tr("Result tier")}</span>
             </div>
             <h2
               key={ev.tier + latest.id}
@@ -92,22 +94,22 @@ export function Home() {
             <p className="mt-4 flex max-w-[470px] items-start gap-2.5 rounded-2xl bg-white/[0.06] p-4 text-[12.5px] leading-relaxed text-paper/80">
               {ev.safety && <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[#ee6a4f]" />}
               <span>
-                <b className="text-paper">Why: </b>
+                <b className="text-paper">{tr("Why:")} </b>
                 {ev.reason}
               </span>
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <CtaPill tone="light" onClick={() => go("checkin")}>
-                Start next check-in
+                {tr("Start next check-in")}
               </CtaPill>
               <Btn variant="ghostDark" size="lg" onClick={() => go("growth")}>
-                See growth <ArrowRight className="size-4" />
+                {tr("See growth")} <ArrowRight className="size-4" />
               </Btn>
               <Btn variant="ghostDark" size="lg" onClick={() => go("whatif")}>
-                <FlaskConical className="size-4" /> Parent what-if
+                <FlaskConical className="size-4" /> {tr("Parent what-if")}
               </Btn>
               <Btn variant="ghostDark" size="lg" onClick={() => go("wellbeing")}>
-                <HeartHandshake className="size-4" /> Your wellbeing
+                <HeartHandshake className="size-4" /> {tr("Your wellbeing")}
               </Btn>
             </div>
           </div>
@@ -116,11 +118,11 @@ export function Home() {
             <Radar scores={latest.scores} prev={showPrev ? prevComparable : undefined} irt={latest.irt} selected={active} onSelect={setSel} tone={meta.hexLight} />
             <div className="mt-2 flex flex-wrap items-center justify-center gap-5 font-mono text-[10.5px] tracking-[0.16em] text-paper/60 uppercase">
               <span className="flex items-center gap-2">
-                <span className="h-0.5 w-6 rounded-full" style={{ background: meta.hexLight }} /> This check-in
+                <span className="h-0.5 w-6 rounded-full" style={{ background: meta.hexLight }} /> {tr("This check-in")}
               </span>
               {previous && prevComparable && (
                 <button onClick={() => setShowPrev((s) => !s)} className={cn("flex items-center gap-2 transition-opacity", !showPrev && "opacity-40")}>
-                  <span className="h-0 w-6 border-t-2 border-dashed border-paper/60" /> Previous · {fmtDate(previous.date)}
+                  <span className="h-0 w-6 border-t-2 border-dashed border-paper/60" /> {tr("Previous")} · {fmtDate(previous.date)}
                 </button>
               )}
             </div>
@@ -132,9 +134,9 @@ export function Home() {
       <Reveal className="mt-14">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <Eyebrow index="03">{domainKeys(latest.scores).length} areas</Eyebrow>
+            <Eyebrow index="03">{tr("{n} areas", { n: domainKeys(latest.scores).length })}</Eyebrow>
             <Display as="h3" className="mt-4 text-[clamp(36px,4.6vw,64px)]">
-              Tap an area to <span className="text-sea">look closer.</span>
+              {tr("Tap an area to look closer.")}
             </Display>
           </div>
         </div>
@@ -179,13 +181,13 @@ export function Home() {
             <p className="mt-4 max-w-[480px] text-[15px] leading-relaxed text-ink-2">{DOMAINS[active].blurb}</p>
             {ptier && ptier !== ev.tier && (
               <p className="mt-5 text-[13px] font-semibold text-ink-2">
-                Overall tier moved from <b className={TIER_META[ptier].text}>{ptier}</b> to <b className={meta.text}>{ev.tier}</b> across your last two check-ins.
+                {tr("Overall tier moved from {from} to {to} across your last two check-ins.", { from: tr(ptier), to: tr(ev.tier) })}
               </p>
             )}
           </div>
           <div className="relative overflow-hidden rounded-[32px] bg-rust p-7 text-white sm:p-9">
             <Lightbulb className="size-7" />
-            <p className="mt-5 font-mono text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/90">Try at home this week</p>
+            <p className="mt-5 font-mono text-[10.5px] font-semibold tracking-[0.22em] uppercase text-white/90">{tr("Try at home this week")}</p>
             <p className="mt-3 font-display text-[clamp(26px,2.8vw,38px)] leading-[1.05] uppercase">{DOMAINS[active].activity}</p>
             <p className="mt-5 text-[12px] text-white/90">Five minutes is plenty. Follow your child’s lead.</p>
           </div>
@@ -196,14 +198,14 @@ export function Home() {
       <Reveal className="mt-14">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="min-w-0 rounded-[32px] border border-line-2 bg-card p-7">
-            <Eyebrow index="04" tone="muted">Check-in rhythm</Eyebrow>
+            <Eyebrow index="04" tone="muted">{tr("Check-in rhythm")}</Eyebrow>
             <div ref={stripRef} className="nrx-hide-scroll mt-8 -mx-7 overflow-x-auto px-7">
               <div className="flex min-w-full items-start">
                 {rhythmOffset > 0 && (
                   <div className="flex shrink-0 items-start">
                     <div className="flex shrink-0 flex-col items-center gap-2">
                       <span className="grid size-10 place-items-center rounded-full border border-dashed border-line-2 font-mono text-[10px] font-semibold text-muted">+{rhythmOffset}</span>
-                      <span className="font-mono text-[10px] whitespace-nowrap text-muted">earlier</span>
+                      <span className="font-mono text-[10px] whitespace-nowrap text-muted">{tr("earlier")}</span>
                     </div>
                     <span className="mx-1.5 mt-5 h-px w-6 bg-ink/50" />
                   </div>
@@ -219,7 +221,7 @@ export function Home() {
                 ))}
                 <div className="flex shrink-0 flex-col items-center gap-2">
                   <span className="grid size-10 place-items-center rounded-full border-2 border-dashed border-rust font-mono text-[11px] text-rust">+</span>
-                  <span className="font-mono text-[10px] text-rust">Next</span>
+                  <span className="font-mono text-[10px] text-rust">{tr("Next")}</span>
                 </div>
               </div>
             </div>
@@ -232,7 +234,7 @@ export function Home() {
             <div className="relative flex h-full min-h-[260px] flex-col justify-between p-7">
               <MapPin className="size-6 text-peach" />
               <div>
-                <p className="font-display text-[38px] leading-none uppercase">Find nearby support</p>
+                <p className="font-display text-[38px] leading-none uppercase">{tr("Find nearby support")}</p>
                 <p className="mt-2 flex items-center gap-2 text-[13px] text-paper/75">
                   DEIC, RBSK teams and hospital rehab units <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                 </p>
@@ -243,7 +245,7 @@ export function Home() {
           <button onClick={() => go("share")} className="group flex min-h-[260px] flex-col justify-between rounded-[32px] bg-sea p-7 text-left text-white">
             <Share2 className="size-6" />
             <div>
-              <p className="font-display text-[38px] leading-none uppercase">Share with family or your doctor</p>
+              <p className="font-display text-[38px] leading-none uppercase">{tr("Share with family or your doctor")}</p>
               <p className="mt-2 flex items-center gap-2 text-[13px] text-white/80">
                 Copy, WhatsApp or print a one-page summary <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
               </p>

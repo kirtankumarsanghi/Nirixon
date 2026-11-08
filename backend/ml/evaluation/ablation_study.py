@@ -29,7 +29,9 @@ def run_ablation(
     if AGE_COLUMN not in feature_columns:
         raise ValueError(f"{AGE_COLUMN} not in feature_columns - nothing to ablate.")
 
-    reduced_features = [c for c in feature_columns if c != AGE_COLUMN]
+    reduced_features = [
+        c for c in feature_columns if c not in (AGE_COLUMN, "age_bracket_ordinal")
+    ]
 
     # Clone the winning model's hyperparameters but retrain on the reduced
     # feature set (a fresh ColumnTransformer inside the cloned pipeline

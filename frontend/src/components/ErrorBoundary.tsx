@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { LogoLockup } from "../landing/components/system";
+import { Localize } from "../lib/localize";
 
 interface Props {
   children: ReactNode;
@@ -36,6 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.failed) return this.props.children;
 
     return (
+      <Localize>
       <div className="grid min-h-screen place-items-center px-5 py-16">
         <div className="w-full max-w-[520px] rounded-[32px] border border-line-2 bg-card p-8 text-center shadow-[0_30px_60px_-30px_rgba(0,0,0,0.45)] sm:p-12">
           <div className="flex justify-center">
@@ -72,6 +74,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </p>
         </div>
       </div>
+      </Localize>
     );
   }
 }

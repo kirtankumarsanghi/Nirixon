@@ -1,7 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ArrowRight, Check, GraduationCap, RotateCcw, ShieldAlert, Sparkles } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { TIER_META } from "../lib/model";
+import { useT } from "../lib/useT";
 import {
   TRAINING_CASES,
   TRAINING_QUIZ,
@@ -11,6 +12,7 @@ import {
 import { cn } from "../utils/cn";
 
 type Mode = "cases" | "quiz";
+type Filter = "all" | "A" | "B";
 type Progress = { best: number; attempts: number };
 
 const STORAGE_KEY = "nirixon-training-progress";
@@ -42,7 +44,7 @@ function CaseDetail({ item }: { item: TrainingCase }) {
     <div className="rounded-[44px] bg-night p-7 text-paper sm:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Eyebrow tone="peach" index="02">Sample case · Module {item.module}</Eyebrow>
+          <Eyebrow tone="peach" index="02">Sample case · Module {item.module}{item.bracket ? ` · ${item.bracket}` : ""}</Eyebrow>
           <p className="mt-3 font-display text-[clamp(34px,4vw,52px)] leading-[0.95] uppercase">{item.title}</p>
           <p className="mt-2 font-mono text-[11px] tracking-[0.14em] text-paper/55 uppercase">{item.age}</p>
         </div>
@@ -224,8 +226,11 @@ function Quiz() {
 }
 
 export function Training() {
+  const tr = useT();
   const [mode, setMode] = useState<Mode>("cases");
   const [selected, setSelected] = useState(TRAINING_CASES[0].id);
+  const [filter, setFilter] = useState<Filter>("all");
+  const visible = TRAINING_CASES.filter((item) => filter === "all" || item.module === filter);
   const active = TRAINING_CASES.find((item) => item.id === selected) ?? TRAINING_CASES[0];
 
   return (
@@ -233,9 +238,9 @@ export function Training() {
       <Eyebrow index="01">Frontline training · sample cases</Eyebrow>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
-          Practise.
+          {tr("Practise.")}
           <br />
-          <span className="text-sea">Then go help.</span>
+          <span className="text-sea">{tr("Then go help.")}</span>
         </Display>
         <div className="flex rounded-full border border-line-2 bg-card p-1" role="group" aria-label="Training mode">
           {(["cases", "quiz"] as Mode[]).map((item) => (
@@ -253,7 +258,7 @@ export function Training() {
       </div>
 
       <p className="mt-5 max-w-[620px] text-[15px] leading-relaxed text-ink-2">
-        Short, synthetic cases and a 10-question quiz for new ASHA, Anganwadi and ANM workers. Progress stays on this device.
+        Short, synthetic cases covering every Module A age bracket and Module B age band, plus a {TRAINING_QUIZ.length}-question quiz for new ASHA, Anganwadi and ANM workers. Progress stays on this device.
       </p>
 
       <Reveal className="mt-10">
@@ -262,10 +267,23 @@ export function Training() {
             <div className="rounded-[36px] border border-line-2 bg-card p-3">
               <div className="flex items-center gap-2 px-3 py-2">
                 <GraduationCap className="size-4 text-rust" />
-                <span className="font-mono text-[10px] font-semibold tracking-[0.18em] text-muted uppercase">{TRAINING_CASES.length} cases</span>
+                <span className="font-mono text-[10px] font-semibold tracking-[0.18em] text-muted uppercase">{visible.length} cases</span>
+                <div className="ml-auto flex rounded-full bg-sand p-0.5" role="group" aria-label="Filter cases by module">
+                  {([["all", "All"], ["A", "Module A"], ["B", "Module B"]] as [Filter, string][]).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFilter(value)}
+                      aria-pressed={filter === value}
+                      className={cn("rounded-full px-3 py-1 text-[10.5px] font-bold transition-colors", filter === value ? "bg-ink text-paper" : "text-ink-2 hover:text-ink")}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <ul className="mt-1 space-y-1">
-                {TRAINING_CASES.map((item) => {
+              <ul className="mt-1 max-h-[640px] space-y-1 overflow-y-auto pr-1">
+                {visible.map((item) => {
                   const on = item.id === active.id;
                   return (
                     <li key={item.id}>
@@ -283,7 +301,7 @@ export function Training() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[13.5px] font-bold">{item.title}</span>
-                          <span className={cn("block text-[11px]", on ? "text-paper/55" : "text-muted")}>{item.age} · {item.signals[0]}</span>
+                          <span className={cn("block text-[11px]", on ? "text-paper/55" : "text-muted")}>{item.age}{item.bracket ? ` · ${item.bracket}` : ""} · {item.signals[0]}</span>
                         </span>
                       </button>
                     </li>
@@ -300,3 +318,4 @@ export function Training() {
     </Page>
   );
 }
+

@@ -18,6 +18,7 @@ import {
   unsubscribeFromPush,
 } from "../lib/push";
 import { useApp } from "../store";
+import { Localize } from "../lib/localize";
 import { Btn } from "./ui";
 import { cn } from "../utils/cn";
 
@@ -213,6 +214,7 @@ export function NotificationSettings({ open, onClose }: { open: boolean; onClose
   };
 
   return (
+    <Localize>
     <div
       className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-night/70 p-4 backdrop-blur-sm"
       role="dialog"
@@ -381,6 +383,7 @@ export function NotificationSettings({ open, onClose }: { open: boolean; onClose
         </div>
       </div>
     </div>
+    </Localize>
   );
 }
 
@@ -394,6 +397,7 @@ export function NotificationSettingsButton({
 }) {
   const [open, setOpen] = useState(false);
   return (
+    <Localize>
     <>
       <button type="button" onClick={() => setOpen(true)} className={className}>
         <Bell className="size-4" />
@@ -401,5 +405,6 @@ export function NotificationSettingsButton({
       </button>
       <NotificationSettings open={open} onClose={() => setOpen(false)} />
     </>
+    </Localize>
   );
 }

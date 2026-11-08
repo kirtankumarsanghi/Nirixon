@@ -417,6 +417,8 @@ class Referral(Base):
     )  # created, sent, seen, outcome recorded, closed
     domains_of_concern: Mapped[list] = mapped_column(JsonType, default=list)
     safety_rule_trigger: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Clinician's review note, persisted when they acknowledge/review the case.
+    clinical_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     outcome_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(
         String(64), unique=True, nullable=True, index=True

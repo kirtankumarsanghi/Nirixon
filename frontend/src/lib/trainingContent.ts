@@ -1,3 +1,4 @@
+﻿import { AGE_BRACKET_CASES } from "./trainingCasesByAge";
 export type TrainingTier = "Typical" | "Monitor" | "Refer";
 
 export interface TrainingCase {
@@ -5,6 +6,8 @@ export interface TrainingCase {
   title: string;
   age: string;
   module: "A" | "B";
+  /** Age bracket (Module A) or age band (Module B) the milestone is drawn from. */
+  bracket?: string;
   vignette: string;
   signals: string[];
   answer: TrainingTier;
@@ -12,7 +15,7 @@ export interface TrainingCase {
   safetyRule?: string;
 }
 
-export const TRAINING_CASES: TrainingCase[] = [
+export const BASE_TRAINING_CASES: TrainingCase[] = [
   {
     id: "case-18m-communication",
     title: "No words at 18 months",
@@ -77,6 +80,16 @@ export const TRAINING_CASES: TrainingCase[] = [
     safetyRule: "Safety language is never averaged away or delayed.",
   },
 ];
+
+function ageInMonths(age: string): number {
+  const value = parseFloat(age);
+  return /year/i.test(age) ? value * 12 : value;
+}
+
+/** Module A first, then Module B; youngest to oldest within each module (stable for ties). */
+export const TRAINING_CASES: TrainingCase[] = [...BASE_TRAINING_CASES, ...AGE_BRACKET_CASES].sort(
+  (a, b) => a.module.localeCompare(b.module) || ageInMonths(a.age) - ageInMonths(b.age),
+);
 
 export interface TrainingQuestion {
   id: string;
@@ -158,3 +171,87 @@ export const TRAINING_QUIZ: TrainingQuestion[] = [
     rationale: "Context answers (screen time, home learning environment, prematurity) shape the conversation and follow-up plan; they are not a diagnosis.",
   },
 ];
+
+const EXTRA_QUIZ: TrainingQuestion[] = [
+  {
+    id: "q-milestone-2mo",
+    question: "Which set of milestones is expected in the 2-month bracket?",
+    options: ["Walks alone and says two words", "Lifts head on tummy, coos and smiles back", "Stacks blocks and runs", "Takes turns with other children"],
+    answer: 1,
+    rationale: "Head lift (GM01), cooing (CM01) and social smiling (PS01) are the earliest Module A items, typical around 2 months.",
+  },
+  {
+    id: "q-milestone-babble",
+    question: "A 12-month-old does not babble with repeated syllables and has no clear word. How should this be read?",
+    options: ["Normal variation, wait until 24 months", "A communication red flag that needs referral", "Only a motor concern", "Not relevant before 18 months"],
+    answer: 1,
+    rationale: "Babbling is expected by about 8 months and meaningful words by about 12 months, so their absence is a communication red flag.",
+  },
+  {
+    id: "q-milestone-walk",
+    question: "A 15-month-old cruises but has not walked alone; language, pointing and social skills are typical. What is the best tier?",
+    options: ["Refer immediately", "Monitor and re-screen in 4 weeks", "Typical, no action", "Treat as regression"],
+    answer: 1,
+    rationale: "Independent walking is expected around 14 months, but an isolated gross-motor lag with other areas intact is a Monitor result.",
+  },
+  {
+    id: "q-multilingual",
+    question: "How should a multilingual home be handled in scoring?",
+    options: ["Lower the expected language milestones", "Treat it as context, never a penalty", "Delay the screening until the child speaks one language", "Add extra risk points"],
+    answer: 1,
+    rationale: "Multilingual home is recorded as context and must not change domain scores or delay referral.",
+  },
+  {
+    id: "q-motor-confound",
+    question: "Why are items such as stacking blocks and using a spoon flagged as motor-confound items?",
+    options: ["They are not important", "A motor difficulty alone can lower the score in another domain", "They are only for older children", "They are always scored double"],
+    answer: 1,
+    rationale: "Items needing hand control can score low because of motor lag rather than cognitive or self-help lag, so interpret them with the motor domain.",
+  },
+  {
+    id: "q-module-switch",
+    question: "Which age range uses the Module B school-age questions?",
+    options: ["0 to 24 months", "2 to 5 years", "5 to 12 years (bands 5-7, 8-10, 11-12)", "Any age after referral"],
+    answer: 2,
+    rationale: "Module A covers 0-60 months in 17 brackets; Module B covers school-age children in the 5-7, 8-10 and 11-12 bands.",
+  },
+  {
+    id: "q-brackets",
+    question: "How many age brackets does Module A use, and why are they closer together in the first year?",
+    options: ["5 brackets, to keep it simple", "17 brackets, because development changes fastest in the first year", "12 brackets, one per month", "3 brackets, one per year"],
+    answer: 1,
+    rationale: "Module A uses 17 ASQ-3-style brackets (2, 4, 6, 9, 12 months and so on), denser early because change is fastest then.",
+  },
+  {
+    id: "q-hearing-voice",
+    question: "A 4-month-old rolls and laughs but never turns toward voices. What is the right next step?",
+    options: ["Ignore it because motor is typical", "Arrange a hearing evaluation", "Wait for the 12-month visit", "Score communication as typical"],
+    answer: 1,
+    rationale: "Failure to respond to voices and sounds is a possible hearing concern and needs evaluation regardless of other domains.",
+  },
+  {
+    id: "q-bullying",
+    question: "A 9-year-old refuses school and says classmates tease him. What should the worker do?",
+    options: ["Tell the child to ignore it", "Open the bullying-support path, talk with the family and arrange follow-up", "Record nothing", "Mark the screening as typical"],
+    answer: 1,
+    rationale: "Bullying signals trigger a support and safeguarding path, not only a domain score.",
+  },
+  {
+    id: "q-attention-crosssetting",
+    question: "Which pattern most supports an attention-related referral in a school-age child?",
+    options: ["Distracted only during one boring class", "Frequent, long-standing difficulty across home and school, affecting work, with vision/hearing normal", "A single bad week after moving house", "Being very quiet"],
+    answer: 1,
+    rationale: "Attention concerns need to be frequent, cross-setting, long-standing and impairing, with rule-outs checked first.",
+  },
+];
+
+/** Rotate options so the correct answer is not always in the same slot. */
+function rotateOptions(q: TrainingQuestion, index: number): TrainingQuestion {
+  const shift = (index * 3 + 1) % q.options.length;
+  const options = q.options.map((_, i) => q.options[(i - shift + q.options.length) % q.options.length]);
+  return { ...q, options, answer: (q.answer + shift) % q.options.length };
+}
+
+TRAINING_QUIZ.push(...EXTRA_QUIZ.map(rotateOptions));
+
+

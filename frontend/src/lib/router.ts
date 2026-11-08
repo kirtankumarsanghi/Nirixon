@@ -12,9 +12,9 @@ export type Route =
   | { screen: "login" }
   | { screen: "app"; role: Role; view: View };
 
-/** Views a role may open: its tabs plus the shared check-in flow. */
+/** Views a role may open: its tabs plus the shared flows. */
 export function allowedViews(role: Role): View[] {
-  const shared: View[] = ["checkin", "wellbeing", "training"];
+  const shared: View[] = role === "supervisor" ? ["wellbeing", "training", "help"] : ["checkin", "wellbeing", "training", "help"];
   return [...ROLES[role].tabs.map((t) => t.view), ...shared];
 }
 

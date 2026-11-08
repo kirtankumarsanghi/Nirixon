@@ -5,10 +5,11 @@ import type { ReactNode } from "react";
 import type { CHWAnalytics, ChildRecord } from "../api/types";
 import { AppProvider, useApp } from "../store";
 import { Caseload } from "../views/Caseload";
+import { SupervisorCaseload } from "../views/SupervisorCaseload";
 
 const child = (over: Partial<ChildRecord>): ChildRecord => ({
-  id: "NRX-001",
-  pseudonymous_id: "p1",
+  id: "9d824523-e84e-4700-981c-46d350cd1a2b",
+  pseudonymous_id: "NRX-001",
   age_bracket: "24-36m",
   village_ward: "Ward 12 - Sector B",
   consent_given: true,
@@ -30,7 +31,8 @@ const child = (over: Partial<ChildRecord>): ChildRecord => ({
 
 const children: ChildRecord[] = [
   child({
-    id: "NRX-001",
+    id: "9d824523-e84e-4700-981c-46d350cd1a2b",
+    pseudonymous_id: "NRX-001",
     current_tier: "Refer",
     is_overdue: true,
     contact_count: 3,
@@ -38,9 +40,14 @@ const children: ChildRecord[] = [
     follow_up_due_at: "2026-11-02T09:00:00Z",
     domain_scores: { gross_motor: 0.2, communication: 0.6 },
   }),
-  child({ id: "NRX-002", current_tier: "Typical" }),
-  child({ id: "NRX-003", current_tier: "" }),
-  child({ id: "NRX-004", current_tier: "Monitor", follow_up_due_at: "2026-11-05T09:00:00Z" }),
+  child({ id: "9f92c07b-9cad-4094-ab70-f015374db4e1", pseudonymous_id: "NRX-002", current_tier: "Typical" }),
+  child({ id: "8c8fa2d7-88db-4351-b12d-b175fffd0320", pseudonymous_id: "NRX-003", current_tier: "" }),
+  child({
+    id: "4976c840-95e7-46bc-9ec4-54a603de2e3f",
+    pseudonymous_id: "NRX-004",
+    current_tier: "Monitor",
+    follow_up_due_at: "2026-11-05T09:00:00Z",
+  }),
 ];
 
 const analytics: CHWAnalytics = {
@@ -97,10 +104,11 @@ function Guard({ children: view }: { children: ReactNode }) {
 
 async function renderCaseload(hash: string) {
   window.location.hash = hash;
+  const View = hash.includes("supervisor") ? SupervisorCaseload : Caseload;
   const out = render(
     <AppProvider>
       <Guard>
-        <Caseload />
+        <View />
       </Guard>
     </AppProvider>,
   );
@@ -173,7 +181,9 @@ describe("Frontline caseload dashboard", () => {
   it("shows programme analytics for a supervisor", async () => {
     const out = await renderCaseload("#/supervisor/caseload");
     await waitFor(() => expect(mocks.getAnalytics).toHaveBeenCalled());
-    expect(out.container.textContent).toMatch(/3 screened · 1 referred/);
+    expect(out.container.textContent).toMatch(/Screened coverage/);
+    expect(out.container.textContent).toMatch(/3 screened/);
+    expect(out.container.textContent).toMatch(/1 referral raised/);
     expect(out.container.textContent).not.toContain("NaN");
   });
 

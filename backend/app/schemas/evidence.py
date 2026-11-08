@@ -21,6 +21,31 @@ class EvidenceClassMetrics(BaseModel):
     support: float
 
 
+class EvidenceNullControl(BaseModel):
+    control: str
+    refer_auprc: float
+    macro_f1: float
+    balanced_accuracy: float
+    note: str = ""
+
+
+class EvidenceRuleBaseline(BaseModel):
+    asq_rule_macro_f1: float
+    asq_rule_refer_sensitivity: float
+    asq_rule_refer_precision: float
+    asq_rule_typical_specificity: float
+    xgb_macro_f1: float
+    xgb_refer_sensitivity: float
+    xgb_refer_precision: float
+    xgb_typical_specificity: float
+    sparse_naive_macro_f1: float = 0.0
+    sparse_prorated_macro_f1: float = 0.0
+    sparse_prorated_refer_precision: float = 0.0
+    sparse_xgb_macro_f1: float = 0.0
+    sparse_xgb_typical_specificity: float = 0.0
+    sparse_xgb_refer_precision: float = 0.0
+
+
 class EvidenceModuleA(BaseModel):
     """Module A (0-60mo) production model evaluation — XGBoost held-out test."""
 
@@ -41,6 +66,12 @@ class EvidenceModuleA(BaseModel):
     latency_p50_ms: float
     latency_p95_ms: float
     latency_p99_ms: float
+    null_controls: list[EvidenceNullControl] = Field(default_factory=list)
+    rule_baseline: EvidenceRuleBaseline | None = None
+    fairness_status: str = "PASS"
+    fairness_gap: float = 0.0
+    operating_point_refer_recall: float | None = None
+    operating_point_threshold: float | None = None
 
 
 class EvidenceModuleB(BaseModel):

@@ -108,6 +108,9 @@ class ChildRecordResponse(BaseModel):
     # Empty when the child has no Module A screening (e.g. Module B or none).
     domain_scores: dict[str, float] = Field(default_factory=dict)
     safety_rule_triggered: str | None = None
+    # Persisted referral handoff state for the caseload/child-drawer chips:
+    # "queued" while a referral is open, "done" once it has been closed.
+    handoff_state: str = "none"
     is_overdue: bool = False
     created_at: datetime
     updated_at: datetime
@@ -261,7 +264,15 @@ class ReferralUpdate(BaseModel):
     tier: str | None = None
     domains_of_concern: list[str] | None = None
     safety_rule_trigger: str | None = None
+    clinical_notes: str | None = None
     outcome_notes: str | None = None
+
+
+class ReferralAcknowledgeRequest(BaseModel):
+    clinical_notes: str | None = Field(
+        default=None,
+        description="Clinician review note saved against the referral.",
+    )
 
 
 class ReferralOutcomeRequest(BaseModel):
@@ -288,6 +299,7 @@ class ReferralResponse(BaseModel):
     status: str
     domains_of_concern: list[str]
     safety_rule_trigger: str | None
+    clinical_notes: str | None = None
     outcome_notes: str | None
     idempotency_key: str | None = None
     created_at: datetime
@@ -297,6 +309,22 @@ class ReferralResponse(BaseModel):
     closed_at: datetime | None
     updated_at: datetime
     timestamps: dict[str, Any]
+
+
+class ReferralDispatchRequest(BaseModel):
+    channel: Literal["whatsapp", "sms"] = "whatsapp"
+    recipient: str | None = Field(
+        default=None,
+        description="Facility WhatsApp/SMS number. Defaults to REFERRAL_HANDOFF_PHONE.",
+    )
+
+
+class ReferralDispatchResponse(BaseModel):
+    referral: ReferralResponse
+    dispatched: bool
+    channel: str
+    provider_id: str | None = None
+    detail: str
 
 
 class ReferralSummary(BaseModel):

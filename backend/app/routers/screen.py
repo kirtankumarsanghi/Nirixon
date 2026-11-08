@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -40,7 +40,14 @@ from app.core.triage_guard import (
     evaluate_response_guards,
 )
 from app.core.worker_service import get_suggested_workers
-from app.db.models import Answer, AuditLog, RiskResult, User, WorkerContactLog
+from app.db.models import (
+    Answer,
+    AuditLog,
+    ChildRecord,
+    RiskResult,
+    User,
+    WorkerContactLog,
+)
 from app.db.models import ScreeningSession as DbSession
 from app.db.session import get_db
 from app.db.session_repo import SessionRepository, get_session_repo
@@ -808,6 +815,25 @@ async def start_screen(
 
     age_bracket = map_to_bracket_label(min(body.corrected_age_months, 66))
 
+    # When the caller passes a community child reference, link the session to
+    # that ChildRecord so the completed screening shows up on the child's
+    # caseload card (which reads ScreeningSession.child_record_id).
+    child_record_id: str | None = None
+    child_ref = (body.child_ref or "").strip()
+    if child_ref:
+        child_row = (
+            await db.execute(
+                select(ChildRecord).where(
+                    or_(
+                        ChildRecord.id == child_ref,
+                        ChildRecord.pseudonymous_id == child_ref,
+                    )
+                )
+            )
+        ).scalar_one_or_none()
+        if child_row is not None:
+            child_record_id = child_row.id
+
     core = CoreSession(
         child_id=body.child_ref or session_id,
         corrected_age_months=body.corrected_age_months,
@@ -829,6 +855,7 @@ async def start_screen(
     db_row = DbSession(
         id=session_id,
         child_ref=body.child_ref or session_id,
+        child_record_id=child_record_id,
         parent_user_id=user.id,
         status="in_progress",
         corrected_age_months=body.corrected_age_months,

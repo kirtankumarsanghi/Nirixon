@@ -704,6 +704,8 @@ export interface ChildRecord {
   /** Latest completed Module A session's normalized per-domain scores [0,1]. */
   domain_scores?: Record<string, number>;
   safety_rule_triggered?: string | null;
+  /** Persisted referral handoff state: "queued" while open, "done" once closed. */
+  handoff_state?: "none" | "queued" | "done";
   is_overdue?: boolean;
   created_at: string;
   updated_at: string;
@@ -787,6 +789,8 @@ export interface ReferralRecord {
   status: "created" | "sent" | "seen" | "outcome recorded" | "closed" | string;
   domains_of_concern: string[];
   safety_rule_trigger: string | null;
+  /** Clinician review note persisted on the referral. */
+  clinical_notes?: string | null;
   outcome_notes: string | null;
   created_at: string;
   sent_at: string | null;
@@ -821,12 +825,30 @@ export interface ReferralUpdateRequest {
   tier?: string;
   domains_of_concern?: string[];
   safety_rule_trigger?: string | null;
+  clinical_notes?: string | null;
   outcome_notes?: string | null;
+}
+
+export interface ReferralAcknowledgeRequest {
+  clinical_notes?: string | null;
 }
 
 export interface ReferralOutcomeRequest {
   outcome_notes: string;
   close_referral?: boolean;
+}
+
+export interface ReferralDispatchRequest {
+  channel?: "whatsapp" | "sms";
+  recipient?: string | null;
+}
+
+export interface ReferralDispatchResponse {
+  referral: ReferralRecord;
+  dispatched: boolean;
+  channel: string;
+  provider_id: string | null;
+  detail: string;
 }
 
 export interface ReferralSummary {

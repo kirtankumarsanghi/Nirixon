@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
+import { Localize } from "../lib/localize";
 import { cn } from "../utils/cn";
 
 /* ------------------------------ hooks ------------------------------- */
@@ -114,7 +115,9 @@ export function Display({
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("nrx-rise mx-auto w-full max-w-[1360px] px-5 pb-16 pt-6 sm:pt-8 lg:px-8", className)}>{children}</div>
+    <div className={cn("nrx-rise mx-auto w-full max-w-[1360px] px-5 pb-32 pt-6 sm:pt-8 lg:px-8", className)}>
+      <Localize>{children}</Localize>
+    </div>
   );
 }
 

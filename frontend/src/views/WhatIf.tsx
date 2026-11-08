@@ -1,8 +1,10 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Play, RotateCcw, ShieldAlert, SlidersHorizontal } from "lucide-react";
-import { Btn, Chip, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
+import { PageHeader } from "../components/PageHeader";
+import { Btn, Chip, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { Photo } from "../components/Photo";
 import { sandboxApi, type SessionSummary } from "../api/client";
+import { useT } from "../lib/useT";
 import type { ResultPayload } from "../api/types";
 import { DOMAINS, MODULE_A_DOMAINS, MODULE_B_DOMAINS, TIER_META, evaluate, type Scores, type Tier } from "../lib/model";
 import { PHOTO } from "../photos";
@@ -102,6 +104,7 @@ function sandboxDomainState(
 
 function RealSandbox() {
   const { whatIfSeed } = useApp();
+  const tr = useT();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [age, setAge] = useState(60);
@@ -179,23 +182,23 @@ function RealSandbox() {
   const scenarioMeta = TIER_META[scenarioTier] ?? TIER_META.Typical;
 
   return (
-    <section className="mt-8 rounded-[40px] border border-line-2 bg-card p-7 sm:p-9">
+    <section className="mt-8 rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Eyebrow index="00" tone="muted">Real session sandbox</Eyebrow>
+          <Eyebrow index="00" tone="muted">{tr("Real session sandbox")}</Eyebrow>
           <h2 className="mt-3 font-display text-[clamp(32px,4vw,56px)] leading-[0.95] uppercase">
-            Re-score a completed check-in.
+            {tr("Re-score a completed check-in.")}
           </h2>
           <p className="mt-3 max-w-[620px] text-[13.5px] leading-relaxed text-ink-2">
             Pick a real completed session, change the age or an area score, and the backend re-runs the same
             Module A model or Module B engine that produced the original result. Nothing here is invented in the browser.
           </p>
         </div>
-        <Chip tone="sea">Live backend</Chip>
+        <Chip tone="sea">{tr("Live backend")}</Chip>
       </div>
 
       <div className="mt-7 grid items-start gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-3xl border border-line-2 bg-sand/30 p-5">
+        <div className="rounded-[32px] border border-line-2 bg-card-2 p-6">
           {loading ? (
             <p className="text-[13px] text-muted">Loading completed sessions…</p>
           ) : sessions.length === 0 ? (
@@ -203,13 +206,13 @@ function RealSandbox() {
           ) : (
             <>
               <label className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-muted uppercase" htmlFor="sandbox-session">
-                Completed session
+                {tr("Completed session")}
               </label>
               <select
                 id="sandbox-session"
                 value={selectedId}
                 onChange={(event) => setSelectedId(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-line-2 bg-card px-3 py-2.5 text-[13px] font-semibold text-ink outline-none focus:border-sea"
+                className="nrx-select mt-2.5 w-full rounded-full border border-line-2 bg-card py-3 pr-10 pl-4 text-[13px] font-semibold text-ink outline-none focus:border-sea"
               >
                 {sessions.map((session) => (
                   <option key={session.id} value={session.id}>
@@ -223,7 +226,7 @@ function RealSandbox() {
               <div className="mt-5">
                 <div className="flex items-baseline justify-between">
                   <label className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-muted uppercase" htmlFor="sandbox-age">
-                    Corrected age
+                    {tr("Corrected age")}
                   </label>
                   <span className="font-mono text-[12px] font-semibold">{age} months</span>
                 </div>
@@ -250,7 +253,7 @@ function RealSandbox() {
                   <span className={cn("grid size-6 shrink-0 place-items-center rounded-md border-2", regression ? "border-brick bg-brick text-paper" : "border-line-2")}>
                     {regression && <ShieldAlert className="size-3.5" />}
                   </span>
-                  <span className="text-[12.5px] font-bold">What if regression were reported?</span>
+                  <span className="text-[12.5px] font-bold">{tr("What if regression were reported?")}</span>
                 </button>
               )}
 
@@ -279,7 +282,7 @@ function RealSandbox() {
               </div>
 
               <Btn className="mt-6 w-full" onClick={() => void run()} disabled={busy || !baseline}>
-                <Play className="size-4" /> {busy ? "Scoring…" : "Run real scenario"}
+                <Play className="size-4" /> {busy ? tr("Scoring…") : tr("Run real scenario")}
               </Btn>
               {error && <p className="mt-3 text-[12.5px] font-semibold text-brick">{error}</p>}
             </>
@@ -288,23 +291,23 @@ function RealSandbox() {
 
         <div className="space-y-4">
           {baseline && (
-            <div className="rounded-3xl border border-line-2 bg-card p-5">
+            <div className="rounded-[32px] border border-line-2 bg-card-2 p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-muted uppercase">Baseline</p>
-                  <p className="mt-1 text-[13px] font-semibold">
+                  <p className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-muted uppercase">{tr("Baseline")}</p>
+                  <p className="mt-1 text-[13.5px] font-bold">
                     {baseline.child_name ?? "Child"} · Module {baseline.module} ·{" "}
                     {baseline.corrected_age_months ?? "—"} months
                   </p>
                 </div>
-                <span className="flex items-center gap-2 text-[13px] font-bold" style={{ color: baselineMeta.hex }}>
+                <span className="flex items-center gap-2 font-display text-[24px] uppercase" style={{ color: baselineMeta.hex }}>
                   <GlowDot hex={baselineMeta.hex} glow={baselineMeta.glow} size={18} />
                   {baselineTier}
                 </span>
               </div>
-              <div className="mt-4 grid gap-1.5 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {domains.map((domain) => (
-                  <div key={domain} className="flex items-center justify-between rounded-lg bg-sand/50 px-2.5 py-1.5 text-[11.5px]">
+                  <div key={domain} className="flex items-center justify-between rounded-xl border border-line-2 bg-card px-3 py-2 text-[11.5px]">
                     <span className="text-ink-2">{DOMAINS[domain]?.label ?? domain}</span>
                     <span className="font-mono font-semibold">{sandboxDomainState(baseline, baseline.module, domain)}</span>
                   </div>
@@ -314,41 +317,41 @@ function RealSandbox() {
           )}
 
           {scenario ? (
-            <div className="rounded-3xl border border-line-2 bg-night p-5 text-paper">
+            <div className="rounded-[32px] bg-night p-6 text-paper">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-paper/55 uppercase">Real scenario</p>
+                  <p className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-peach uppercase">{tr("Real scenario")}</p>
                   <p className="mt-1 text-[13px] font-semibold text-paper/80">
                     {scenario.model_name ?? "backend"} · {scenario.latency_ms ?? 0} ms
                   </p>
                 </div>
-                <span className="flex items-center gap-2 font-display text-[26px] uppercase" style={{ color: scenarioMeta.hexLight }}>
+                <span className="flex items-center gap-2 font-display text-[28px] uppercase" style={{ color: scenarioMeta.hexLight }}>
                   <GlowDot hex={scenarioMeta.hexLight} glow={scenarioMeta.glow} size={20} />
                   {scenarioTier}
                 </span>
               </div>
-              <p className="mt-3 text-[12px] leading-relaxed text-paper/70">
+              <p className="mt-3 text-[12.5px] leading-relaxed text-paper/75">
                 {scenario.triage_tier ?? scenarioMeta.next}
               </p>
               {scenario.safety_override_triggered && (
-                <p className="mt-2 rounded-xl border border-brick/40 bg-brick/15 px-3 py-2 text-[11.5px] font-semibold text-peach">
+                <p className="mt-2.5 rounded-xl border border-brick/40 bg-brick/15 px-3 py-2 text-[11.5px] font-semibold text-peach">
                   Safety override · {scenario.override_rule ?? "deterministic rule"}
                 </p>
               )}
               <p className="mt-3 text-[12.5px] leading-relaxed text-paper/80">
                 {scenario.summary ?? "The backend completed the scenario."}
               </p>
-              <div className="mt-4 grid gap-1.5 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {domains.map((domain) => (
-                  <div key={domain} className="flex items-center justify-between rounded-lg bg-white/5 px-2.5 py-1.5 text-[11.5px]">
-                    <span className="text-paper/60">{DOMAINS[domain]?.label ?? domain}</span>
+                  <div key={domain} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-3 py-2 text-[11.5px]">
+                    <span className="text-paper/65">{DOMAINS[domain]?.label ?? domain}</span>
                     <span className="font-mono font-semibold">{sandboxDomainState(scenario, baseline?.module ?? "A", domain)}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-dashed border-line-2 bg-sand/20 p-5 text-[12.5px] leading-relaxed text-muted">
+            <div className="rounded-[32px] border border-dashed border-line-2 bg-card-2/60 p-6 text-[13px] leading-relaxed text-muted">
               Change the age, regression flag, or any area score and run the scenario. The result on this side comes
               back from <span className="font-mono font-semibold text-ink">/api/sandbox/&lt;session&gt;/simulate</span>.
             </div>
@@ -361,6 +364,7 @@ function RealSandbox() {
 
 export function WhatIf() {
   const { whatIfSeed, setWhatIfSeed } = useApp();
+  const tr = useT();
   const seedModule = whatIfSeed ? (whatIfSeed.module ?? moduleOf(whatIfSeed.scores)) : null;
   const [module, setModule] = useState<Module>(seedModule ?? "A");
   const [mode, setMode] = useState<"simple" | "advanced">(seedModule ? "advanced" : "simple");
@@ -402,38 +406,40 @@ export function WhatIf() {
   return (
     <Page>
       <RealSandbox />
-      <div className="mt-16">
-        <Eyebrow index="01">Illustrative safety demo</Eyebrow>
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
-        <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
-          What if…?
-        </Display>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-full border border-line-2 bg-card p-1" role="group" aria-label="Screening module">
-            {(["A", "B"] as Module[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => chooseModule(m)}
-                aria-pressed={module === m}
-                className={cn(
-                  "rounded-full px-4 py-2 text-[12px] font-bold transition-colors",
-                  module === m ? "bg-ink text-paper" : "text-ink-2 hover:text-ink",
-                )}
-              >
-                {m === "A" ? "Early years" : "School age"}
-              </button>
-            ))}
-          </div>
-          {whatIfSeed && seedModule === module && <Chip tone="sea">Loaded from {whatIfSeed.label}</Chip>}
-          <Btn variant="light" onClick={reset}>
-            <RotateCcw className="size-4" /> Reset
-          </Btn>
-        </div>
-      </div>
+      <div className="mt-12">
+        <PageHeader
+          index="01"
+          eyebrow={tr("Illustrative safety demo")}
+          title={tr("What if…?")}
+          subtitle="Drag the score to watch the deterministic safety rule take over. This lower section is a local illustrative model — the real backend sandbox is at the top of the page."
+          actions={
+            <>
+              <div className="flex rounded-full border border-line-2 bg-card p-1" role="group" aria-label="Screening module">
+                {(["A", "B"] as Module[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => chooseModule(m)}
+                    aria-pressed={module === m}
+                    className={cn(
+                      "rounded-full px-4 py-2 text-[12px] font-bold transition-colors",
+                      module === m ? "bg-ink text-paper" : "text-ink-2 hover:text-ink",
+                    )}
+                  >
+                    {m === "A" ? tr("Early years") : tr("School age")}
+                  </button>
+                ))}
+              </div>
+              {whatIfSeed && seedModule === module && <Chip tone="sea">Loaded from {whatIfSeed.label}</Chip>}
+              <Btn variant="light" onClick={reset}>
+                <RotateCcw className="size-4" /> {tr("Reset")}
+              </Btn>
+            </>
+          }
+        />
 
       {/* ============================ safety stage ============================ */}
-      <section className="relative mt-8 overflow-hidden rounded-[48px] bg-night p-7 text-paper sm:p-12 lg:p-16">
+      <section className="relative mt-8 overflow-hidden rounded-[40px] bg-night p-7 text-paper sm:p-12 lg:p-16">
         <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
             <h2 className="font-display text-[clamp(48px,6.4vw,100px)] leading-[0.9] uppercase">
@@ -497,14 +503,14 @@ export function WhatIf() {
             <div className="mt-12 flex items-center gap-6 border-t border-white/10 pt-9">
               <GlowDot hex={meta.hexLight} glow={meta.glow} size={76} />
               <div>
-                <p className="font-mono text-[10.5px] font-semibold tracking-[0.22em] text-paper/55 uppercase">Result tier</p>
+                <p className="font-mono text-[10.5px] font-semibold tracking-[0.22em] text-paper/55 uppercase">{tr("Result tier")}</p>
                 <p key={ev.tier} className="nrx-pop font-display text-[clamp(42px,5.4vw,80px)] leading-[0.92] uppercase">
                   {ev.tier} <span className="text-[0.5em] text-paper/75">({meta.hint})</span>
                 </p>
               </div>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Chip tone="night">{ev.safety ? "Model skipped" : "Model ran"}</Chip>
+              <Chip tone="night">{ev.safety ? tr("Model skipped") : tr("Model ran")}</Chip>
               <p className="max-w-[520px] text-[13px] leading-relaxed text-paper/75">{ev.reason}</p>
             </div>
           </div>
@@ -518,9 +524,9 @@ export function WhatIf() {
       {/* ============================ detail ============================ */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Reveal>
-          <div className="h-full rounded-[40px] border border-line-2 bg-card p-7 sm:p-9">
+          <div className="h-full rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex items-center justify-between gap-3">
-              <Eyebrow index="02" tone="muted">Probabilities</Eyebrow>
+              <Eyebrow index="02" tone="muted">{tr("Probabilities")}</Eyebrow>
               <span className="font-mono text-[10.5px] text-muted">baseline → scenario</span>
             </div>
             <div className="mt-7 space-y-6">
@@ -549,9 +555,9 @@ export function WhatIf() {
         </Reveal>
 
         <Reveal delay={100}>
-          <div className="h-full rounded-[40px] border border-line-2 bg-card p-7 sm:p-9">
+          <div className="h-full rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex items-center justify-between gap-3">
-              <Eyebrow index="03" tone="muted">Fine-tune each area</Eyebrow>
+              <Eyebrow index="03" tone="muted">{tr("Fine-tune each area")}</Eyebrow>
               <Btn
                 size="xs"
                 variant={mode === "advanced" ? "dark" : "outline"}
@@ -560,7 +566,7 @@ export function WhatIf() {
                   setMode(mode === "simple" ? "advanced" : "simple");
                 }}
               >
-                <SlidersHorizontal className="size-3.5" /> {mode === "advanced" ? "Advanced on" : "Enable"}
+                <SlidersHorizontal className="size-3.5" /> {mode === "advanced" ? tr("Advanced on") : tr("Enable")}
               </Btn>
             </div>
             <div className={cn("mt-7 space-y-5 transition-opacity", mode === "simple" && "pointer-events-none")}>

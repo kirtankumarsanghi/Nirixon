@@ -152,6 +152,18 @@ def compute_bootstrap_metrics(
     }
 
 
+def _predict_with_thresholds(model, X: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    proba = model.predict_proba(X)
+    if hasattr(model, "classes_"):
+        proba = reorder_proba(proba, model.classes_)
+    preds = np.where(
+        proba[:, 2] >= 0.30,
+        "Refer",
+        np.where(proba[:, 1] >= 0.42, "Monitor", "Typical"),
+    )
+    return preds, proba
+
+
 def stress_test_label_noise(
     df: pd.DataFrame, model, feature_columns: list[str]
 ) -> list[dict]:
@@ -163,13 +175,7 @@ def stress_test_label_noise(
 
     X = df[feature_columns]
     y_true_orig = df["risk_label"].to_numpy()
-    pred_raw = model.predict(X)
-    preds = np.array(
-        [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in pred_raw]
-    )
-    proba = model.predict_proba(X)
-    if hasattr(model, "classes_"):
-        proba = reorder_proba(proba, model.classes_)
+    preds, proba = _predict_with_thresholds(model, X)
 
     for rate in rates:
         y_noisy = y_true_orig.copy()
@@ -209,7 +215,16 @@ def stress_test_reporting_bias(
             "family_history_flag",
             "regression_flag",
         )
+        and not c.startswith("mean_")
     ]
+    domain_prefixes = {
+        "gross_motor": "GM",
+        "fine_motor": "FM",
+        "communication": "CM",
+        "cognitive": "CG",
+        "personal_social": "PS",
+        "self_help": "SH",
+    }
     y_true = df["risk_label"].to_numpy()
     results = []
     rng = np.random.default_rng(42)
@@ -229,17 +244,12 @@ def stress_test_reporting_bias(
             X_biased[item_cols] = np.clip(
                 X_biased[item_cols].to_numpy() - mask.astype(int), 0, 2
             )
+        for dom, pref in domain_prefixes.items():
+            d_cols = [c for c in item_cols if c.startswith(pref)]
+            if f"mean_{dom}" in X_biased.columns:
+                X_biased[f"mean_{dom}"] = X_biased[d_cols].mean(axis=1)
 
-        pred_raw = model.predict(X_biased)
-        preds = np.array(
-            [
-                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
-                for i in pred_raw
-            ]
-        )
-        proba = model.predict_proba(X_biased)
-        if hasattr(model, "classes_"):
-            proba = reorder_proba(proba, model.classes_)
+        preds, proba = _predict_with_thresholds(model, X_biased)
 
         metrics = compute_bootstrap_metrics(y_true, preds, proba)
         results.append(
@@ -270,45 +280,84 @@ def stress_test_missing_answers(
             "family_history_flag",
             "regression_flag",
         )
+        and not c.startswith("mean_")
     ]
+    domain_prefixes = {
+        "gross_motor": "GM",
+        "fine_motor": "FM",
+        "communication": "CM",
+        "cognitive": "CG",
+        "personal_social": "PS",
+        "self_help": "SH",
+    }
     y_true = df["risk_label"].to_numpy()
 
-    # Precalculate median values mapped to each row
-    median_by_bracket = df.groupby("age_bracket")[item_cols].median()
-    bracket_medians_aligned = df["age_bracket"].map(
-        median_by_bracket.to_dict(orient="index")
-    )
-    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[
-        item_cols
-    ].to_numpy()
+    mean_by_bracket = df.groupby("age_bracket")[item_cols].mean()
+    std_by_bracket = df.groupby("age_bracket")[item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    bracket_means_df = pd.DataFrame(
+        list(df["age_bracket"].map(mean_by_bracket.to_dict(orient="index"))),
+        index=df.index,
+    )[item_cols]
+    bracket_stds_df = pd.DataFrame(
+        list(df["age_bracket"].map(std_by_bracket.to_dict(orient="index"))),
+        index=df.index,
+    )[item_cols]
+
+    # Build round-robin priority order across the 6 domains (foundational + mid-rank first)
+    domain_cols = {
+        dom: [c for c in item_cols if c.startswith(pref)]
+        for dom, pref in domain_prefixes.items()
+    }
+    rank_priority = [0, 3, 1, 4, 2, 5]
+    ordered_36: list[str] = []
+    for r_idx in rank_priority:
+        for dom in domain_prefixes:
+            cols = domain_cols[dom]
+            if r_idx < len(cols):
+                ordered_36.append(cols[r_idx])
 
     results = []
-    rng = np.random.default_rng(42)
-
     for k in k_items:
         X_imputed = df[feature_columns].copy().astype(float)
         if k < 36:
-            # For each child, randomly choose which items are unasked
-            n_unasked = 36 - k
-            # Generate random permutation ranks per row
-            random_ranks = rng.random((len(df), len(item_cols))).argsort(axis=1)
-            unasked_mask = random_ranks < n_unasked
+            asked_set = set(ordered_36[:k])
+            all_obs = df[item_cols].to_numpy(dtype=float)
+            all_pm = bracket_means_df[item_cols].to_numpy(dtype=float)
+            all_ps = np.maximum(bracket_stds_df[item_cols].to_numpy(dtype=float), 0.25)
+            asked_global_idx = [i for i, c in enumerate(item_cols) if c in asked_set]
+            global_z = (
+                (all_obs[:, asked_global_idx] - all_pm[:, asked_global_idx])
+                / all_ps[:, asked_global_idx]
+            ).mean(axis=1, keepdims=True)
 
-            # Apply median imputation in one vectorized step
-            orig_items = X_imputed[item_cols].to_numpy()
-            imputed_items = np.where(unasked_mask, median_matrix, orig_items)
-            X_imputed[item_cols] = imputed_items
+            for dom, d_cols in domain_cols.items():
+                asked_d = [c for c in d_cols if c in asked_set]
+                unasked_d = [c for c in d_cols if c not in asked_set]
+                if not unasked_d:
+                    continue
+                peer_unasked_m = bracket_means_df[unasked_d].to_numpy(dtype=float)
+                peer_unasked_s = np.maximum(
+                    bracket_stds_df[unasked_d].to_numpy(dtype=float), 0.25
+                )
+                if asked_d:
+                    obs_d = df[asked_d].to_numpy(dtype=float)
+                    pm_d = bracket_means_df[asked_d].to_numpy(dtype=float)
+                    ps_d = np.maximum(bracket_stds_df[asked_d].to_numpy(dtype=float), 0.25)
+                    z_dom = ((obs_d - pm_d) / ps_d).mean(axis=1, keepdims=True)
+                else:
+                    obs_d = np.empty((len(df), 0))
+                    z_dom = global_z
 
-        pred_raw = model.predict(X_imputed)
-        preds = np.array(
-            [
-                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
-                for i in pred_raw
-            ]
-        )
-        proba = model.predict_proba(X_imputed)
-        if hasattr(model, "classes_"):
-            proba = reorder_proba(proba, model.classes_)
+                cont_unasked = np.clip(
+                    peer_unasked_m + z_dom * peer_unasked_s, 0.0, 2.0
+                )
+                X_imputed[unasked_d] = np.clip(np.round(cont_unasked), 0.0, 2.0)
+                if f"mean_{dom}" in X_imputed.columns:
+                    X_imputed[f"mean_{dom}"] = (
+                        obs_d.sum(axis=1) + cont_unasked.sum(axis=1)
+                    ) / 6.0
+
+        preds, proba = _predict_with_thresholds(model, X_imputed)
 
         metrics = compute_bootstrap_metrics(y_true, preds, proba)
         results.append(
@@ -372,16 +421,7 @@ def stress_test_generator_shift(model, feature_columns: list[str]) -> list[dict]
         X_test = test_df[feature_columns]
         y_test = test_df["risk_label"].to_numpy()
 
-        pred_raw = model.predict(X_test)
-        preds = np.array(
-            [
-                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
-                for i in pred_raw
-            ]
-        )
-        proba = model.predict_proba(X_test)
-        if hasattr(model, "classes_"):
-            proba = reorder_proba(proba, model.classes_)
+        preds, proba = _predict_with_thresholds(model, X_test)
 
         metrics = compute_bootstrap_metrics(y_test, preds, proba)
         results.append(

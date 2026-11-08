@@ -1,6 +1,8 @@
 import { ArrowUp, LogOut } from "lucide-react";
 import { LogoMark, Wordmark } from "./Brand";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "../lib/roles";
+import { useT } from "../lib/useT";
+import { Localize } from "../lib/localize";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -18,11 +20,13 @@ const linkCls = "text-[14px] font-semibold transition-colors hover:text-rust";
 /** Site map for the signed-in workspace: your pages, other roles, account. */
 export function AppFooter() {
   const { role, view, go, switchRole, logout } = useApp();
+  const tr = useT();
   const cfg = ROLES[role];
   const pages: View[] = [...cfg.tabs.map((t) => t.view)];
   if (!pages.includes("checkin")) pages.push("checkin");
 
   return (
+    <Localize>
     <footer className="no-print border-t border-line-2/70 bg-paper/50 pt-14 pb-32">
       <div className="mx-auto grid max-w-[1360px] gap-12 px-5 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:px-8">
         <div>
@@ -35,7 +39,7 @@ export function AppFooter() {
           </p>
         </div>
 
-        <Col title={`${cfg.short} workspace`}>
+        <Col title={`${tr(cfg.short)} ${tr("Workspace")}`}>
           {pages.map((v) => (
             <li key={v}>
               <button
@@ -44,13 +48,13 @@ export function AppFooter() {
                 aria-current={view === v ? "page" : undefined}
                 className={cn(linkCls, view === v ? "text-rust" : "text-ink")}
               >
-                {viewLabel(role, v)}
+                {tr(viewLabel(role, v))}
               </button>
             </li>
           ))}
         </Col>
 
-        <Col title="Switch role">
+        <Col title={tr("Switch role")}>
           {ROLE_ORDER.map((r) => (
             <li key={r}>
               <button
@@ -59,14 +63,14 @@ export function AppFooter() {
                 aria-current={r === role ? "true" : undefined}
                 className={cn(linkCls, r === role ? "text-rust" : "text-ink")}
               >
-                {ROLES[r].label}
-                {r === role && <span className="ml-2 font-mono text-[10px] tracking-widest text-muted uppercase">current</span>}
+                {tr(ROLES[r].label)}
+                {r === role && <span className="ml-2 font-mono text-[10px] tracking-widest text-muted uppercase">{tr("current")}</span>}
               </button>
             </li>
           ))}
         </Col>
 
-        <Col title="Account">
+        <Col title={tr("Account")}>
           <li className="text-[13px] text-ink-2">
             <b className="text-ink">{cfg.user.name}</b>
             <br />
@@ -74,7 +78,7 @@ export function AppFooter() {
           </li>
           <li>
             <button type="button" onClick={logout} className={cn(linkCls, "inline-flex items-center gap-2 text-ink")}>
-              <LogOut className="size-4" /> Sign out
+              <LogOut className="size-4" /> {tr("Sign out")}
             </button>
           </li>
           <li>
@@ -83,7 +87,7 @@ export function AppFooter() {
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
               className={cn(linkCls, "inline-flex items-center gap-2 text-ink")}
             >
-              <ArrowUp className="size-4" /> Back to top
+              <ArrowUp className="size-4" /> {tr("Back to top")}
             </button>
           </li>
         </Col>
@@ -94,5 +98,6 @@ export function AppFooter() {
         <p className="font-mono text-[10.5px] tracking-[0.14em] text-muted uppercase">Screening aid, not a diagnosis</p>
       </div>
     </footer>
+    </Localize>
   );
 }

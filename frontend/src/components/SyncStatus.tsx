@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { useApp } from "../store";
+import { Localize } from "../lib/localize";
 import { cn } from "../utils/cn";
 
 /** Floating offline / queued-changes pill. Hidden when online with nothing queued. */
@@ -21,6 +22,7 @@ export function SyncStatus() {
   };
 
   return (
+    <Localize>
     <div className="no-print pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-3">
       <button
         type="button"
@@ -39,5 +41,6 @@ export function SyncStatus() {
         {busy ? "Syncing…" : online ? `${pendingSync} queued · sync now` : `Offline · ${pendingSync} queued`}
       </button>
     </div>
+    </Localize>
   );
 }

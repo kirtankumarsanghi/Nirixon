@@ -107,6 +107,9 @@ class Settings(BaseSettings):
     vapid_subject: str = Field(
         default="mailto:admin@nirixon.local", alias="VAPID_SUBJECT"
     )
+    # Facility contact used when dispatching a referral handoff. Blank = the
+    # referral is only marked sent (no external transmission).
+    referral_handoff_phone: str = Field(default="", alias="REFERRAL_HANDOFF_PHONE")
     # Twilio (WhatsApp/SMS/voice). Leave blank to keep the outbox adapter.
     twilio_account_sid: str = Field(default="", alias="TWILIO_ACCOUNT_SID")
     twilio_auth_token: str = Field(default="", alias="TWILIO_AUTH_TOKEN")

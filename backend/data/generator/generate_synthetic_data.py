@@ -115,6 +115,16 @@ _DEFAULT_SLOPE = 6.0
 # into the 0 / 1 / 2 response scale (0 times / 1-2 times / 3+ times).
 CUT_LOW, CUT_HIGH = -0.5, 0.6
 
+# Mastery age-effect ceiling and infant age-contextual floor (in latent SD units).
+# Once a child is past an item's typical acquisition age, age alone cannot push
+# the expected score arbitrarily high (+5 to +7 SD); capping near +1.45 SD ensures
+# that a child with a true clinical deficit (-1.0 to -2.0 SD) still exhibits
+# observable struggle (0 or 1). Conversely, for early items (*01-*03) in young
+# brackets (2mo-9mo) where milestones are interpreted age-contextually by caregivers
+# (see item_bank.py notes on CG01/SH01), a floor prevents all-zero floor collapse.
+MAX_MASTERY_BY_RANK = (1.50, 1.46, 1.42, 1.38, 1.34, 1.28)
+MIN_INFANT_EFFECT_BY_RANK = (1.42, 1.32, 1.15, -0.45, -1.25, -2.20)
+
 MOTOR_CONFOUND_PENALTY_WEIGHT = 0.6
 
 
@@ -210,8 +220,16 @@ def simulate_item_responses(
         domain_latent = latents[:, DOMAIN_INDEX[item.domain]]
 
         # Bracket-specific slope: each child's age bracket determines how
-        # sharply the item difficulty curve rises near the typical age.
-        age_effect = (corrected_age - item.typical_age_months) / child_slopes
+        # sharply the item difficulty curve rises near the typical age, with
+        # a mastery ceiling so older children with true domain deficits still
+        # show observable item-level struggle rather than linear age saturation.
+        item_rank = int(item.item_id[-2:]) - 1
+        raw_age_effect = (corrected_age - item.typical_age_months) / child_slopes
+        age_effect = np.clip(
+            raw_age_effect,
+            MIN_INFANT_EFFECT_BY_RANK[item_rank],
+            MAX_MASTERY_BY_RANK[item_rank],
+        )
         z = age_effect + domain_latent
 
         if item.motor_confound:
@@ -220,8 +238,8 @@ def simulate_item_responses(
             # who are specifically behind on motor coordination.
             z = z - MOTOR_CONFOUND_PENALTY_WEIGHT * np.clip(-motor_ability, 0, None)
 
-        # Classical test theory measurement noise: epsilon ~ N(0, sigma^2 = 0.16)
-        z = z + sampler.normal(0, 0.4, size=n)
+        # Classical test theory measurement noise: epsilon ~ N(0, sigma^2 = 0.0576)
+        z = z + sampler.normal(0, 0.24, size=n)
 
         response = np.where(z < CUT_LOW, 0, np.where(z < CUT_HIGH, 1, 2))
         responses[item.item_id] = response

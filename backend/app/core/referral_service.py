@@ -93,7 +93,8 @@ def check_worker_area_access(worker: Worker, child: ChildRecord) -> None:
     Enforce geographic area isolation.
     A community health worker sees only children in their own village/ward.
     """
-    if worker.role == "supervisor" and worker.area.strip().lower() in ("all", "*"):
+    cross_area = worker.role == "supervisor"
+    if cross_area and worker.area.strip().lower() in ("all", "*"):
         return
 
     worker_area = worker.area.strip().lower()

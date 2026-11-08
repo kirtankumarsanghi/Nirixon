@@ -29,7 +29,7 @@ os.environ["SEED_USER_PASSWORD"] = "changeme"
 
 from app.auth import create_access_token, hash_password
 from app.config import get_settings
-from app.db.models import ChildRecord, User, Worker
+from app.db.models import ChildRecord, ScreeningSession, User, Worker
 from app.db.session import (
     Base,
     configure_engine,
@@ -121,6 +121,24 @@ async def referral_env(tmp_path):
             phone="9876500003",
         )
         db.add(w_sup)
+
+        # Parent account used to exercise /api/screen/start
+        u_parent = User(
+            id="user-parent-link",
+            email="parent-link@example.com",
+            hashed_password=hash_password("changeme"),
+            role="parent",
+        )
+        db.add(u_parent)
+
+        # Clinician (internal) is cross-area oversight.
+        u_internal = User(
+            id="user-internal-1",
+            email="clinician-link@example.com",
+            hashed_password=hash_password("changeme"),
+            role="internal",
+        )
+        db.add(u_internal)
 
         # Child 1 in Ward 12
         c1 = ChildRecord(
@@ -1011,3 +1029,235 @@ async def test_supervisor_programme_analytics(referral_env):
     assert all(
         "Ward 99" not in w["village_ward"] for w in res2.json()["coverage_by_ward"]
     )
+
+
+@pytest.mark.asyncio
+async def test_child_handoff_state_reflects_referral_lifecycle(referral_env):
+    """The drawer chips are DB-backed: none -> queued on refer -> done on close."""
+    client, _ = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+
+    def _state(payload: dict) -> str:
+        return payload["handoff_state"]
+
+    # No referral yet.
+    r = await client.get("/api/chw/children/child-ward12-001", headers=h12)
+    assert r.status_code == 200, r.text
+    assert _state(r.json()) == "none"
+
+    # One-touch referral opens a referral -> queued (detail and list agree).
+    r = await client.post(
+        "/api/chw/children/child-ward12-001/one-touch-referral", headers=h12
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get("/api/chw/children/child-ward12-001", headers=h12)
+    assert _state(r.json()) == "queued"
+
+    r = await client.get("/api/chw/children", headers=h12)
+    assert r.status_code == 200, r.text
+    assert _state(r.json()[0]) == "queued"
+
+    # Recording the outcome and closing the referral -> done.
+    r = await client.post(
+        "/api/chw/children/child-ward12-001/outcome",
+        json={"outcome_notes": "Seen at DEIC", "close_referral": True},
+        headers=h12,
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get("/api/chw/children/child-ward12-001", headers=h12)
+    assert _state(r.json()) == "done"
+
+
+@pytest.mark.asyncio
+async def test_outcome_works_after_a_referral_history_exists(referral_env):
+    """Recording an outcome must not 500 when a child already has a closed
+    referral — the block used to use scalar_one_or_none() over all rows."""
+    client, _ = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+    cid = "child-ward12-001"
+
+    # First referral cycle: create then close.
+    r = await client.post(f"/api/chw/children/{cid}/one-touch-referral", headers=h12)
+    assert r.status_code == 200, r.text
+    r = await client.post(
+        f"/api/chw/children/{cid}/outcome",
+        json={"outcome_notes": "first cycle", "close_referral": True},
+        headers=h12,
+    )
+    assert r.status_code == 200, r.text
+
+    # Second cycle: a new open referral now sits alongside the closed one.
+    r = await client.post(f"/api/chw/children/{cid}/one-touch-referral", headers=h12)
+    assert r.status_code == 200, r.text
+    r = await client.get(f"/api/chw/children/{cid}", headers=h12)
+    assert r.json()["handoff_state"] == "queued"
+
+    # Previously raised MultipleResultsFound -> HTTP 500.
+    r = await client.post(
+        f"/api/chw/children/{cid}/outcome",
+        json={"outcome_notes": "second cycle", "close_referral": True},
+        headers=h12,
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get(f"/api/chw/children/{cid}", headers=h12)
+    assert r.json()["handoff_state"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_internal_clinician_sees_every_ward(referral_env):
+    """Clinicians (internal) are cross-area: they can read children in any ward."""
+    client, _ = referral_env
+    hi = _auth_header("user-internal-1", "internal")
+
+    r = await client.get("/api/chw/children", headers=hi)
+    assert r.status_code == 200, r.text
+    ids = {c["id"] for c in r.json()}
+    assert {"child-row-1", "child-row-2"} <= ids
+
+    r = await client.get("/api/chw/children/child-ward15-002", headers=hi)
+    assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
+async def test_clinician_acknowledge_persists_note_and_seen(referral_env):
+    client, _ = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+    hi = _auth_header("user-internal-1", "internal")
+
+    r = await client.post(
+        "/api/chw/children/child-ward12-001/one-touch-referral", headers=h12
+    )
+    assert r.status_code == 200, r.text
+    ref_id = r.json()["referral"]["id"]
+
+    # Clinician acknowledges: created -> seen, note persisted.
+    r = await client.post(
+        f"/api/referrals/{ref_id}/acknowledge",
+        json={"clinical_notes": "Reviewed; book DEIC assessment"},
+        headers=hi,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "seen"
+    assert body["seen_at"]
+    assert body["clinical_notes"] == "Reviewed; book DEIC assessment"
+
+    # Persisted on read.
+    r = await client.get(f"/api/referrals/{ref_id}", headers=hi)
+    assert r.status_code == 200, r.text
+    assert r.json()["clinical_notes"] == "Reviewed; book DEIC assessment"
+
+    # A note edit without a status change also persists.
+    r = await client.patch(
+        f"/api/referrals/{ref_id}",
+        json={"clinical_notes": "Updated note"},
+        headers=hi,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["clinical_notes"] == "Updated note"
+
+
+@pytest.mark.asyncio
+async def test_referral_list_includes_sub_ward_children(referral_env):
+    """GET /api/referrals must include children in a worker's sub-wards, matching
+    the caseload's area rule (e.g. 'Ward 12 - Sector B' for area 'Ward 12')."""
+    client, factory = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+
+    async with factory() as db:
+        db.add(
+            ChildRecord(
+                id="child-subward",
+                pseudonymous_id="child-ward12-sub",
+                age_bracket="12-18m",
+                village_ward="Ward 12 - Sector B",
+                consent_given=True,
+                opt_in=True,
+            )
+        )
+        await db.commit()
+
+    r = await client.post(
+        "/api/chw/children/child-ward12-sub/one-touch-referral", headers=h12
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.get("/api/referrals", headers=h12)
+    assert r.status_code == 200, r.text
+    assert "child-subward" in {ref["child_id"] for ref in r.json()}
+
+
+@pytest.mark.asyncio
+async def test_send_referral_marks_sent_and_uses_provider(referral_env):
+    """Send advances created -> sent and hands the summary to the provider.
+    The default test transport is the outbox, so nothing leaves the machine."""
+    client, _ = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+
+    r = await client.post(
+        "/api/chw/children/child-ward12-001/one-touch-referral", headers=h12
+    )
+    assert r.status_code == 200, r.text
+    ref_id = r.json()["referral"]["id"]
+
+    r = await client.post(
+        f"/api/referrals/{ref_id}/send",
+        json={"channel": "whatsapp", "recipient": "+911234567890"},
+        headers=h12,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["referral"]["status"] == "sent"
+    assert body["referral"]["sent_at"]
+    assert body["provider_id"] == "outbox:whatsapp"
+    assert body["dispatched"] is False
+    assert "outbox" in body["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_send_referral_without_contact_only_marks_sent(referral_env):
+    client, _ = referral_env
+    h12 = _auth_header("user-chw-ward12", "chw")
+
+    r = await client.post(
+        "/api/chw/children/child-ward12-001/one-touch-referral", headers=h12
+    )
+    assert r.status_code == 200, r.text
+    ref_id = r.json()["referral"]["id"]
+
+    r = await client.post(f"/api/referrals/{ref_id}/send", json={}, headers=h12)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["referral"]["status"] == "sent"
+    assert body["provider_id"] is None
+    assert body["detail"].startswith("Marked sent")
+
+
+@pytest.mark.asyncio
+async def test_screen_start_links_completed_session_to_child_record(referral_env):
+    """A screening started for a caseload child links to that ChildRecord so its
+    completed per-domain scores surface on the child's card."""
+    client, factory = referral_env
+    hp = _auth_header("user-parent-link", "parent")
+
+    r = await client.post(
+        "/api/screen/start",
+        json={
+            "child_ref": "child-ward12-001",
+            "corrected_age_months": 72,
+            "module": "B",
+            "consent_given": True,
+        },
+        headers=hp,
+    )
+    assert r.status_code == 200, r.text
+    session_id = r.json()["session_id"]
+
+    async with factory() as db:
+        row = await db.get(ScreeningSession, session_id)
+        assert row is not None
+        assert row.child_ref == "child-ward12-001"
+        assert row.child_record_id == "child-row-1"

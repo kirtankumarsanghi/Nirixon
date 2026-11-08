@@ -33,7 +33,14 @@ sys.path.insert(
         os.path.join(os.path.dirname(__file__), "..", "..", "app", "core", "module_b")
     ),
 )
-from router_b import DOMAINS, LABELS, RULEOUTS, DomainRouter, rule_scan
+from router_b import (
+    DOMAINS,
+    LABELS,
+    RULEOUTS,
+    DomainRouter,
+    rule_scan,
+    strip_fine_clauses,
+)
 
 DATA = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.abspath(
@@ -186,13 +193,15 @@ def main():
             ),
         ]
     )
-    Xtr = vec.fit_transform(tr.text)
+    tr_clean = [strip_fine_clauses(str(t)) for t in tr.text]
+    va_clean = [strip_fine_clauses(str(t)) for t in va.text]
+    Xtr = vec.fit_transform(tr_clean)
     clf = OneVsRestClassifier(
         LogisticRegression(
-            C=6.0,
+            C=2.0,
             max_iter=3000,
             solver="liblinear",
-            class_weight="balanced",
+            class_weight={0: 1.0, 1: 2.0},
             random_state=SEED,
         ),
         n_jobs=1,
@@ -201,11 +210,11 @@ def main():
     print("fit done %.1fs" % (time.time() - t0))
 
     # thresholds tuned on val only
-    Pv = clf.predict_proba(vec.transform(va.text))
+    Pv = clf.predict_proba(vec.transform(va_clean))
     thr = {}
     for j, l in enumerate(LABELS):
         best, bt = -1, 0.5
-        for t in np.arange(0.05, 0.86, 0.025):
+        for t in np.arange(0.05, 0.95, 0.025):
             f = prf(va[l].values, (Pv[:, j] >= t).astype(int))[2]
             if f > best:
                 best, bt = f, float(t)

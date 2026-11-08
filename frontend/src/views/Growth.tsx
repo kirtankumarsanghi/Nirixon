@@ -11,6 +11,7 @@ import {
   fmtDate,
   zToPercentile,
 } from "../lib/model";
+import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -25,6 +26,7 @@ const pct = (z: number) => `${zToPercentile(z).toFixed(1)}%`;
 
 export function Growth() {
   const { checkIns, go } = useApp();
+  const tr = useT();
   const ordered = [...checkIns].reverse();
   const n = ordered.length;
   const xs = ordered.map((_, i) => (n === 1 ? PAD.l + PW / 2 : PAD.l + (i * PW) / (n - 1)));
@@ -48,12 +50,12 @@ export function Growth() {
 
   return (
     <Page>
-      <Eyebrow index="01">Growth over time</Eyebrow>
+      <Eyebrow index="01">{tr("Growth over time")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
         <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
-          Aarav’s <span className="text-sea">path,</span>
+          Aarav’s <span className="text-sea">{tr("path,")}</span>
           <br />
-          not a snapshot.
+          {tr("not a snapshot.")}
         </Display>
         <p className="max-w-[360px] text-[15px] leading-relaxed text-ink-2">
           Each line is one developmental area, scored in standard deviations from the expected range. Hover the chart to compare check-ins.
@@ -70,9 +72,9 @@ export function Growth() {
         ].map((t, i) => (
           <Reveal key={t.k} delay={i * 70}>
             <div className="h-full rounded-[28px] border border-line-2 bg-card p-6">
-              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">{t.k}</p>
+              <p className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">{tr(t.k)}</p>
               <p className="mt-3 font-display text-[clamp(40px,4.4vw,64px)] leading-none">{t.v}</p>
-              <p className="mt-2 text-[12px] text-ink-2">{t.s}</p>
+              <p className="mt-2 text-[12px] text-ink-2">{tr(t.s)}</p>
             </div>
           </Reveal>
         ))}
@@ -224,7 +226,7 @@ export function Growth() {
         <Reveal>
           <div className="h-full rounded-[32px] bg-night p-7 text-paper sm:p-9">
             <Eyebrow tone="peach" index="02">
-              Since the previous check-in
+              {tr("Since the previous check-in")}
             </Eyebrow>
             {prev && shared.length > 0 ? (
               <ul className="mt-6 divide-y divide-white/10">
@@ -259,7 +261,7 @@ export function Growth() {
                 The last two check-ins cover different areas, so there is nothing to compare yet.
               </p>
             ) : (
-              <p className="mt-6 text-paper/70">Complete one more check-in to see changes.</p>
+              <p className="mt-6 text-paper/70">{tr("Complete one more check-in to see changes.")}</p>
             )}
           </div>
         </Reveal>
@@ -267,7 +269,7 @@ export function Growth() {
         <Reveal delay={100}>
           <div className="h-full rounded-[32px] border border-line-2 bg-card p-7 sm:p-9">
             <Eyebrow index="03" tone="muted">
-              Timeline
+              {tr("Timeline")}
             </Eyebrow>
             <ol className="mt-6 space-y-0">
               {checkIns.map((c, i) => {
@@ -298,10 +300,10 @@ export function Growth() {
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Btn size="lg" onClick={() => go("checkin")}>
-          Start a new check-in <ArrowRight className="size-4" />
+          {tr("Start a new check-in")} <ArrowRight className="size-4" />
         </Btn>
         <Btn size="lg" variant="light" onClick={() => go("share")}>
-          Share this progress
+          {tr("Share this progress")}
         </Btn>
       </div>
     </Page>

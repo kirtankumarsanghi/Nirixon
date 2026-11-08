@@ -11,20 +11,22 @@ import {
 } from "lucide-react";
 import { maternalApi } from "../api/client";
 import type { EpdsQuestion, EpdsQuestionsResponse, EpdsResult } from "../api/types";
-import { Btn, Chip, Display, Eyebrow, Page, Reveal } from "../components/ui";
+import { Btn, Chip, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
+import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
 type Phase = "intro" | "quiz" | "result";
 
 const TIER_STYLE = {
-  Typical: { hex: "#8fbf5a", label: "Doing okay" },
-  Monitor: { hex: "#e8b13a", label: "Worth a check-in" },
-  Refer: { hex: "#ee6a4f", label: "Please talk to someone" },
+  Typical: { hex: "#8fbf5a", glow: "rgba(143,191,90,0.45)", label: "Doing okay" },
+  Monitor: { hex: "#e8b13a", glow: "rgba(232,177,58,0.45)", label: "Worth a check-in" },
+  Refer: { hex: "#ee6a4f", glow: "rgba(238,106,79,0.5)", label: "Please talk to someone" },
 } as const;
 
 export function Wellbeing() {
   const { go, showToast } = useApp();
+  const tr = useT();
   const [phase, setPhase] = useState<Phase>("intro");
   const [data, setData] = useState<EpdsQuestionsResponse | null>(null);
   const [index, setIndex] = useState(0);
@@ -100,10 +102,12 @@ export function Wellbeing() {
     const style = TIER_STYLE[result.classification];
     return (
       <Page>
-        <Eyebrow index="01">Caregiver wellbeing · EPDS</Eyebrow>
+        <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
         <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
           <Display as="h1" className="text-[clamp(48px,7vw,108px)]">
-            You matter <span className="text-sea">too.</span>
+            {tr("Your wellbeing.")}
+            <br />
+            <span className="text-sea">{tr("Private check-in.")}</span>
           </Display>
           <p className="max-w-[380px] text-[15px] leading-relaxed text-ink-2">
             This is a wellbeing screening for you, not a diagnosis of your child. Your answers stay private.
@@ -113,10 +117,13 @@ export function Wellbeing() {
         <section className="mt-10 overflow-hidden rounded-[44px] bg-night p-7 text-paper sm:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">
             <div>
-              <Eyebrow tone="peach" index="02">Your result</Eyebrow>
-              <p className="mt-4 font-display text-[clamp(52px,7vw,96px)] leading-[0.9] uppercase" style={{ color: style.hex }}>
-                {style.label}
-              </p>
+              <Eyebrow tone="peach" index="02">{tr("Your result")}</Eyebrow>
+              <div className="mt-4 flex items-center gap-4">
+                <GlowDot hex={style.hex} glow={style.glow} size={36} />
+                <p className="font-display text-[clamp(48px,6.5vw,92px)] leading-[0.9] uppercase" style={{ color: style.hex }}>
+                  {style.label}
+                </p>
+              </div>
               <p className="mt-3 font-mono text-[12px] tracking-[0.18em] text-paper/55 uppercase">
                 EPDS total {result.total_score} / 30 · {result.classification}
               </p>
@@ -129,13 +136,13 @@ export function Wellbeing() {
               )}
             </div>
             <div className="rounded-[30px] border border-white/10 bg-white/[0.06] p-6">
-              <p className="font-mono text-[10px] font-semibold tracking-[0.2em] text-peach uppercase">Support</p>
+              <p className="font-mono text-[10px] font-semibold tracking-[0.2em] text-peach uppercase">{tr("Support")}</p>
               <ul className="mt-4 space-y-2.5">
                 {result.helplines.map((line) => (
                   <li key={line.number} className="flex items-center justify-between gap-3 text-[13px]">
                     <span><b className="font-semibold">{line.name}</b><span className="block text-[11px] text-paper/55">{line.available}</span></span>
                     <a href={`tel:${line.number.replace(/[^0-9+]/g, "")}`} className="inline-flex items-center gap-1.5 rounded-full bg-peach px-3 py-1.5 text-[11px] font-bold text-night">
-                      <PhoneCall className="size-3" /> Call
+                      <PhoneCall className="size-3" /> {tr("Call")}
                     </a>
                   </li>
                 ))}
@@ -146,7 +153,7 @@ export function Wellbeing() {
 
         <Reveal className="mt-4">
           <section className="rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="03" tone="muted">What may help</Eyebrow>
+            <Eyebrow index="03" tone="muted">{tr("What may help")}</Eyebrow>
             <ul className="mt-5 space-y-3">
               {result.recommendations.map((item) => (
                 <li key={item} className="flex items-start gap-3 text-[14px] leading-relaxed text-ink-2">
@@ -158,9 +165,9 @@ export function Wellbeing() {
               ))}
             </ul>
             <div className="mt-7 flex flex-wrap gap-2.5">
-              <Btn onClick={restart}><RotateCcw className="size-4" /> Check in again</Btn>
-              <Btn variant="light" onClick={() => go("home")}><ArrowLeft className="size-4" /> Back home</Btn>
-              <Btn variant="soft" onClick={() => go("help")}>Find help <ArrowRight className="size-4" /></Btn>
+              <Btn onClick={restart}><RotateCcw className="size-4" /> {tr("Check in again")}</Btn>
+              <Btn variant="light" onClick={() => go("home")}><ArrowLeft className="size-4" /> {tr("Back home")}</Btn>
+              <Btn variant="soft" onClick={() => go("help")}>{tr("Find help")} <ArrowRight className="size-4" /></Btn>
             </div>
             <p className="mt-5 text-[11.5px] leading-relaxed text-muted">
               EPDS wording and scoring are pending clinical review. This screening never replaces a conversation with a clinician.
@@ -175,7 +182,7 @@ export function Wellbeing() {
     const progress = Math.round((index / data.questions.length) * 100);
     return (
       <Page>
-        <Eyebrow index="01">Caregiver wellbeing · EPDS</Eyebrow>
+        <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
         <div className="mt-5 grid items-start gap-x-14 gap-y-10 lg:grid-cols-[1fr_430px]">
           <div>
             <Display as="h1" className="text-[clamp(44px,6vw,92px)]">
@@ -190,7 +197,7 @@ export function Wellbeing() {
 
           <div className="rounded-[38px] border border-line-2 bg-card p-6 sm:p-8 lg:sticky lg:top-28">
             <div className="flex items-center justify-between text-[12px] font-semibold">
-              <span>Question {index + 1} of {data.questions.length}</span>
+              <span>{tr("Question {n} of {total}", { n: index + 1, total: data.questions.length })}</span>
               <span className="font-mono text-[11px] text-muted">{progress}%</span>
             </div>
             <div className="mt-2 h-1.5 rounded-full bg-sand">
@@ -226,15 +233,15 @@ export function Wellbeing() {
 
             <div className="mt-6 flex items-center justify-between gap-3">
               <Btn variant="light" size="sm" onClick={() => setIndex((value) => Math.max(0, value - 1))} disabled={index === 0}>
-                <ArrowLeft className="size-3.5" /> Back
+                <ArrowLeft className="size-3.5" /> {tr("Back")}
               </Btn>
               {index + 1 === data.questions.length ? (
                 <Btn size="sm" onClick={() => void submit()} disabled={busy}>
-                  {busy ? <><Loader2 className="size-3.5 animate-spin" /> Saving…</> : "See result"}
+                  {busy ? <><Loader2 className="size-3.5 animate-spin" /> {tr("Saving…")}</> : tr("See result")}
                 </Btn>
               ) : (
                 <Btn size="sm" variant="light" onClick={() => setIndex((value) => value + 1)}>
-                  Next <ArrowRight className="size-3.5" />
+                  {tr("Next")} <ArrowRight className="size-3.5" />
                 </Btn>
               )}
             </div>
@@ -247,12 +254,12 @@ export function Wellbeing() {
 
   return (
     <Page>
-      <Eyebrow index="01">Caregiver wellbeing · EPDS</Eyebrow>
+      <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
-          Your wellbeing.
+          {tr("Your wellbeing.")}
           <br />
-          <span className="text-sea">Not an afterthought.</span>
+          <span className="text-sea">{tr("Not an afterthought.")}</span>
         </Display>
         <p className="max-w-[390px] text-[15px] leading-relaxed text-ink-2">
           A short, private check-in about how you have been feeling over the past week. It is separate from your child's screening and never shown to them.
@@ -261,16 +268,16 @@ export function Wellbeing() {
 
       <div className="mt-10 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-[38px] border border-line-2 bg-card p-7 sm:p-9">
-          <Eyebrow index="02" tone="muted">Before you start</Eyebrow>
+          <Eyebrow index="02" tone="muted">{tr("Before you start")}</Eyebrow>
           <ul className="mt-6 space-y-4 text-[14px] leading-relaxed text-ink-2">
-            <li className="flex items-start gap-3"><HeartHandshake className="mt-0.5 size-4 shrink-0 text-rust" /> 10 short questions, about 3 minutes.</li>
-            <li className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-rust" /> If you are in immediate danger, call 112.</li>
-            <li className="flex items-start gap-3"><ArrowRight className="mt-0.5 size-4 shrink-0 text-rust" /> You can stop at any time. Nothing is sent until you choose to save.</li>
+            <li className="flex items-start gap-3"><HeartHandshake className="mt-0.5 size-4 shrink-0 text-rust" /> {tr("10 short questions, about 3 minutes.")}</li>
+            <li className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-rust" /> {tr("If you are in immediate danger, call 112.")}</li>
+            <li className="flex items-start gap-3"><ArrowRight className="mt-0.5 size-4 shrink-0 text-rust" /> {tr("You can stop at any time. Nothing is sent until you choose to save.")}</li>
           </ul>
           <label className="mt-7 flex items-start gap-3 rounded-2xl border border-line-2 bg-card-2 p-4">
             <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 size-4 accent-[var(--color-rust)]" />
             <span className="text-[12px] leading-relaxed text-ink-2">
-              <b className="text-ink">I agree to save my answers.</b> They are used only to show me this wellbeing result and support options.
+              <b className="text-ink">{tr("I agree to save my answers.")}</b> They are used only to show me this wellbeing result and support options.
             </span>
           </label>
           <div className="mt-6 flex flex-wrap gap-2.5">
@@ -282,10 +289,10 @@ export function Wellbeing() {
                 setPhase("quiz");
               }}
             >
-              Start wellbeing check <ArrowRight className="size-4" />
+              {tr("Start wellbeing check")} <ArrowRight className="size-4" />
             </Btn>
             <Btn variant="light" size="lg" onClick={() => go("home")}>
-              <ArrowLeft className="size-4" /> Back home
+              <ArrowLeft className="size-4" /> {tr("Back home")}
             </Btn>
           </div>
           {error && <p role="alert" className="mt-4 rounded-xl bg-brick-bg px-3 py-2 text-[12.5px] font-semibold text-brick">{error}</p>}
@@ -294,7 +301,7 @@ export function Wellbeing() {
         <section className="relative overflow-hidden rounded-[38px] bg-night p-7 text-paper sm:p-9">
           <HeartHandshake className="size-8 text-peach" />
           <p className="mt-6 font-display text-[clamp(34px,4vw,56px)] leading-[0.95] uppercase">
-            Asking for help is a strength.
+            {tr("Asking for help is a strength.")}
           </p>
           <p className="mt-4 text-[13.5px] leading-relaxed text-paper/70">
             Many caregivers feel overwhelmed, anxious or low. Support is available and confidential.

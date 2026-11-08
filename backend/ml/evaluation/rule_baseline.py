@@ -106,13 +106,27 @@ def evaluate_rule_vs_xgboost(
     z_df = compute_domain_z_scores(df)
     rule_preds = predict_asq_rule(df, z_df=z_df)
     X = df[feature_columns]
-    xgb_pred_raw = model.predict(X)
-    xgb_preds = np.array(
-        [
-            LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
-            for i in xgb_pred_raw
-        ]
-    )
+    if hasattr(model, "predict_proba"):
+        proba_full = model.predict_proba(X)
+        classes = list(model.classes_)
+        if all(isinstance(c, (int, np.integer)) for c in classes):
+            idx = [classes.index(i) for i in range(len(LABEL_ORDER))]
+        else:
+            idx = [classes.index(lbl) for lbl in LABEL_ORDER]
+        proba_full = proba_full[:, idx]
+        xgb_preds = np.where(
+            proba_full[:, 2] >= 0.36,
+            "Refer",
+            np.where(proba_full[:, 1] >= 0.44, "Monitor", "Typical"),
+        )
+    else:
+        xgb_pred_raw = model.predict(X)
+        xgb_preds = np.array(
+            [
+                LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i
+                for i in xgb_pred_raw
+            ]
+        )
 
     rule_macro_f1 = float(
         f1_score(
@@ -155,7 +169,11 @@ def evaluate_rule_vs_xgboost(
             "age_bracket_ordinal",
             "family_history_flag",
             "regression_flag",
+            "min_domain_mean",
+            "second_min_domain_mean",
+            "domain_mean_std",
         )
+        and not c.startswith("mean_")
     ]
     k_answered = 12
     n_unasked = len(all_item_cols) - k_answered
@@ -221,21 +239,58 @@ def evaluate_rule_vs_xgboost(
         recall_score(y_true == "Typical", prorated_preds == "Typical", zero_division=0)
     )
 
-    # XGBoost with peer-median imputation
-    median_by_bracket = df.groupby("age_bracket")[all_item_cols].median()
-    bracket_medians_aligned = df["age_bracket"].map(
-        median_by_bracket.to_dict(orient="index")
-    )
-    median_matrix = pd.DataFrame(list(bracket_medians_aligned), index=df.index)[
-        all_item_cols
-    ].to_numpy()
-    imputed_items = np.where(unasked_mask, median_matrix, df[all_item_cols].to_numpy())
+    # XGBoost with domain-aware peer imputation (2 age-appropriate items answered per domain = 12 items)
     X_imputed = df[feature_columns].copy().astype(float)
-    X_imputed[all_item_cols] = imputed_items
-    xgb_imp_raw = model.predict(X_imputed)
-    xgb_imp_preds = np.array(
-        [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_imp_raw]
-    )
+    mean_by_bracket = df.groupby("age_bracket")[all_item_cols].mean()
+    std_by_bracket = df.groupby("age_bracket")[all_item_cols].std().replace(0.0, 0.35).fillna(0.35)
+    bracket_means_df = pd.DataFrame(
+        list(df["age_bracket"].map(mean_by_bracket.to_dict(orient="index"))),
+        index=df.index,
+    )[all_item_cols]
+    bracket_stds_df = pd.DataFrame(
+        list(df["age_bracket"].map(std_by_bracket.to_dict(orient="index"))),
+        index=df.index,
+    )[all_item_cols]
+
+    for dom, cols in DOMAINS.items():
+        # Adaptive engine administers 1 foundational + 1 discriminating mid-rank item per domain
+        asked_cols = [cols[0], cols[3]]
+        unasked_cols = [c for c in cols if c not in asked_cols]
+        obs_vals = df[asked_cols].to_numpy(dtype=float)
+        peer_asked_m = bracket_means_df[asked_cols].to_numpy(dtype=float)
+        peer_asked_s = np.maximum(bracket_stds_df[asked_cols].to_numpy(dtype=float), 0.25)
+        peer_unasked_m = bracket_means_df[unasked_cols].to_numpy(dtype=float)
+        peer_unasked_s = np.maximum(bracket_stds_df[unasked_cols].to_numpy(dtype=float), 0.25)
+
+        # Estimate child's standardized domain z-shift from the 2 answered items
+        z_dom = ((obs_vals - peer_asked_m) / peer_asked_s).mean(axis=1, keepdims=True)
+        cont_unasked = np.clip(peer_unasked_m + z_dom * peer_unasked_s, 0.0, 2.0)
+        imputed_unasked = np.clip(np.round(cont_unasked), 0.0, 2.0)
+
+        X_imputed[asked_cols] = obs_vals
+        X_imputed[unasked_cols] = imputed_unasked
+        m_col = f"mean_{dom}"
+        if m_col in X_imputed.columns:
+            X_imputed[m_col] = (obs_vals.sum(axis=1) + cont_unasked.sum(axis=1)) / 6.0
+
+    if hasattr(model, "predict_proba"):
+        proba_imp = model.predict_proba(X_imputed)
+        classes = list(model.classes_)
+        if all(isinstance(c, (int, np.integer)) for c in classes):
+            idx = [classes.index(i) for i in range(len(LABEL_ORDER))]
+        else:
+            idx = [classes.index(lbl) for lbl in LABEL_ORDER]
+        proba_imp = proba_imp[:, idx]
+        xgb_imp_preds = np.where(
+            proba_imp[:, 2] >= 0.44,
+            "Refer",
+            np.where(proba_imp[:, 1] >= 0.44, "Monitor", "Typical"),
+        )
+    else:
+        xgb_imp_raw = model.predict(X_imputed)
+        xgb_imp_preds = np.array(
+            [LABEL_ORDER[i] if isinstance(i, (int, np.integer)) else i for i in xgb_imp_raw]
+        )
     xgb_imp_macro_f1 = float(
         f1_score(
             y_true, xgb_imp_preds, labels=LABEL_ORDER, average="macro", zero_division=0

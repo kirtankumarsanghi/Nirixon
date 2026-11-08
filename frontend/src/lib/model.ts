@@ -2,6 +2,8 @@
 /*  Nirixon — domain model, tier metadata and presentation helpers     */
 /* ------------------------------------------------------------------ */
 
+import { getActiveLang, translate } from "./i18n";
+
 export type Tier = "Typical" | "Monitor" | "Refer";
 
 /** A per-domain score map. Keys are the domains actually present in the data:
@@ -116,6 +118,22 @@ export const DOMAINS: Record<string, DomainMeta> = {
   },
 };
 
+/** Turn selected data properties into getters that follow the active language. */
+function localizeKeys<T extends object>(meta: T, keys: readonly (keyof T)[]) {
+  const source = Object.fromEntries(keys.map((key) => [key, meta[key]])) as Record<string, string>;
+  for (const key of keys) {
+    Object.defineProperty(meta, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => translate(getActiveLang(), source[key as string]),
+    });
+  }
+}
+
+for (const meta of Object.values(DOMAINS)) {
+  localizeKeys(meta, ["label", "plain", "blurb", "activity"]);
+}
+
 export const TIER_META: Record<
   Tier,
   { title: string; hint: string; text: string; dot: string; soft: string; hex: string; hexLight: string; glow: string; summary: string; next: string }
@@ -157,6 +175,10 @@ export const TIER_META: Record<
     next: "Book a visit with a paediatrician or your nearest DEIC and share this summary.",
   },
 };
+
+for (const meta of Object.values(TIER_META)) {
+  localizeKeys(meta, ["title", "hint", "summary", "next"]);
+}
 
 /** The domains present in a score map, in insertion order. */
 export function domainKeys(scores: Scores | undefined | null): string[] {
@@ -235,6 +257,8 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
   let probs = { typical: pT / sum, monitor: pM / sum, refer: pR / sum };
 
   const safety = regression || min < -2;
+  const lang = getActiveLang();
+  const area = DOMAINS[lowest]?.label ?? lowest;
   let tier: Tier;
   let reason: string;
   if (safety) {
@@ -244,8 +268,8 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
     const o = probs.typical + probs.monitor || 1;
     probs = { refer, typical: (rest * probs.typical) / o, monitor: (rest * probs.monitor) / o };
     reason = regression
-      ? "A lost skill was reported. The safety rule refers directly and skips the model."
-      : `${DOMAINS[lowest]?.label ?? lowest} is at ${min.toFixed(1)} SD — below the −2.0 safety line.`;
+      ? translate(lang, "A lost skill was reported. The safety rule refers directly and skips the model.")
+      : translate(lang, "{area} is at {n} SD — below the −2.0 safety line.", { area, n: min.toFixed(1) });
   } else {
     tier =
       probs.typical >= probs.monitor && probs.typical >= probs.refer
@@ -255,10 +279,10 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
           : "Monitor";
     reason =
       tier === "Typical"
-        ? "Every area sits inside the expected range."
+        ? translate(lang, "Every area sits inside the expected range.")
         : tier === "Monitor"
-          ? `${DOMAINS[lowest]?.label ?? lowest} is close to the line (${min.toFixed(1)} SD).`
-          : "The model leans towards referral based on the pattern of scores.";
+          ? translate(lang, "{area} is close to the line ({n} SD).", { area, n: min.toFixed(1) })
+          : translate(lang, "The model leans towards referral based on the pattern of scores.");
   }
   return { tier, probs, min, lowest, mean, safety, reason };
 }
@@ -266,26 +290,33 @@ export function evaluate(scores: Scores, regression = false): Evaluation {
 export function buildSummary(ci: CheckIn): string {
   const ev = evaluate(ci.scores, ci.regression);
   const keys = domainKeys(ci.scores);
+  const lang = getActiveLang();
+  const tr = (text: string, vars?: Record<string, string | number>) => translate(lang, text, vars);
   return [
-    "Nirixon developmental check-in summary",
-    `Child: ${ci.child} · ${ci.ageMonths} months · Module ${ci.module ?? (ci.ageMonths >= 60 ? "B" : "A")}`,
-    `Date: ${fmtDate(ci.date, true)}`,
-    `Overall: ${ev.tier} (${TIER_META[ev.tier].hint})`,
+    tr("Nirixon developmental check-in summary"),
+    tr("Child: {child} · {age} months · Module {module}", {
+      child: ci.child,
+      age: ci.ageMonths,
+      module: ci.module ?? (ci.ageMonths >= 60 ? "B" : "A"),
+    }),
+    tr("Date: {date}", { date: fmtDate(ci.date, true) }),
+    tr("Overall: {tier} ({hint})", { tier: tr(ev.tier), hint: TIER_META[ev.tier].hint }),
     "",
-    "Areas in this check-in:",
+    tr("Areas in this check-in:"),
     ...keys.map((k) => `• ${DOMAINS[k]?.label ?? k}: ${domainStatus(ci.scores[k]).label}`),
     "",
     TIER_META[ev.tier].next,
     "",
-    "This is a screening summary for discussion — not a medical diagnosis.",
+    tr("This is a screening summary for discussion — not a medical diagnosis."),
   ].join("\n");
 }
 
 /** `hex` is for fills and dots on dark surfaces; `ink` is theme-aware text for light or card surfaces. */
 export function domainStatus(z: number): { level: 0 | 1 | 2; label: string; text: string; hex: string; ink: string } {
-  if (z >= -1) return { level: 0, label: "Going well", text: "text-moss", hex: "#46692a", ink: "var(--color-moss)" };
-  if (z >= -2) return { level: 1, label: "Keep an eye on this", text: "text-amber", hex: "#b8801c", ink: "var(--color-amber)" };
-  return { level: 2, label: "Worth discussing", text: "text-brick", hex: "#c8452f", ink: "var(--color-brick)" };
+  const lang = getActiveLang();
+  if (z >= -1) return { level: 0, label: translate(lang, "Going well"), text: "text-moss", hex: "#46692a", ink: "var(--color-moss)" };
+  if (z >= -2) return { level: 1, label: translate(lang, "Keep an eye on this"), text: "text-amber", hex: "#b8801c", ink: "var(--color-amber)" };
+  return { level: 2, label: translate(lang, "Worth discussing"), text: "text-brick", hex: "#c8452f", ink: "var(--color-brick)" };
 }
 
 /* ----------------------------- check-ins ----------------------------- */
@@ -346,7 +377,11 @@ export const SECTORS: { id: Sector; worker: string; title: string }[] = [
 
 export interface Child {
   id: string;
+  /** Human-readable pseudonymous code (e.g. "demo-ward12-001"). */
+  code?: string;
   sector: Sector;
+  /** Raw village/ward label from the child record (e.g. "Ward 12 - Sector B"). */
+  ward?: string;
   ageMonths: number;
   status: ChildStatus;
   scores?: Scores;
@@ -356,6 +391,11 @@ export interface Child {
   handoff: "none" | "queued" | "done";
   /** Next follow-up due (ISO), from the child record; drives calendar reminders. */
   followUpDueAt?: string | null;
+}
+
+/** Human-readable label for a child: the pseudonymous code, else a short id. */
+export function childLabel(child: { code?: string; id: string }): string {
+  return child.code ?? child.id.slice(0, 8);
 }
 
 export const AGE_BANDS = ["0–12m", "12–24m", "24–36m", "36–48m", "48–60m", "60–84m", "84–108m", "108–144m"];
@@ -377,3 +417,7 @@ export const STATUS_META: Record<ChildStatus, { label: string; long: string; hex
   overdue: { label: "Overdue", long: "Home visit due", hex: "#9a6aa6", soft: "bg-lilac-bg", text: "text-lilac" },
   unscreened: { label: "Unscreened", long: "Needs first check", hex: "#cdb98c", soft: "bg-sand", text: "text-ink-2" },
 };
+
+for (const meta of Object.values(STATUS_META)) {
+  localizeKeys(meta, ["label", "long"]);
+}

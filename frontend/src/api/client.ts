@@ -28,6 +28,9 @@ import type {
   ReferralCreateRequest,
   ReferralUpdateRequest,
   ReferralOutcomeRequest,
+  ReferralAcknowledgeRequest,
+  ReferralDispatchRequest,
+  ReferralDispatchResponse,
   ReferralSummary,
   TierCounts,
   CHWAnalytics,
@@ -408,14 +411,24 @@ export const api = {
 export const facilitiesApi = {
   /**
    * Public, read-only reference data: nearest hospitals/clinics for a PIN.
-   * `ageGroup` ranks developmental/early-intervention services first.
+   * `ageGroup` and `result` rank developmental/early-intervention services first.
    */
   get(
     pin: string,
-    opts: { ageGroup?: "0-5" | "6-12"; limit?: number; verifiedOnly?: boolean } = {},
+    opts: {
+      ageGroup?: "0-5" | "6-12";
+      result?: "typical" | "monitor" | "refer";
+      types?: string[];
+      limit?: number;
+      verifiedOnly?: boolean;
+    } = {},
   ): Promise<FacilitiesResponse> {
     const q = new URLSearchParams({ pin });
     if (opts.ageGroup) q.set("age_group", opts.ageGroup);
+    if (opts.result) q.set("result", opts.result);
+    if (opts.types && opts.types.length > 0) {
+      for (const t of opts.types) q.append("type", t);
+    }
     if (opts.limit != null) q.set("limit", String(opts.limit));
     if (opts.verifiedOnly) q.set("verified_only", "true");
     return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
@@ -423,10 +436,20 @@ export const facilitiesApi = {
   /** Same directory around explicit coordinates (GPS "near me"). */
   getNear(
     coords: { lat: number; lng: number },
-    opts: { ageGroup?: "0-5" | "6-12"; limit?: number; verifiedOnly?: boolean } = {},
+    opts: {
+      ageGroup?: "0-5" | "6-12";
+      result?: "typical" | "monitor" | "refer";
+      types?: string[];
+      limit?: number;
+      verifiedOnly?: boolean;
+    } = {},
   ): Promise<FacilitiesResponse> {
     const q = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng) });
     if (opts.ageGroup) q.set("age_group", opts.ageGroup);
+    if (opts.result) q.set("result", opts.result);
+    if (opts.types && opts.types.length > 0) {
+      for (const t of opts.types) q.append("type", t);
+    }
     if (opts.limit != null) q.set("limit", String(opts.limit));
     if (opts.verifiedOnly) q.set("verified_only", "true");
     return request<FacilitiesResponse>(`/api/facilities?${q.toString()}`);
@@ -517,6 +540,18 @@ export const referralApi = {
   },
   recordOutcome(id: string, data: ReferralOutcomeRequest): Promise<ReferralRecord> {
     return request<ReferralRecord>(`/api/referrals/${encodeURIComponent(id)}/outcome`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  acknowledgeReferral(id: string, data: ReferralAcknowledgeRequest): Promise<ReferralRecord> {
+    return request<ReferralRecord>(`/api/referrals/${encodeURIComponent(id)}/acknowledge`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  dispatchReferral(id: string, data: ReferralDispatchRequest): Promise<ReferralDispatchResponse> {
+    return request<ReferralDispatchResponse>(`/api/referrals/${encodeURIComponent(id)}/send`, {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -686,6 +721,31 @@ export interface EvidenceClassMetrics {
   support: number;
 }
 
+export interface EvidenceNullControl {
+  control: string;
+  refer_auprc: number;
+  macro_f1: number;
+  balanced_accuracy: number;
+  note: string;
+}
+
+export interface EvidenceRuleBaseline {
+  asq_rule_macro_f1: number;
+  asq_rule_refer_sensitivity: number;
+  asq_rule_refer_precision: number;
+  asq_rule_typical_specificity: number;
+  xgb_macro_f1: number;
+  xgb_refer_sensitivity: number;
+  xgb_refer_precision: number;
+  xgb_typical_specificity: number;
+  sparse_naive_macro_f1: number;
+  sparse_prorated_macro_f1?: number;
+  sparse_prorated_refer_precision: number;
+  sparse_xgb_macro_f1?: number;
+  sparse_xgb_typical_specificity: number;
+  sparse_xgb_refer_precision: number;
+}
+
 export interface EvidenceResponse {
   generated_at: string;
   disclaimer: string;
@@ -707,6 +767,12 @@ export interface EvidenceResponse {
     latency_p50_ms: number;
     latency_p95_ms: number;
     latency_p99_ms: number;
+    null_controls?: EvidenceNullControl[];
+    rule_baseline?: EvidenceRuleBaseline | null;
+    fairness_status?: string;
+    fairness_gap?: number;
+    operating_point_refer_recall?: number | null;
+    operating_point_threshold?: number | null;
   };
   module_b: {
     n_test: number;

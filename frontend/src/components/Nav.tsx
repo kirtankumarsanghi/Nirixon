@@ -2,6 +2,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ArrowUpRight, LogOut, Moon, Sun, X } from "lucide-react";
 import { LogoMark, Wordmark } from "./Brand";
 import { Photo } from "./Photo";
+import { useT } from "../lib/useT";
+import { Localize } from "../lib/localize";
 import { cn } from "../utils/cn";
 
 /* ------------------------------------------------------------------ */
@@ -22,7 +24,9 @@ interface NavProps {
 }
 
 export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", onMenu, onHome, user, theme, onToggleTheme }: NavProps) {
+  const tr = useT();
   return (
+    <Localize>
     <header className="no-print fixed inset-x-0 top-3 z-50 px-3 sm:px-5">
       <div className="nrx-nav-shell mx-auto flex max-w-[1360px] items-center justify-between gap-3 rounded-full border py-2 pr-2 pl-2.5 shadow-[0_20px_44px_-24px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:pl-3">
         <button type="button" onClick={onHome} className="flex items-center gap-3 rounded-full pr-2 transition-transform hover:scale-[1.015]" aria-label="Nirixon home">
@@ -34,10 +38,7 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
 
         <nav
           aria-label="Primary"
-          className={cn(
-            "nrx-nav-tabs hidden items-center gap-1 rounded-full border border-line/70 p-1.5",
-            tabs.length <= 3 ? "lg:flex" : tabs.length <= 5 ? "xl:flex" : "2xl:flex"
-          )}
+          className="nrx-nav-tabs nrx-hide-scroll hidden min-w-0 items-center gap-1 overflow-x-auto rounded-full border border-line/70 p-1.5 xl:flex"
         >
           {tabs.map((t) => (
             <button
@@ -50,7 +51,7 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
                 active === t.id ? "bg-ink text-paper shadow-[0_8px_16px_-8px_rgba(31,20,9,0.8)]" : "text-ink-2 hover:bg-white/80 hover:text-ink"
               )}
             >
-              {t.label}
+              {tr(t.label)}
             </button>
           ))}
         </nav>
@@ -94,7 +95,7 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
           <button
             type="button"
             onClick={onMenu}
-            aria-label="Open menu"
+            aria-label={tr("Menu")}
             className="nrx-menu-button flex items-center gap-3 rounded-full border border-line/80 px-3.5 py-3 text-[13.5px] font-bold transition-all active:scale-[0.97] sm:pr-5 sm:pl-4"
           >
             <span className="flex flex-col gap-[5px]" aria-hidden>
@@ -102,11 +103,12 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
               <span className="h-[1.8px] w-[18px] rounded-full bg-ink" />
               <span className="h-[1.8px] w-[12px] rounded-full bg-ink" />
             </span>
-            <span className="hidden sm:inline">Menu</span>
+            <span className="hidden sm:inline">{tr("Menu")}</span>
           </button>
         </div>
       </div>
     </header>
+    </Localize>
   );
 }
 
@@ -182,6 +184,7 @@ export function MenuOverlay({ open, onClose, items, photo, eyebrow, title, subti
   }, [open]);
 
   return (
+    <Localize>
     <div
       ref={rootRef}
       role="dialog"
@@ -265,5 +268,6 @@ export function MenuOverlay({ open, onClose, items, photo, eyebrow, title, subti
         <X className="size-5" />
       </button>
     </div>
+    </Localize>
   );
 }

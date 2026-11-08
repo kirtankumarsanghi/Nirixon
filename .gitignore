@@ -56,6 +56,7 @@ backend/static/audio/generated/
 
 # Oversized local model exports (regenerate with backend/ml/train.py; GitHub rejects >100MB)
 backend/ml/artifacts/model_ensemble.pkl
+backend/ml/artifacts/model_random_forest.pkl
 
 # Generated Find Help facility extract (rebuild: backend/scripts/find_help/import_mohfw_arcgis.py)
 backend/data/find_help/facilities/mohfw_health_facilities.csv

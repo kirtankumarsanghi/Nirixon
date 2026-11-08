@@ -3,9 +3,9 @@ import type { CheckIn, Child, Scores } from "./lib/model";
 import { ROLES, type Role, type View } from "./lib/roles";
 import { parseHash, toHash, type Route } from "./lib/router";
 import { api, onUnauthorized, referralApi, setAuthToken } from "./api/client";
-import type { ChildRecord, CHWSyncItem } from "./api/types";
+import type { ChildRecord, CHWSyncItem, ReferralRecord, WorkerRecord } from "./api/types";
 import { childRecordToChild, sessionsToCheckIns } from "./lib/apiAdapters";
-import { LANGS, type Lang } from "./lib/i18n";
+import { LANGS, setActiveLang, type Lang } from "./lib/i18n";
 import { clearAllOfflineData, enqueue, getCache, isNetworkError, newKey, putCache, queueCount } from "./lib/offlineQueue";
 import { flushQueue } from "./lib/offlineSync";
 
@@ -51,6 +51,12 @@ interface AppCtx {
   addCheckIn: (ci: CheckIn) => void;
 
   children: Child[];
+  /** Display name of the signed-in health worker (null until loaded / for non-workers). */
+  workerName: string | null;
+  /** Real worker roster for the signed-in worker's area (empty until loaded). */
+  workers: WorkerRecord[];
+  /** Real referral records for the current area (latest status + timestamps). */
+  referralRecords: ReferralRecord[];
   patchChild: (id: string, patch: Partial<Child>) => void;
   /** Persisted caseload mutations — optimistic, rollback + toast on failure. */
   referChild: (id: string, patch: Partial<Child>) => Promise<void>;
@@ -118,6 +124,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
+  const [workerName, setWorkerName] = useState<string | null>(null);
+  const [workers, setWorkers] = useState<WorkerRecord[]>([]);
+  const [referralRecords, setReferralRecords] = useState<ReferralRecord[]>([]);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [errorFor, setErrorFor] = useState<{ key: string; message: string } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -146,6 +155,10 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       return "en";
     }
   });
+
+  // Keep model-level labels (domains, tiers, statuses) in the same language as
+  // the React tree before children render.
+  setActiveLang(lang);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -214,6 +227,24 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
           if (!cancelled) {
             setChildren(recs.map(childRecordToChild));
             void putCache("children", recs); // offline read cache
+          }
+          try {
+            const me = await referralApi.getMe();
+            if (!cancelled) setWorkerName(me.name);
+          } catch {
+            /* keep the sector label as a fallback */
+          }
+          try {
+            const roster = await referralApi.getWorkers();
+            if (!cancelled) setWorkers(roster);
+          } catch {
+            /* fall back to the signed-in worker only */
+          }
+          try {
+            const records = await referralApi.getReferrals();
+            if (!cancelled) setReferralRecords(records);
+          } catch {
+            /* referral details stay unavailable; handoff stage still shows */
           }
         }
         if (!cancelled) setLoadedKey(activeRole);
@@ -335,6 +366,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       // Never show one workspace's data in another while its fetch is in flight.
       setChildren([]);
       setCheckIns([]);
+      setWorkerName(null);
+      setWorkers([]);
+      setReferralRecords([]);
       navigate({ screen: "app", role: wanted, view: view ?? ROLES[wanted].home });
     },
     [navigate],
@@ -369,6 +403,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       setChildren((prev) => prev.map((c) => (c.id === id ? { ...c, ...optimistic } : c)));
       try {
         await call();
+        // Refresh children + referral records so derived views (referral
+        // register, handoff chips) reflect the server's new state.
+        setReloadKey((k) => k + 1);
         return;
       } catch (e) {
         if (isNetworkError(e)) {
@@ -441,7 +478,8 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       },
       go: (v) => navigate({ screen: "app", role, view: v }),
       switchRole: (r) => {
-        void signInAs(r).catch((e) => showToast(e instanceof Error ? e.message : "Could not switch workspace — is the backend running?"));
+        const keepView = ROLES[r].tabs.some((t) => t.view === view) ? view : ROLES[r].home;
+        void signInAs(r, keepView).catch((e) => showToast(e instanceof Error ? e.message : "Could not switch workspace — is the backend running?"));
       },
       back: () => {
         if (histState().prevApp === true) window.history.back();
@@ -455,6 +493,9 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       checkIns,
       addCheckIn: (ci) => setCheckIns((p) => [ci, ...p]),
       children,
+      workerName,
+      workers,
+      referralRecords,
       patchChild: (id, patch) => setChildren((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c))),
       referChild,
       contactChild,
@@ -476,7 +517,7 @@ export function AppProvider({ children: kids }: { children: ReactNode }) {
       pendingSync,
       syncNow,
     };
-  }, [route, navigate, signIn, signInAs, checkIns, children, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, lang, loading, error, online, pendingSync, syncNow, referChild, contactChild, outcomeChild]);
+  }, [route, navigate, signIn, signInAs, checkIns, children, workerName, workers, referralRecords, checkInTarget, whatIfSeed, caseId, toast, showToast, menuOpen, theme, lang, loading, error, online, pendingSync, syncNow, referChild, contactChild, outcomeChild]);
 
   return <Ctx.Provider value={value}>{kids}</Ctx.Provider>;
 }

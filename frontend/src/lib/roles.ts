@@ -14,6 +14,7 @@ export type View =
   | "whatif"
   | "wellbeing"
   | "training"
+  | "reports"
   | "evidence";
 
 export interface RoleConfig {
@@ -59,6 +60,7 @@ export const ROLES: Record<Role, RoleConfig> = {
       { view: "growth", label: "Growth" },
       { view: "whatif", label: "What-if" },
       { view: "share", label: "Share" },
+      { view: "training", label: "Learn" },
       { view: "help", label: "Find help" },
     ],
   },
@@ -92,8 +94,8 @@ export const ROLES: Record<Role, RoleConfig> = {
     home: "caseload",
     tabs: [
       { view: "caseload", label: "Team & caseload" },
+      { view: "reports", label: "Reports" },
       { view: "referrals", label: "Referrals" },
-      { view: "checkin", label: "Screen a child" },
       { view: "training", label: "Training" },
       { view: "help", label: "Find help" },
     ],

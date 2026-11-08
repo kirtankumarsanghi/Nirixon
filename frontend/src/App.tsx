@@ -9,6 +9,8 @@ import { ScrollProgress } from "./components/ScrollProgress";
 import { ServerSettingsButton } from "./components/ServerSettings";
 import { NotificationSettingsButton } from "./components/NotificationSettings";
 import { ROLES, ROLE_ORDER, viewLabel, type View } from "./lib/roles";
+import { useT } from "./lib/useT";
+import { Localize } from "./lib/localize";
 import { AppProvider, useApp } from "./store";
 import { cn } from "./utils/cn";
 import { PageState } from "./components/PageState";
@@ -20,14 +22,19 @@ import { Growth } from "./views/Growth";
 import { Share } from "./views/Share";
 import { FindHelp } from "./views/FindHelp";
 import { Caseload } from "./views/Caseload";
+import { SupervisorCaseload } from "./views/SupervisorCaseload";
 import { Referrals } from "./views/Referrals";
+import { SupervisorReferrals } from "./views/SupervisorReferrals";
 import { ClinicalReview } from "./views/ClinicalReview";
 import { Cases } from "./views/Cases";
 import { WhatIf } from "./views/WhatIf";
 import { ParentWhatIf } from "./views/ParentWhatIf";
 import { Wellbeing } from "./views/Wellbeing";
 import { Training } from "./views/Training";
+import { SupervisorTraining } from "./views/SupervisorTraining";
+import { ParentTraining } from "./views/ParentTraining";
 import { Evidence } from "./views/Evidence";
+import { Reports } from "./views/Reports";
 
 function Screen({ view }: { view: View }) {
   const { role, loading, error, reload, checkIns, children } = useApp();
@@ -37,7 +44,7 @@ function Screen({ view }: { view: View }) {
   const needsCheckIns =
     ["home", "growth", "share", "clinical"].includes(view) ||
     (view === "whatif" && role === "parent");
-  const needsChildren = ["caseload", "referrals", "cases"].includes(view);
+  const needsChildren = ["caseload", "referrals", "cases", "reports"].includes(view);
   if (needsCheckIns || needsChildren) {
     if (loading) return <PageState kind="loading" />;
     if (error) return <PageState kind="error" message={error} onRetry={reload} />;
@@ -59,9 +66,9 @@ function Screen({ view }: { view: View }) {
     case "help":
       return <FindHelp />;
     case "caseload":
-      return <Caseload />;
+      return role === "supervisor" ? <SupervisorCaseload /> : <Caseload />;
     case "referrals":
-      return <Referrals />;
+      return role === "supervisor" ? <SupervisorReferrals /> : <Referrals />;
     case "clinical":
       return <ClinicalReview />;
     case "cases":
@@ -71,21 +78,32 @@ function Screen({ view }: { view: View }) {
     case "wellbeing":
       return <Wellbeing />;
     case "training":
-      return <Training />;
+      return role === "parent" ? <ParentTraining /> : role === "supervisor" ? <SupervisorTraining /> : <Training />;
     case "evidence":
       return <Evidence />;
+    case "reports":
+      return <Reports />;
   }
 }
 
 const CTA: Record<string, string> = {
   parent: "Start check-in",
   chw: "Screen a child",
-  supervisor: "Screen a child",
+  supervisor: "Review referrals",
   clinician: "Demo check-in",
+};
+
+/** Where each role's primary CTA leads. Supervisors review referrals. */
+const CTA_VIEW: Record<string, View> = {
+  parent: "checkin",
+  chw: "checkin",
+  supervisor: "referrals",
+  clinician: "checkin",
 };
 
 function Workspace() {
   const { role, view, go, switchRole, menuOpen, setMenuOpen, logout, toast, theme, toggleTheme } = useApp();
+  const tr = useT();
   const cfg = ROLES[role];
   const mainRef = useRef<HTMLElement>(null);
   const firstRun = useRef(true);
@@ -93,26 +111,28 @@ function Workspace() {
   // every page gets its own title; after a navigation focus moves to the new page for keyboard /
   // screen-reader users (but not on first load, so the "Skip to content" link stays the first Tab stop)
   useEffect(() => {
-    document.title = `${viewLabel(role, view)} · ${cfg.short} — Nirixon`;
+    document.title = `${tr(viewLabel(role, view))} · ${tr(cfg.short)} — Nirixon`;
     if (firstRun.current) {
       firstRun.current = false;
       return;
     }
     mainRef.current?.focus({ preventScroll: true });
-  }, [role, view, cfg.short]);
+  }, [role, view, cfg.short, tr]);
 
   const items = cfg.tabs.map((t) => ({
-    label: t.label,
+    label: tr(t.label),
     active: view === t.view,
-    hint: view === t.view ? "You are here" : undefined,
+    hint: view === t.view ? tr("You are here") : undefined,
     onClick: () => go(t.view),
   }));
-  if (!cfg.tabs.some((t) => t.view === "checkin")) {
-    items.push({ label: CTA[role], active: view === "checkin", hint: view === "checkin" ? "You are here" : undefined, onClick: () => go("checkin") });
+  const ctaView = CTA_VIEW[role] ?? "checkin";
+  if (!cfg.tabs.some((t) => t.view === ctaView)) {
+    items.push({ label: tr(CTA[role]), active: view === ctaView, hint: view === ctaView ? tr("You are here") : undefined, onClick: () => go(ctaView) });
   }
 
   return (
-    <div className="min-h-screen">
+    <Localize>
+      <div className="min-h-screen">
       <ScrollProgress />
       <button
         type="button"
@@ -126,8 +146,8 @@ function Workspace() {
         tabs={cfg.tabs.map((t) => ({ id: t.view, label: t.label }))}
         active={view}
         onTab={(id) => go(id as View)}
-        onCta={() => go("checkin")}
-        ctaLabel={CTA[role]}
+        onCta={() => go(ctaView)}
+        ctaLabel={tr(CTA[role])}
         onMenu={() => setMenuOpen(true)}
         onHome={() => go(cfg.home)}
         user={cfg.user}
@@ -139,14 +159,14 @@ function Workspace() {
         onClose={() => setMenuOpen(false)}
         items={items}
         photo={cfg.photo}
-        eyebrow={cfg.group}
+        eyebrow={tr(cfg.group)}
         title={cfg.user.name}
         subtitle={`${cfg.user.title}. Demo workspace — records are served by the Nirixon API.`}
         onSignOut={logout}
         footer={
           <div className="space-y-7">
             <div>
-              <p className="mb-3 font-mono text-[10.5px] tracking-[0.22em] text-paper/45 uppercase">Switch workspace</p>
+              <p className="mb-3 font-mono text-[10.5px] tracking-[0.22em] text-paper/45 uppercase">{tr("Switch workspace")}</p>
               <div className="flex flex-wrap gap-2">
                 {ROLE_ORDER.map((r) => (
                   <button
@@ -160,7 +180,7 @@ function Workspace() {
                       r === role ? "border-peach bg-peach text-night" : "border-white/20 text-paper/80 hover:border-white/50 hover:text-paper"
                     )}
                   >
-                    {ROLES[r].short}
+                    {tr(ROLES[r].short)}
                   </button>
                 ))}
               </div>
@@ -174,7 +194,7 @@ function Workspace() {
               }}
               className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10"
             >
-              <HeartHandshake className="size-4" /> Caregiver wellbeing
+              <HeartHandshake className="size-4" /> {tr("Caregiver wellbeing")}
             </button>
             <button
               type="button"
@@ -185,7 +205,7 @@ function Workspace() {
               }}
               className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10"
             >
-              <GraduationCap className="size-4" /> Training
+              <GraduationCap className="size-4" /> {tr("Training")}
             </button>
             <NotificationSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
             <ServerSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
@@ -195,7 +215,7 @@ function Workspace() {
               tabIndex={menuOpen ? 0 : -1}
               className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold transition-colors hover:bg-white/10 lg:hidden"
             >
-              <LogOut className="size-4" /> Sign out
+              <LogOut className="size-4" /> {tr("Sign out")}
             </button>
           </div>
         }
@@ -221,7 +241,8 @@ function Workspace() {
           {toast}
         </div>
       )}
-    </div>
+      </div>
+    </Localize>
   );
 }
 

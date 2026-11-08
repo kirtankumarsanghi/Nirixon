@@ -75,6 +75,12 @@ from evaluation.fairness_check import print_fairness_result, run_fairness_check
 from evaluation.metrics import compute_metrics, print_metrics
 from evaluation.null_controls import run_null_controls
 from evaluation.rule_baseline import evaluate_rule_vs_xgboost
+from evaluation.stress_test import (
+    stress_test_generator_shift,
+    stress_test_label_noise,
+    stress_test_missing_answers,
+    stress_test_reporting_bias,
+)
 from evaluation.subgroup_sensitivity import (
     print_subgroup_tables,
     sensitivity_by_age_bracket,
@@ -148,6 +154,38 @@ def apply_refer_threshold(proba: np.ndarray, threshold: float) -> list[str]:
         else:
             out.append("Typical")
     return out
+
+
+def tune_f1_thresholds(proba_val: np.ndarray, y_val: pd.Series | np.ndarray) -> tuple[float, float]:
+    """Tune (refer_threshold, monitor_threshold) on VALIDATION set to maximize Macro F1 + Refer recall."""
+    from sklearn.metrics import f1_score, recall_score
+
+    y_true = np.asarray(y_val)
+    best_obj = -1.0
+    best_pair = (0.30, 0.42)
+    for t_ref in np.linspace(0.22, 0.36, 15):
+        for t_mon in np.linspace(0.34, 0.50, 17):
+            preds = np.where(
+                proba_val[:, 2] >= t_ref,
+                "Refer",
+                np.where(proba_val[:, 1] >= t_mon, "Monitor", "Typical"),
+            )
+            mf1 = float(f1_score(y_true, preds, labels=LABEL_ORDER, average="macro", zero_division=0))
+            r_rec = float(recall_score(y_true == "Refer", preds == "Refer", zero_division=0))
+            # Prefer high Macro F1 with strong clinical Refer sensitivity (>= 80%)
+            obj = mf1 + 0.08 * min(r_rec, 0.85)
+            if obj > best_obj:
+                best_obj = obj
+                best_pair = (float(t_ref), float(t_mon))
+    return best_pair
+
+
+def apply_f1_thresholds(proba: np.ndarray, thresholds: tuple[float, float]) -> list[str]:
+    t_ref, t_mon = thresholds
+    return [
+        "Refer" if row[2] >= t_ref else ("Monitor" if row[1] >= t_mon else "Typical")
+        for row in proba
+    ]
 
 
 def evaluate_candidate_on_val(
@@ -698,10 +736,11 @@ def main():
     test_proba_by_model: dict[str, np.ndarray] = {}
 
     for name, model in calibrated_models.items():
+        val_p = reorder_proba(model.predict_proba(X_val), model.classes_)
+        f1_thrs = tune_f1_thresholds(val_p, y_val)
         proba = model.predict_proba(X_test)
         proba = reorder_proba(proba, model.classes_)
-        preds_idx = proba.argmax(axis=1)
-        preds = [LABEL_ORDER[i] for i in preds_idx]
+        preds = apply_f1_thresholds(proba, f1_thrs)
         metrics = compute_metrics(y_test, preds, proba)
 
         # Extract per-class recall and precision
@@ -872,15 +911,28 @@ def main():
             row["macro_f1"],
         )
 
-    # --- Load or run stress tests ---
+    # --- Run and save stress tests on held-out test_df ---
+    logger.info("Running adversarial stress tests on held-out test set...")
     stress_summary_path = (
         BASE_DIR / "evaluation" / "artifacts" / "stress_test_summary.json"
     )
-    if stress_summary_path.exists():
-        with open(stress_summary_path, encoding="utf-8") as f:
-            stress_tests_data = json.load(f)
-    else:
-        stress_tests_data = {}
+    stress_summary_path.parent.mkdir(parents=True, exist_ok=True)
+    stress_tests_data = {
+        "label_noise": stress_test_label_noise(
+            test_df, winner_model, feature_columns
+        ),
+        "reporting_bias": stress_test_reporting_bias(
+            test_df, winner_model, feature_columns
+        ),
+        "missingness": stress_test_missing_answers(
+            test_df, winner_model, feature_columns
+        ),
+        "generator_shift": stress_test_generator_shift(
+            winner_model, feature_columns
+        ),
+    }
+    with open(stress_summary_path, "w", encoding="utf-8") as f:
+        json.dump(stress_tests_data, f, indent=2)
 
     # --- Dataset generation metadata ---
     dataset_generation_meta = {

@@ -3,11 +3,13 @@ import { Check, Clock, Copy, MessageCircle, Printer, Share2 } from "lucide-react
 import { LogoLockup } from "../landing/components/system";
 import { Btn, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { DOMAINS, domainKeys, TIER_META, buildSummary, domainStatus, evaluate, fmtDate } from "../lib/model";
+import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
 export function Share() {
   const { checkIns, showToast } = useApp();
+  const tr = useT();
   const [id, setId] = useState(checkIns[0].id);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | null>(null);
@@ -35,7 +37,7 @@ export function Share() {
       document.body.removeChild(ta);
     }
     setCopied(true);
-    showToast("Summary copied to clipboard");
+    showToast(tr("Summary copied to clipboard"));
     if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
     copiedTimer.current = window.setTimeout(() => setCopied(false), 1800);
   };
@@ -54,12 +56,12 @@ export function Share() {
 
   return (
     <Page>
-      <Eyebrow index="01">Family sharing</Eyebrow>
+      <Eyebrow index="01">{tr("Family sharing")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
         <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
-          One page.
+          {tr("One page.")}
           <br />
-          <span className="text-rust">Easy to share.</span>
+          <span className="text-rust">{tr("Easy to share.")}</span>
         </Display>
         <p className="max-w-[360px] text-[15px] leading-relaxed text-ink-2">
           Pick a check-in, preview the summary, then send it your way. Nothing is uploaded — it only leaves this screen when you choose.
@@ -69,7 +71,7 @@ export function Share() {
       <div className="mt-12 grid items-start gap-6 lg:grid-cols-[0.8fr_1.2fr]">
         {/* chooser */}
         <div className="space-y-3">
-          <p className="font-mono text-[10.5px] font-semibold tracking-[0.22em] text-muted uppercase">Which check-in?</p>
+          <p className="font-mono text-[10.5px] font-semibold tracking-[0.22em] text-muted uppercase">{tr("Which check-in?")}</p>
           {checkIns.map((c, i) => {
             const e = evaluate(c.scores, c.regression);
             const m = TIER_META[e.tier];
@@ -100,9 +102,9 @@ export function Share() {
 
           <div className="rounded-[26px] border border-dashed border-line-2 p-5">
             <p className="flex items-center gap-2 font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">
-              <Clock className="size-3.5" /> Coming soon
+              <Clock className="size-3.5" /> {tr("Coming soon")}
             </p>
-            <p className="mt-2 text-[13px] font-bold">Expiring share codes</p>
+            <p className="mt-2 text-[13px] font-bold">{tr("Expiring share codes")}</p>
             <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
               A short-lived code a clinician can open without a persistent child profile. Not available in this demo — copy and print work today.
             </p>
@@ -119,25 +121,25 @@ export function Share() {
                   onClick={() => setMode(m)}
                   className={cn("rounded-full px-5 py-2 text-[12.5px] font-bold capitalize transition-all", mode === m ? "bg-ink text-paper" : "text-ink-2")}
                 >
-                  {m === "card" ? "Report card" : "Plain text"}
+                  {m === "card" ? tr("Report card") : tr("Plain text")}
                 </button>
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
               <Btn onClick={copy}>
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy"}
+                {copied ? <Check className="size-4" /> : <Copy className="size-4" />} {copied ? tr("Copied") : tr("Copy")}
               </Btn>
               <Btn
                 variant="rust"
                 onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener")}
               >
-                <MessageCircle className="size-4" /> WhatsApp
+                <MessageCircle className="size-4" /> {tr("WhatsApp")}
               </Btn>
               <Btn variant="light" onClick={share}>
-                <Share2 className="size-4" /> Share
+                <Share2 className="size-4" /> {tr("Share")}
               </Btn>
               <Btn variant="light" onClick={() => window.print()}>
-                <Printer className="size-4" /> Print
+                <Printer className="size-4" /> {tr("Print")}
               </Btn>
             </div>
           </div>
@@ -184,10 +186,10 @@ export function Share() {
               </ul>
 
               <p className="mt-8 border-t border-line-2 pt-5 text-[13px] leading-relaxed text-ink-2">
-                <b className="text-ink">Next step: </b>
+                <b className="text-ink">{tr("Next step:")} </b>
                 {meta.next}
               </p>
-              <p className="mt-3 text-[11px] text-muted">A screening summary for discussion — not a medical diagnosis.</p>
+              <p className="mt-3 text-[11px] text-muted">{tr("A screening summary for discussion — not a medical diagnosis.")}</p>
             </article>
           ) : (
             <pre className="nrx-rise rounded-[32px] border border-line-2 bg-card p-7 font-mono text-[12.5px] leading-relaxed whitespace-pre-wrap text-ink-2 sm:p-9">

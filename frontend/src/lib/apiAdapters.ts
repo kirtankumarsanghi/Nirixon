@@ -158,7 +158,9 @@ export function childRecordToChild(rec: ChildRecord): Child {
   const status = tierToStatus(rec.current_tier);
   return {
     id: rec.id,
+    code: rec.pseudonymous_id || undefined,
     sector: wardToSector(rec.village_ward ?? ""),
+    ward: rec.village_ward ?? undefined,
     ageMonths: ageBracketToMonths(rec.age_bracket ?? ""),
     status: rec.is_overdue && status !== "refer" ? "overdue" : status,
     // Per-domain scores when the child has a completed Module A session.
@@ -170,6 +172,6 @@ export function childRecordToChild(rec: ChildRecord): Child {
     visits: rec.contact_count ?? 0,
     lastVisitDays: daysSince(rec.last_contacted_at ?? rec.last_screened_at),
     followUpDueAt: rec.follow_up_due_at ?? null,
-    handoff: "none",
+    handoff: rec.handoff_state === "queued" || rec.handoff_state === "done" ? rec.handoff_state : "none",
   };
 }

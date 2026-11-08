@@ -9,6 +9,8 @@ import { Btn, Chip, Display, Eyebrow, Marquee, Reveal } from "../components/ui";
 import { ScrollProgress } from "../components/ScrollProgress";
 import { PHOTO } from "../photos";
 import { ROLES, ROLE_ORDER, type Role, type View } from "../lib/roles";
+import { Localize } from "../lib/localize";
+import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -43,6 +45,7 @@ function CircleBadge() {
 
 export function Login() {
   const { signIn, signInAs, theme, toggleTheme } = useApp();
+  const tr = useT();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -160,6 +163,7 @@ export function Login() {
   const ready = email.length > 0 && pw.length > 0;
 
   return (
+    <Localize>
     <div className="relative overflow-x-clip">
       <ScrollProgress />
 
@@ -167,9 +171,9 @@ export function Login() {
       <nav aria-label="Page sections" className="no-print fixed top-1/2 right-6 z-40 hidden -translate-y-1/2 text-white mix-blend-difference xl:block">
         <ul className="flex flex-col items-end gap-1">
           {[
-            { id: "signin", label: "Sign in" },
-            { id: "roles", label: "Roles" },
-            { id: "walkthrough", label: "Walkthrough" },
+            { id: "signin", label: tr("Sign in") },
+            { id: "roles", label: tr("Roles") },
+            { id: "walkthrough", label: tr("Walkthrough") },
           ].map((s, i) => (
             <li key={s.id}>
               <button
@@ -191,9 +195,9 @@ export function Login() {
 
       <Nav
         tabs={[
-          { id: "signin", label: "Sign in" },
-          { id: "roles", label: "Roles" },
-          { id: "walkthrough", label: "Walkthrough" },
+          { id: "signin", label: tr("Sign in") },
+          { id: "roles", label: tr("Roles") },
+          { id: "walkthrough", label: tr("Walkthrough") },
         ]}
         active={tab}
         onTab={scrollTo}
@@ -207,14 +211,14 @@ export function Login() {
         open={menu}
         onClose={() => setMenu(false)}
         photo={PHOTO.blocksGirl}
-        eyebrow="Nirixon · demo workspace"
-        title="Every child. The next step."
+        eyebrow={`Nirixon · ${tr("Workspace access")}`}
+        title={`${tr("Every child.")} ${tr("The next step.")}`}
         subtitle="Four connected workspaces, one shared set of records. Pick a door and walk through."
         items={[
-          { label: "Sign in", hint: "Access", onClick: () => scrollTo("signin") },
-          { label: "Four roles", hint: "Pick a workspace", onClick: () => scrollTo("roles") },
-          { label: "Walkthrough", hint: "For evaluators", onClick: () => scrollTo("walkthrough") },
-          { label: "Start check-in", hint: "Try it now", onClick: () => void enter("parent", "checkin") },
+          { label: tr("Sign in"), hint: tr("Roles"), onClick: () => scrollTo("signin") },
+          { label: tr("Four roles."), hint: tr("Workspace access"), onClick: () => scrollTo("roles") },
+          { label: tr("Walkthrough"), hint: tr("For faculty & evaluators"), onClick: () => scrollTo("walkthrough") },
+          { label: tr("Start check-in"), hint: tr("Start a demo check-in"), onClick: () => void enter("parent", "checkin") },
         ]}
         footer={
           <ServerSettingsButton className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-[13px] font-semibold text-paper/80 transition-colors hover:bg-white/10" />
@@ -232,9 +236,9 @@ export function Login() {
 
         <div className="mx-auto grid max-w-[1360px] items-center gap-14 px-5 lg:grid-cols-[1.3fr_0.7fr] lg:gap-10 lg:px-8">
           <div className="relative">
-            <Eyebrow index="00">Secure access · demo workspace</Eyebrow>
+            <Eyebrow index="00">{tr("Secure access · demo workspace")}</Eyebrow>
             <h1 className="mt-6 font-display text-[clamp(60px,9.6vw,150px)] leading-[0.88] uppercase">
-              <span className="block text-ink">Every child.</span>
+              <span className="block text-ink">{tr("Every child.")}</span>
               <span
                 className="mask-photo block pb-[0.04em]"
                 style={{
@@ -242,7 +246,7 @@ export function Login() {
                   backgroundPosition: "center 55%",
                 }}
               >
-                The next step.
+                {tr("The next step.")}
               </span>
             </h1>
             <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-2">
@@ -258,7 +262,7 @@ export function Login() {
               ].map(([v, l]) => (
                 <div key={l} className="flex items-baseline gap-3">
                   <span className="font-display text-[44px] leading-none text-rust">{v}</span>
-                  <span className="max-w-[90px] text-[12px] leading-tight font-medium text-ink-2">{l}</span>
+                  <span className="max-w-[90px] text-[12px] leading-tight font-medium text-ink-2">{tr(l)}</span>
                 </div>
               ))}
             </div>
@@ -268,9 +272,9 @@ export function Login() {
           <div className="relative mx-auto w-full max-w-[470px] lg:mx-0 lg:ml-auto">
             <div className="relative overflow-hidden rounded-[36px] bg-night p-7 text-paper shadow-[0_50px_90px_-40px_rgba(31,20,9,0.95)] sm:p-9">
               <div aria-hidden className="pointer-events-none absolute -right-24 -bottom-24 size-72 rounded-full bg-peach/15 blur-3xl" />
-              <Eyebrow tone="peach">Workspace access</Eyebrow>
-              <h2 className="mt-3 font-display text-[44px] leading-[0.95] text-paper uppercase">Welcome back</h2>
-              <p className="mt-2 text-[13px] text-paper/60">Sign in, or tap a role to fill in a demo account.</p>
+              <Eyebrow tone="peach">{tr("Workspace access")}</Eyebrow>
+              <h2 className="mt-3 font-display text-[44px] leading-[0.95] text-paper uppercase">{tr("Welcome back")}</h2>
+              <p className="mt-2 text-[13px] text-paper/60">{tr("Sign in, or tap a role to fill in a demo account.")}</p>
 
               {apiState === "down" && (
                 <p role="alert" className="mt-4 rounded-2xl bg-brick/20 px-4 py-3 text-[12.5px] leading-snug text-[#ffb59f]">
@@ -282,7 +286,7 @@ export function Login() {
               <form onSubmit={submit} className="mt-7 space-y-4">
                 <label className="block">
                   <span className="mb-2 flex items-center gap-2 font-mono text-[10.5px] tracking-[0.18em] text-paper/60 uppercase">
-                    <Mail className="size-3.5" /> Email
+                    <Mail className="size-3.5" /> {tr("Email")}
                   </span>
                   <input
                     type="email"
@@ -298,7 +302,7 @@ export function Login() {
                 </label>
                 <label className="block">
                   <span className="mb-2 flex items-center gap-2 font-mono text-[10.5px] tracking-[0.18em] text-paper/60 uppercase">
-                    <Lock className="size-3.5" /> Password
+                    <Lock className="size-3.5" /> {tr("Password")}
                   </span>
                   <span className="relative block">
                     <input
@@ -338,7 +342,7 @@ export function Login() {
                     ready && !busy && "shadow-[0_0_0_6px_rgba(234,143,99,0.14)]"
                   )}
                 >
-                  {busy ? "Opening your workspace…" : "Sign in to workspace"}
+                  {busy ? tr("Opening your workspace…") : tr("Sign in to workspace")}
                   <span className={cn("grid size-11 place-items-center rounded-full transition-transform duration-300", ready ? "bg-night text-peach group-hover:translate-x-0.5" : "bg-white/10")}>
                     {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
                   </span>
@@ -346,7 +350,7 @@ export function Login() {
               </form>
 
               <div className="mt-7 border-t border-white/10 pt-5">
-                <p className="mb-3 font-mono text-[10px] tracking-[0.22em] text-paper/45 uppercase">Quick fill · password “changeme”</p>
+                <p className="mb-3 font-mono text-[10px] tracking-[0.22em] text-paper/45 uppercase">{tr("Quick fill · password “changeme”")}</p>
                 <div className="flex flex-wrap gap-2">
                   {ROLE_ORDER.map((r) => (
                     <button
@@ -369,7 +373,7 @@ export function Login() {
                 onClick={() => void enter("parent", "checkin")}
                 className="mt-4 flex w-full items-center justify-between rounded-full bg-peach py-2 pr-2 pl-6 text-[14px] font-bold text-night transition-all hover:bg-[#f3a07a] active:scale-[0.99]"
               >
-                Start a demo check-in
+                {tr("Start a demo check-in")}
                 <span className="grid size-10 place-items-center rounded-full bg-night text-peach">
                   <ArrowRight className="size-4" />
                 </span>
@@ -377,8 +381,8 @@ export function Login() {
 
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
                 <div className="min-w-0">
-                  <p className="font-mono text-[9.5px] tracking-[0.2em] text-paper/40 uppercase">API server</p>
-                  <p className="truncate font-mono text-[10.5px] text-paper/60">{getApiBase() || "same origin"}</p>
+                  <p className="font-mono text-[9.5px] tracking-[0.2em] text-paper/40 uppercase">{tr("API server")}</p>
+                  <p className="truncate font-mono text-[10.5px] text-paper/60">{getApiBase() || tr("same origin")}</p>
                   {apiState && (
                     <p
                       className={cn(
@@ -387,12 +391,12 @@ export function Login() {
                       )}
                     >
                       <span className="size-1.5 rounded-full bg-current" />
-                      {apiState === "checking" ? "checking…" : apiState === "ok" ? "connected" : "unreachable"}
+                      {apiState === "checking" ? tr("checking…") : apiState === "ok" ? tr("connected") : tr("unreachable")}
                     </p>
                   )}
                 </div>
                 <ServerSettingsButton className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] font-semibold text-paper/75 transition-colors hover:border-white/40 hover:text-paper">
-                  Change
+                  {tr("Change")}
                 </ServerSettingsButton>
               </div>
             </div>
@@ -422,13 +426,13 @@ export function Login() {
         <div className="relative mx-auto max-w-[1360px] px-5 lg:px-8">
           <Reveal>
             <Eyebrow index="01" tone="peach">
-              Four workspaces
+              {tr("Four workspaces")}
             </Eyebrow>
             <div className="mt-6 grid items-end gap-8 lg:grid-cols-[1.4fr_0.6fr]">
               <h2 className="font-display text-[clamp(52px,8vw,128px)] leading-[0.9] uppercase">
-                Four roles.
+                {tr("Four roles.")}
                 <br />
-                <span className="text-peach">One child.</span>
+                <span className="text-peach">{tr("One child.")}</span>
               </h2>
               <div className="flex flex-col items-start gap-8 lg:items-end">
                 <div className="hidden lg:block">
@@ -519,12 +523,12 @@ export function Login() {
       <section id="walkthrough" className="relative py-24 sm:py-32">
         <div className="mx-auto max-w-[1360px] px-5 lg:px-8">
           <Reveal>
-            <Eyebrow index="02">For faculty & evaluators</Eyebrow>
+            <Eyebrow index="02">{tr("For faculty & evaluators")}</Eyebrow>
             <div className="mt-6 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
               <Display as="h2" className="text-[clamp(48px,7vw,108px)]">
-                A five-stop
+                {tr("A five-stop")}
                 <br />
-                <span className="text-sea">walkthrough.</span>
+                <span className="text-sea">{tr("walkthrough.")}</span>
               </Display>
               <p className="max-w-[380px] text-[15px] leading-relaxed text-ink-2">
                 Each stop signs you in as the right person and drops you on the screen that matters. Use the “viewing as”
@@ -544,12 +548,12 @@ export function Login() {
                   >
                     <span className="font-mono text-[13px] font-semibold text-rust">{s.n}</span>
                     <span className="hidden sm:block">
-                      <span className="block font-display text-[34px] leading-none uppercase transition-colors group-hover:text-rust">{s.title}</span>
+                      <span className="block font-display text-[34px] leading-none uppercase transition-colors group-hover:text-rust">{tr(s.title)}</span>
                     </span>
                     <span>
-                      <span className="mb-1 block font-display text-[26px] leading-none uppercase sm:hidden">{s.title}</span>
+                      <span className="mb-1 block font-display text-[26px] leading-none uppercase sm:hidden">{tr(s.title)}</span>
                       <span className="block max-w-[560px] text-[14px] leading-relaxed text-ink-2">{s.desc}</span>
-                      <span className="mt-2 block font-mono text-[10.5px] tracking-[0.18em] text-muted uppercase">As {s.who}</span>
+                      <span className="mt-2 block font-mono text-[10.5px] tracking-[0.18em] text-muted uppercase">{tr(s.who)}</span>
                     </span>
                     <span className="grid size-12 place-items-center rounded-full border border-ink/30 transition-all duration-300 group-hover:rotate-45 group-hover:border-rust group-hover:bg-rust group-hover:text-white">
                       <ArrowUpRight className="size-5" />
@@ -562,7 +566,7 @@ export function Login() {
 
           <div className="mt-12 flex items-center gap-3 rounded-2xl border border-line-2 bg-sand/60 px-5 py-4 text-[14px] font-medium">
             <Info className="size-5 shrink-0 text-rust" />
-            Evaluated on synthetic data. Clinical validation pending. Screening aid, not a diagnosis.
+            {tr("Evaluated on synthetic data. Clinical validation pending. Screening aid, not a diagnosis.")}
           </div>
         </div>
       </section>
@@ -587,7 +591,7 @@ export function Login() {
             ))}
             <li>
               <button type="button" onClick={() => void enter("parent", "checkin")} className="text-[14px] font-semibold transition-colors hover:text-rust">
-                Start check-in
+                {tr("Start check-in")}
               </button>
             </li>
             <li>
@@ -596,7 +600,7 @@ export function Login() {
                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                 className="inline-flex items-center gap-2 text-[14px] font-semibold transition-colors hover:text-rust"
               >
-                <ArrowUp className="size-4" /> Back to top
+                <ArrowUp className="size-4" /> {tr("Back to top")}
               </button>
             </li>
           </ul>
@@ -606,5 +610,6 @@ export function Login() {
         </p>
       </footer>
     </div>
+    </Localize>
   );
 }

@@ -45,6 +45,8 @@ services:
       SEED_USER_PASSWORD: changeme
       RATE_LIMIT_ENABLED: "true"
       NOTIFICATION_PROVIDER: outbox
+      # Facility WhatsApp/SMS number for referral dispatch. Blank = mark sent only.
+      REFERRAL_HANDOFF_PHONE: ""
       PUBLIC_APP_URL: http://localhost:3000
     depends_on:
       db:

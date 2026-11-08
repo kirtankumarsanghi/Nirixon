@@ -94,8 +94,9 @@ def main() -> int:
             "regression_flag",
             "risk_label",
         )
-        # mean_* columns are derived domain aggregates (model features), not items.
+        # mean_* and domain summary columns are derived domain aggregates (model features), not items.
         and not c.startswith("mean_")
+        and c not in ("min_domain_mean", "second_min_domain_mean", "domain_mean_std")
     ]
 
     # -----------------------------------------------------------------

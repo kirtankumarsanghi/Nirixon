@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { ROLES, viewLabel } from "../lib/roles";
+import { useT } from "../lib/useT";
+import { Localize } from "../lib/localize";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
 
@@ -10,6 +12,7 @@ import { cn } from "../utils/cn";
  */
 export function Crumbs() {
   const { role, view, go, back, canBack } = useApp();
+  const tr = useT();
   const cfg = ROLES[role];
   const here = viewLabel(role, view);
   const atHome = view === cfg.home;
@@ -22,6 +25,7 @@ export function Crumbs() {
   }, [view, role]);
 
   return (
+    <Localize>
     <div className="no-print mx-auto w-full max-w-[1360px] px-5 lg:px-8">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         {!atHome && (
@@ -31,26 +35,26 @@ export function Crumbs() {
             className="group inline-flex items-center gap-2 rounded-full border border-line-2 bg-card py-2 pr-4 pl-3 text-[12.5px] font-bold transition-all hover:border-ink"
           >
             <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-            {canBack ? "Back" : cfg.tabs[0].label}
+            {canBack ? tr("Back") : tr(cfg.tabs[0].label)}
           </button>
         )}
 
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.16em] uppercase">
-            <li className="text-muted">{cfg.group}</li>
+            <li className="text-muted">{tr(cfg.group)}</li>
             <ChevronRight className="size-3.5 text-muted/60" aria-hidden />
             <li>
               {atHome ? (
-                <span className="text-muted">{cfg.short}</span>
+                <span className="text-muted">{tr(cfg.short)}</span>
               ) : (
                 <button type="button" onClick={() => go(cfg.home)} className="text-muted transition-colors hover:text-rust">
-                  {cfg.short}
+                  {tr(cfg.short)}
                 </button>
               )}
             </li>
             <ChevronRight className="size-3.5 text-muted/60" aria-hidden />
             <li aria-current="location" className="truncate text-ink">
-              {here}
+              {tr(here)}
             </li>
           </ol>
         </nav>
@@ -60,10 +64,7 @@ export function Crumbs() {
       <nav
         ref={stripRef}
         aria-label="Workspace sections"
-        className={cn(
-          "nrx-hide-scroll -mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:px-0",
-          cfg.tabs.length <= 3 ? "lg:hidden" : cfg.tabs.length <= 5 ? "xl:hidden" : "2xl:hidden"
-        )}
+        className="nrx-hide-scroll -mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:px-0 xl:hidden"
       >
         {cfg.tabs.map((t) => {
           const on = view === t.view;
@@ -78,11 +79,12 @@ export function Crumbs() {
                 on ? "border-ink bg-ink text-paper" : "border-line-2 bg-card text-ink-2 hover:border-ink hover:text-ink"
               )}
             >
-              {t.label}
+              {tr(t.label)}
             </button>
           );
         })}
       </nav>
     </div>
+    </Localize>
   );
 }

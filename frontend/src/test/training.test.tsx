@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { AppProvider } from "../store";
 import { Training } from "../views/Training";
 import { TRAINING_QUIZ } from "../lib/trainingContent";
 
@@ -22,14 +23,22 @@ beforeEach(() => {
 
 describe("Frontline training", () => {
   it("opens sample cases and reveals the correct tier", async () => {
-    render(<Training />);
+    render(
+      <AppProvider>
+        <Training />
+      </AppProvider>,
+    );
     expect(screen.getByRole("button", { name: /Sample cases/i })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: /Monitor/i }));
     expect(await screen.findByText(/Correct tier/i)).toBeInTheDocument();
   });
 
   it("runs the practice quiz and shows a score", async () => {
-    render(<Training />);
+    render(
+      <AppProvider>
+        <Training />
+      </AppProvider>,
+    );
     fireEvent.click(screen.getByRole("button", { name: /Practice quiz/i }));
 
     for (const question of TRAINING_QUIZ) {

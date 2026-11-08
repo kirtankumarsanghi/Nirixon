@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Info, Loader2, X } from "lucide-react";
 import { getApiBase, getSavedApiBase, setApiBase, setAuthToken } from "../api/client";
+import { Localize } from "../lib/localize";
 import { Btn } from "./ui";
 import { cn } from "../utils/cn";
 
@@ -92,6 +93,7 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
   };
 
   return (
+    <Localize>
     <div
       className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-night/70 p-4 backdrop-blur-sm"
       role="dialog"
@@ -193,6 +195,7 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
         </p>
       </form>
     </div>
+    </Localize>
   );
 }
 
@@ -200,6 +203,7 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
 export function ServerSettingsButton({ className, children = "Server settings" }: { className?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
+    <Localize>
     <>
       <button type="button" onClick={() => setOpen(true)} className={className}>
         <Info className="size-4" />
@@ -207,5 +211,6 @@ export function ServerSettingsButton({ className, children = "Server settings" }
       </button>
       <ServerSettings open={open} onClose={() => setOpen(false)} />
     </>
+    </Localize>
   );
 }

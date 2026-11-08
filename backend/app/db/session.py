@@ -127,6 +127,7 @@ async def init_db() -> None:
                 ("idempotency_key", "VARCHAR(64)"),
                 ("domains_of_concern", "JSON"),
                 ("safety_rule_trigger", "VARCHAR(255)"),
+                ("clinical_notes", "TEXT"),
                 ("outcome_notes", "TEXT"),
                 ("sent_at", "DATETIME"),
                 ("seen_at", "DATETIME"),

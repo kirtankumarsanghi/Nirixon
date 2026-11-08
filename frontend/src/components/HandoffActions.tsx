@@ -4,8 +4,10 @@ import { MessageCircle, MessageSquare, Phone, Printer, Send } from "lucide-react
 import { referralApi } from "../api/client";
 import type { ReferralSummary } from "../api/types";
 import { referralSmsText, referralWhatsAppText, smsLink, telLink, waLink } from "../lib/handoff";
-import type { Child } from "../lib/model";
+import { childLabel, type Child } from "../lib/model";
 import { caregiverPlanBody, planItemsFromScores, printSheet, referralSlipBody } from "../lib/printSheet";
+import { useT } from "../lib/useT";
+import { Localize } from "../lib/localize";
 import { useApp } from "../store";
 import { Btn } from "./ui";
 
@@ -21,6 +23,7 @@ const today = () =>
  */
 export function HandoffActions({ child }: { child: Child }) {
   const { showToast, go } = useApp();
+  const tr = useT();
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -65,7 +68,7 @@ export function HandoffActions({ child }: { child: Child }) {
     setBusy(true);
     try {
       const qr = await QRCode.toDataURL(referralSmsText(s), { margin: 1, width: 264 });
-      printSheet("Nirixon referral summary", referralSlipBody(s, qr, child.id));
+      printSheet("Nirixon referral summary", referralSlipBody(s, qr, childLabel(child)));
     } catch {
       showToast("Could not prepare the printed slip");
     } finally {
@@ -74,48 +77,50 @@ export function HandoffActions({ child }: { child: Child }) {
   };
 
   return (
+    <Localize>
     <div className="mt-6 rounded-2xl border border-line-2 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-[10px] font-semibold tracking-[0.2em] text-muted uppercase">Referral handoff</p>
-        <span className="font-mono text-[9.5px] text-muted">creates / reuses the open referral</span>
+        <p className="font-mono text-[10px] font-semibold tracking-[0.2em] text-muted uppercase">{tr("Referral handoff")}</p>
+        <span className="font-mono text-[9.5px] text-muted">{tr("creates / reuses the open referral")}</span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <Btn size="sm" variant="rust" onClick={() => void share("wa")} disabled={busy}>
-          <MessageCircle className="size-3.5" /> WhatsApp
+          <MessageCircle className="size-3.5" /> {tr("WhatsApp")}
         </Btn>
         <Btn size="sm" variant="light" onClick={() => void share("sms")} disabled={busy}>
-          <MessageSquare className="size-3.5" /> SMS
+          <MessageSquare className="size-3.5" /> {tr("SMS")}
         </Btn>
         <Btn size="sm" variant="light" onClick={() => void share("copy")} disabled={busy}>
-          <Send className="size-3.5" /> Copy
+          <Send className="size-3.5" /> {tr("Copy")}
         </Btn>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Btn size="sm" variant="light" onClick={() => void printSlip()} disabled={busy}>
-          <Printer className="size-3.5" /> Print slip
+          <Printer className="size-3.5" /> {tr("Print slip")}
         </Btn>
         <Btn
           size="sm"
           variant="light"
           onClick={() => printSheet("Nirixon home activities", caregiverPlanBody(planItemsFromScores(child.scores), { childId: child.id, date: today() }))}
         >
-          <Printer className="size-3.5" /> Print plan
+          <Printer className="size-3.5" /> {tr("Print plan")}
         </Btn>
       </div>
       <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-muted">
         <Phone className="mt-0.5 size-3.5 shrink-0" />
         <span>
-          No smartphone?{" "}
+          {tr("No smartphone?")}{" "}
           <a href={telLink(HELPLINE)} className="font-semibold text-ink underline underline-offset-2">
-            Call Tele-MANAS {HELPLINE}
+            {tr("Call Tele-MANAS")} {HELPLINE}
           </a>{" "}
-          or{" "}
+          {tr("or")}{" "}
           <button type="button" onClick={() => go("help")} className="font-semibold text-ink underline underline-offset-2">
-            find nearby support
+            {tr("find nearby support")}
           </button>
-          . IVR is on the roadmap.
+          . {tr("IVR is on the roadmap.")}
         </span>
       </p>
     </div>
+    </Localize>
   );
 }

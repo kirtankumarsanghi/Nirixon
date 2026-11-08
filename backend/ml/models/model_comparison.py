@@ -18,7 +18,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from xgboost import XGBClassifier
 
 
@@ -74,15 +74,17 @@ def run_grid_search(
     logreg_pipe = Pipeline(
         [
             ("preprocess", build_preprocessor(feature_columns)),
+            ("poly", PolynomialFeatures(degree=2, include_bias=False)),
+            ("scale_poly", StandardScaler()),
             (
                 "clf",
                 LogisticRegression(
-                    class_weight=class_weight, max_iter=2000, random_state=42
+                    class_weight=class_weight, max_iter=1000, random_state=42
                 ),
             ),
         ]
     )
-    logreg_grid = {"clf__C": [0.01, 0.1, 1.0, 10.0]}
+    logreg_grid = {"clf__C": [0.1, 1.0]}
     logreg_search = GridSearchCV(
         logreg_pipe, logreg_grid, scoring=scoring, cv=cv, n_jobs=-1
     )
@@ -128,8 +130,10 @@ def run_grid_search(
     )
     xgb_grid = {
         "clf__n_estimators": [200, 400],
-        "clf__max_depth": [3, 5],
+        "clf__max_depth": [3, 5, 6],
         "clf__learning_rate": [0.05, 0.1],
+        "clf__subsample": [0.85],
+        "clf__colsample_bytree": [0.85],
     }
     xgb_search = GridSearchCV(xgb_pipe, xgb_grid, scoring=scoring, cv=cv, n_jobs=-1)
     xgb_search.fit(X_train, y_train_int, clf__sample_weight=sample_weight)
