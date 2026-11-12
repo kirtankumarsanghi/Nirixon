@@ -17,6 +17,7 @@ import {
   toSubscriptionPayload,
   unsubscribeFromPush,
 } from "../lib/push";
+import { isNativeApp } from "../lib/native";
 import { useApp } from "../store";
 import { Localize } from "../lib/localize";
 import { Btn } from "./ui";
@@ -112,8 +113,16 @@ export function NotificationSettings({ open, onClose }: { open: boolean; onClose
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
+    const onBack = (event: Event) => {
+      event.preventDefault();
+      onClose();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("nirixon:back", onBack);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("nirixon:back", onBack);
+    };
   }, [open, onClose]);
 
   function applyPreference(pref: NotificationPreference) {
@@ -132,9 +141,17 @@ export function NotificationSettings({ open, onClose }: { open: boolean; onClose
   const toggle = (key: keyof NotificationChannels) =>
     setChannels((current) => ({ ...current, [key]: !current[key] }));
 
+  // Web Push needs a service worker, which the packaged WebView intentionally
+  // does not run. WhatsApp / SMS / IVR still deliver follow-ups on the phone.
+  const pushSupported = isPushSupported();
+
   const enablePush = async () => {
-    if (!isPushSupported()) {
-      setError("This browser does not support push notifications.");
+    if (!pushSupported) {
+      setError(
+        isNativeApp()
+          ? "Push is not available in the app build. Use WhatsApp, SMS or voice call instead."
+          : "This browser does not support push notifications.",
+      );
       return;
     }
     setBusy(true);
@@ -254,7 +271,13 @@ export function NotificationSettings({ open, onClose }: { open: boolean; onClose
               <Toggle
                 icon={Bell}
                 label="Push"
-                description={vapid.enabled ? "Instant alerts on this device." : "The server has no VAPID key configured."}
+                description={
+                  isNativeApp()
+                    ? "Not available in the app — use WhatsApp, SMS or voice."
+                    : vapid.enabled
+                      ? "Instant alerts on this device."
+                      : "The server has no VAPID key configured."
+                }
                 active={channels.push}
                 onClick={() => void (channels.push ? disablePush() : enablePush())}
               />

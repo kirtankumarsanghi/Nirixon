@@ -23,7 +23,7 @@ export function SyncStatus() {
 
   return (
     <Localize>
-    <div className="no-print pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-center px-3">
+    <div className="no-print nrx-sync-safe pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3">
       <button
         type="button"
         onClick={() => void run()}

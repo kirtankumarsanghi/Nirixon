@@ -179,8 +179,8 @@ export function SupervisorReferrals() {
         {/* ============================ header ============================ */}
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <Eyebrow index="01">{tr("Oversight · referral desk")}</Eyebrow>
-            <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+            <Eyebrow>{tr("Oversight · referral desk")}</Eyebrow>
+            <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
               {tr("Every referral.")}
               <br />
               <span className="text-rust">{tr("Nobody left waiting.")}</span>
@@ -249,7 +249,6 @@ export function SupervisorReferrals() {
         {/* ============================ team load ============================ */}
         <Reveal className="mt-4">
           <SectionCard
-            index="02"
             eyebrow="Referral load by worker"
             title="Who is carrying open referrals, and who has stalled work."
             action={
@@ -300,7 +299,7 @@ export function SupervisorReferrals() {
             <section className="flex h-full flex-col rounded-[36px] bg-night p-6 text-paper sm:p-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <Eyebrow tone="peach" index="03">
+                  <Eyebrow tone="peach">
                     {tr("Referral funnel")}
                   </Eyebrow>
                   <p className="mt-3 font-display text-[clamp(28px,3.2vw,40px)] leading-none uppercase">
@@ -322,7 +321,6 @@ export function SupervisorReferrals() {
 
           <Reveal className="h-full">
             <SectionCard
-              index="04"
               eyebrow="Stuck referrals"
               title={
                 stuck.length
@@ -371,7 +369,7 @@ export function SupervisorReferrals() {
 
         {/* ============================ recent ============================ */}
         <Reveal className="mt-4">
-          <SectionCard index="05" eyebrow="Recent referrals" title="The latest handoffs raised by the team.">
+          <SectionCard eyebrow="Recent referrals" title="The latest handoffs raised by the team.">
             <ul className="divide-y divide-line">
               {recent.map((ref) => {
                 const child = childById.get(ref.child_id);

@@ -66,6 +66,9 @@ import type {
 // /audio, so a browser must never be pointed at the API host directly. A
 // Capacitor WebView has no proxy, so native builds have to set an absolute URL.
 const envBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+// A mobile-only default keeps the web build same-origin while letting a native
+// build target a LAN/production API without changing every environment file.
+const envMobileBase = (import.meta.env.VITE_MOBILE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 const API_BASE_KEY = "nirixon_api_base";
 
 function normalizeBase(value: string | null | undefined): string {
@@ -74,7 +77,10 @@ function normalizeBase(value: string | null | undefined): string {
 
 function defaultApiBase(): string {
   if (envBase) return envBase.replace("://localhost:", "://127.0.0.1:");
-  return Capacitor.isNativePlatform() ? "http://127.0.0.1:8000" : "";
+  if (envMobileBase) return envMobileBase;
+  // Native builds have no dev-server proxy. 10.0.2.2 is the host machine from
+  // the Android emulator; a physical phone uses the first-run server dialog.
+  return Capacitor.isNativePlatform() ? "http://10.0.2.2:8000" : "";
 }
 
 function storedApiBase(): string {
@@ -136,6 +142,11 @@ export class ApiError extends Error {
   }
 }
 
+/** True when the API never answered: stopped, restarting, or unreachable. */
+export function isApiUnavailable(err: unknown): boolean {
+  return err instanceof ApiError ? err.status >= 500 : err instanceof TypeError;
+}
+
 type UnauthorizedHandler = () => void;
 
 let unauthorizedHandler: UnauthorizedHandler | null = null;
@@ -176,6 +187,11 @@ async function parseDetail(res: Response): Promise<string> {
     }
     return res.statusText || "Request failed";
   } catch {
+    // A plain-text 5xx comes from the dev proxy (backend stopped or reloading),
+    // not from FastAPI — surface something the user can act on.
+    if (res.status >= 500) {
+      return "The API server is unavailable — it may still be starting or reloading. Try again in a moment.";
+    }
     return res.statusText || "Request failed";
   }
 }
@@ -253,10 +269,16 @@ function sleep(ms: number): Promise<void> {
 
 export const api = {
   login(body: LoginRequest): Promise<LoginResponse> {
-    return request<LoginResponse>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    // Retried like submitAnswer: the dev proxy answers 500 while the backend
+    // is restarting, and the next attempt usually lands.
+    return request<LoginResponse>(
+      "/api/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+      { retry: true },
+    );
   },
 
   startScreen(body: StartScreenRequest): Promise<ScreenActionResponse> {
@@ -571,6 +593,15 @@ export const referralApi = {
   },
   getSummaryPdfUrl(id: string): string {
     return `${apiBase}/api/referrals/${encodeURIComponent(id)}/summary/pdf`;
+  },
+  /** Fetch the printable PDF with the bearer token (plain anchors cannot send it). */
+  async getSummaryPdf(id: string): Promise<Blob> {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${apiBase}/api/referrals/${encodeURIComponent(id)}/summary/pdf`, { headers });
+    if (!res.ok) throw new ApiError(res.status, await parseDetail(res));
+    return res.blob();
   },
   deleteReferral(id: string): Promise<{ deleted: boolean; message: string }> {
     return request<{ deleted: boolean; message: string }>(`/api/referrals/${encodeURIComponent(id)}`, {

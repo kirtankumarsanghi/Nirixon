@@ -35,7 +35,7 @@ export function ParentTraining() {
 
   return (
     <Page>
-      <Eyebrow index="01">Learn · simple guides for families</Eyebrow>
+      <Eyebrow>Learn · simple guides for families</Eyebrow>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
           Grow together.

@@ -110,7 +110,12 @@ export function Display({
   className?: string;
   as?: "h1" | "h2" | "h3" | "div" | "p";
 }) {
-  return <Tag className={cn("font-display uppercase leading-[0.93] text-ink", className)}>{children}</Tag>;
+  // tailwind-merge treats `text-[clamp(...)]` as conflicting with `leading-*` and silently
+  // drops it, which left headlines with huge line gaps. Add the default leading afterwards.
+  const hasLeading = /(^|\s)leading-/.test(className ?? "");
+  return (
+    <Tag className={cn("font-display uppercase text-ink", className, !hasLeading && "leading-[0.93]")}>{children}</Tag>
+  );
 }
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {

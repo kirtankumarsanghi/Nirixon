@@ -102,7 +102,7 @@ export function Wellbeing() {
     const style = TIER_STYLE[result.classification];
     return (
       <Page>
-        <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
+        <Eyebrow>{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
         <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
           <Display as="h1" className="text-[clamp(48px,7vw,108px)]">
             {tr("Your wellbeing.")}
@@ -117,7 +117,7 @@ export function Wellbeing() {
         <section className="mt-10 overflow-hidden rounded-[44px] bg-night p-7 text-paper sm:p-10">
           <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.8fr]">
             <div>
-              <Eyebrow tone="peach" index="02">{tr("Your result")}</Eyebrow>
+              <Eyebrow tone="peach">{tr("Your result")}</Eyebrow>
               <div className="mt-4 flex items-center gap-4">
                 <GlowDot hex={style.hex} glow={style.glow} size={36} />
                 <p className="font-display text-[clamp(48px,6.5vw,92px)] leading-[0.9] uppercase" style={{ color: style.hex }}>
@@ -153,7 +153,7 @@ export function Wellbeing() {
 
         <Reveal className="mt-4">
           <section className="rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="03" tone="muted">{tr("What may help")}</Eyebrow>
+            <Eyebrow tone="muted">{tr("What may help")}</Eyebrow>
             <ul className="mt-5 space-y-3">
               {result.recommendations.map((item) => (
                 <li key={item} className="flex items-start gap-3 text-[14px] leading-relaxed text-ink-2">
@@ -182,7 +182,7 @@ export function Wellbeing() {
     const progress = Math.round((index / data.questions.length) * 100);
     return (
       <Page>
-        <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
+        <Eyebrow>{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
         <div className="mt-5 grid items-start gap-x-14 gap-y-10 lg:grid-cols-[1fr_430px]">
           <div>
             <Display as="h1" className="text-[clamp(44px,6vw,92px)]">
@@ -254,7 +254,7 @@ export function Wellbeing() {
 
   return (
     <Page>
-      <Eyebrow index="01">{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
+      <Eyebrow>{tr("Caregiver wellbeing · EPDS")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
           {tr("Your wellbeing.")}
@@ -268,7 +268,7 @@ export function Wellbeing() {
 
       <div className="mt-10 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-[38px] border border-line-2 bg-card p-7 sm:p-9">
-          <Eyebrow index="02" tone="muted">{tr("Before you start")}</Eyebrow>
+          <Eyebrow tone="muted">{tr("Before you start")}</Eyebrow>
           <ul className="mt-6 space-y-4 text-[14px] leading-relaxed text-ink-2">
             <li className="flex items-start gap-3"><HeartHandshake className="mt-0.5 size-4 shrink-0 text-rust" /> {tr("10 short questions, about 3 minutes.")}</li>
             <li className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-rust" /> {tr("If you are in immediate danger, call 112.")}</li>

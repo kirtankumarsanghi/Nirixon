@@ -85,10 +85,19 @@ def test_master_metrics_file_exists_and_complete():
             section in data
         ), f"Required section '{section}' missing from metrics.json"
 
-    # Verify production winner
-    assert data["model_selection"]["winner"] == "xgboost"
-    assert "xgboost" in data["test_metrics"]
-    assert "macro_auprc" in data["test_metrics"]["xgboost"]
+    # Verify the selected winner is a valid model and matches the shipped artifact.
+    # (Which model wins is a data/selection-rule outcome — assert consistency,
+    # not a hard-coded family.)
+    winner = data["model_selection"]["winner"]
+    assert winner in {"logistic_regression", "random_forest", "xgboost"}
+    assert winner == data["metadata"]["production_model"]
+    assert (
+        winner
+        == (ARTIFACTS_DIR / "production_model_name.txt")
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+    assert "macro_auprc" in data["test_metrics"][winner]
 
 
 def test_no_document_table_shows_number_not_in_metrics_file():

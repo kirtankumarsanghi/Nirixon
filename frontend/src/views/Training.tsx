@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Check, GraduationCap, RotateCcw, ShieldAlert, Sparkles } from "lucide-react";
 import { Btn, Chip, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { TIER_META } from "../lib/model";
@@ -44,7 +44,7 @@ function CaseDetail({ item }: { item: TrainingCase }) {
     <div className="rounded-[44px] bg-night p-7 text-paper sm:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Eyebrow tone="peach" index="02">Sample case · Module {item.module}{item.bracket ? ` · ${item.bracket}` : ""}</Eyebrow>
+          <Eyebrow tone="peach">Sample case · Module {item.module}{item.bracket ? ` · ${item.bracket}` : ""}</Eyebrow>
           <p className="mt-3 font-display text-[clamp(34px,4vw,52px)] leading-[0.95] uppercase">{item.title}</p>
           <p className="mt-2 font-mono text-[11px] tracking-[0.14em] text-paper/55 uppercase">{item.age}</p>
         </div>
@@ -142,7 +142,7 @@ function Quiz() {
     return (
       <div className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
         <div className="rounded-[40px] bg-night p-7 text-paper sm:p-10">
-          <Eyebrow tone="peach" index="03">Quiz complete</Eyebrow>
+          <Eyebrow tone="peach">Quiz complete</Eyebrow>
           <p className="mt-4 font-display text-[clamp(56px,8vw,100px)] leading-[0.9] uppercase">{percent}%</p>
           <p className="mt-3 text-[15px] text-paper/75">{score} of {TRAINING_QUIZ.length} correct.</p>
           <div className="mt-7 flex flex-wrap gap-2.5">
@@ -150,7 +150,7 @@ function Quiz() {
           </div>
         </div>
         <div className="rounded-[40px] border border-line-2 bg-card p-7 sm:p-9">
-          <Eyebrow index="04" tone="muted">Progress</Eyebrow>
+          <Eyebrow tone="muted">Progress</Eyebrow>
           <p className="mt-5 font-display text-[56px] leading-none">{progress.best}%</p>
           <p className="mt-2 text-[13px] text-ink-2">Best score across {progress.attempts} attempt{progress.attempts === 1 ? "" : "s"}.</p>
           <p className="mt-5 text-[12px] leading-relaxed text-muted">Saved on this device only. Retake the quiz after each training session.</p>
@@ -235,7 +235,7 @@ export function Training() {
 
   return (
     <Page>
-      <Eyebrow index="01">Frontline training · sample cases</Eyebrow>
+      <Eyebrow>Frontline training · sample cases</Eyebrow>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
           {tr("Practise.")}

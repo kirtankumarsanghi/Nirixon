@@ -120,10 +120,10 @@ trustworthy, it was checked against its own stated design goals:
 | Check | Result |
 |---|---|
 | Overall class balance lands near observed (latent-threshold labels, ASQ-style -2/-1 SD cut-offs) | ✅ 45.5% / 40.4% / 14.1% |
-| `multilingual_home_flag` shows no real effect on communication scores | ✅ 1.581 vs. 1.574 mean — effectively no difference |
+| `multilingual_home_flag` shows no real effect on communication scores | ✅ 1.489 vs. 1.491 mean — effectively no difference |
 | Domains that should correlate more (communication ↔ personal-social) actually do, *once shared age effects are removed* | ✅ 0.435 vs. ~0.29 baseline, after controlling for age |
-| `regression_flag` is a strong signal but **not** a perfectly separable one | ❌ then ✅ — first version was 100% deterministic (a bug); fixed to ~83% Refer, leaving room for the rest |
-| Family history modestly raises Monitor/Refer rate, doesn't dominate it | ✅ small, sensible increase (7% → 10% Refer rate) |
+| `regression_flag` is a strong signal but **not** a perfectly separable one | ❌ then ✅ — first version was 100% deterministic (a bug); fixed to ~50% Refer, leaving room for the rest |
+| Family history modestly raises Monitor/Refer rate, doesn't dominate it | ✅ small, sensible increase (14% → 25% Refer rate) |
 
 **The regression_flag fix is the one worth explaining if asked**, because
 it shows the difference between "the code runs" and "the code is correct."

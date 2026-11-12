@@ -49,8 +49,30 @@ body {
   background: linear-gradient(180deg, #fff5de 0%, #fdefd0 55%, #f8e5be 100%);
   background-attachment: fixed;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* ---------- native shell / notched-phone safe areas ---------- */
+/* The Android WebView draws under the status and gesture bars. These offsets
+   keep the floating chrome clear of both without changing the visual design. */
+.nrx-nav-safe {
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
+.nrx-dock-safe {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+.nrx-sync-safe {
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+.nrx-bottom-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+/* Never let a wide table or a long token force a horizontal scrollbar in the
+   narrow WebView; inner scroll containers keep their own overflow. */
+.nrx-viewport {
+  overflow-x: clip;
 }
 
 .nrx-nav-shell {

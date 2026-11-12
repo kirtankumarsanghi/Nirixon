@@ -1,5 +1,6 @@
 import type { ReferralSummary } from "../api/types";
 import { DOMAINS, type Scores } from "./model";
+import { nativePrintHtml } from "./native";
 
 export interface PlanItem {
   label: string;
@@ -78,14 +79,9 @@ export function caregiverPlanBody(items: PlanItem[], meta: { childId?: string; d
   <p class="muted">${escapeHtml(meta.date)} · Activity text is in English pending clinical translation review. Screening aid only — not a diagnosis.</p>`;
 }
 
-/**
- * Open a self-contained, print-ready sheet in a new window. User-initiated, so
- * pop-up blockers allow it; the app's own print CSS is left untouched.
- */
-export function printSheet(title: string, body: string): void {
-  const win = window.open("", "_blank", "width=820,height=1000");
-  if (!win) return;
-  win.document.write(`<!doctype html>
+/** The complete, self-contained print document for a sheet body. */
+export function printSheetHtml(title: string, body: string): string {
+  return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>${escapeHtml(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -117,6 +113,19 @@ export function printSheet(title: string, body: string): void {
     setTimeout(go, 500);
   }
 </script>
-</body></html>`);
+</body></html>`;
+}
+
+/**
+ * Open a self-contained, print-ready sheet. On the web it uses a pop-up window
+ * (user-initiated, so blockers allow it); inside the Capacitor WebView it hands
+ * the document to Android's print service because `window.print()` is a no-op.
+ */
+export function printSheet(title: string, body: string): void {
+  const html = printSheetHtml(title, body);
+  if (nativePrintHtml(html, title)) return;
+  const win = window.open("", "_blank", "width=820,height=1000");
+  if (!win) return;
+  win.document.write(html);
   win.document.close();
 }

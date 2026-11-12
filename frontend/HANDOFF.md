@@ -19,6 +19,73 @@ npx tsc -b           # typecheck only
 Backend must be running (`uvicorn app.main:app --reload --port 8000`) with the
 seed user from root `.env`.
 
+## Mobile app (Capacitor / Android)
+
+The native app is the same React bundle, packaged by Capacitor. If the app looks
+out of date, the packaged assets are stale — rebuild and sync:
+
+```bash
+cd frontend
+npm run build:mobile                       # tsc + vite build + cap sync android
+cd android
+gradlew.bat assembleDebug                  # APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+**Backend reachability (important).** A phone cannot reach `127.0.0.1`; that is
+the phone itself. Start the API on all interfaces and use the laptop's LAN IP:
+
+```bash
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then on the phone, the first-run dialog (or **Change** on the sign-in screen)
+asks for `http://<laptop-LAN-IP>:8000` — e.g. `http://10.176.198.194:8000`.
+Set `VITE_MOBILE_API_BASE_URL` at build time to bake in a default instead:
+
+```bash
+VITE_MOBILE_API_BASE_URL=http://10.176.198.194:8000 npm run build:mobile
+```
+
+Native-specific wiring now included:
+
+- cleartext HTTP allowed for the LAN API (`network_security_config.xml`),
+- location permission for Find Help's "use my location",
+- Android print service for referral slips / plans (WebView has no `window.print`),
+- Android share sheet for `.ics` / PDF / text downloads (WebView ignores `<a download>`),
+- external-app handoff for WhatsApp, SMS and phone links,
+- safe-area offsets for the notched/gesture-bar Android WebView,
+- hardware back closes the menu/dialogs before navigating.
+
+## Releasing an installable APK
+
+The release build is signed with `android/keystore/nirixon-release.jks` through
+`android/key.properties` (both gitignored — back them up; the same key is needed
+for every future update of an installed app).
+
+```bash
+cd frontend
+# Bake in the public API so no one has to configure anything:
+#   PowerShell: $env:VITE_MOBILE_API_BASE_URL="https://api.example.org"
+#   bash:       VITE_MOBILE_API_BASE_URL=https://api.example.org npm run build:mobile
+npm run build:mobile
+
+cd android
+gradlew.bat assembleRelease      # APK: app/build/outputs/apk/release/app-release.apk
+gradlew.bat bundleRelease        # AAB: app/build/outputs/bundle/release/app-release.aab
+```
+
+Bump `versionCode`/`versionName` in `android/app/build.gradle` for each release.
+Share the APK directly (users allow "install unknown apps"), via Firebase App
+Distribution, or upload the AAB to Google Play.
+
+**No public API means no on-any-network access.** A phone cannot reach the
+laptop's `127.0.0.1` or LAN IP from another network. Either host the backend
+publicly (Render/Railway/VPS/Cloud Run) and bake that URL in as above, or port
+the model on-device for a fully offline build.
+
+
+
 ## Backend wiring added for Stage 5
 
 - `StartScreenRequest.consent_given: bool` — required; rejected if false;

@@ -3,6 +3,7 @@ import { Check, Clock, Copy, MessageCircle, Printer, Share2 } from "lucide-react
 import { LogoLockup } from "../landing/components/system";
 import { Btn, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
 import { DOMAINS, domainKeys, TIER_META, buildSummary, domainStatus, evaluate, fmtDate } from "../lib/model";
+import { copyToClipboard, openExternalUrl, printCurrentPage } from "../lib/native";
 import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -26,15 +27,10 @@ export function Share() {
   const text = buildSummary(ci);
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+    const ok = await copyToClipboard(text);
+    if (!ok) {
+      showToast(tr("Could not copy the summary"));
+      return;
     }
     setCopied(true);
     showToast(tr("Summary copied to clipboard"));
@@ -56,9 +52,9 @@ export function Share() {
 
   return (
     <Page>
-      <Eyebrow index="01">{tr("Family sharing")}</Eyebrow>
+      <Eyebrow>{tr("Family sharing")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-        <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
+        <Display as="h1" className="text-[clamp(44px,6.4vw,92px)]">
           {tr("One page.")}
           <br />
           <span className="text-rust">{tr("Easy to share.")}</span>
@@ -131,14 +127,14 @@ export function Share() {
               </Btn>
               <Btn
                 variant="rust"
-                onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener")}
+                onClick={() => openExternalUrl(`https://wa.me/?text=${encodeURIComponent(text)}`)}
               >
                 <MessageCircle className="size-4" /> {tr("WhatsApp")}
               </Btn>
               <Btn variant="light" onClick={share}>
                 <Share2 className="size-4" /> {tr("Share")}
               </Btn>
-              <Btn variant="light" onClick={() => window.print()}>
+              <Btn variant="light" onClick={() => printCurrentPage("Nirixon check-in summary")}>
                 <Printer className="size-4" /> {tr("Print")}
               </Btn>
             </div>

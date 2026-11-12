@@ -640,9 +640,9 @@ export function CheckIn() {
   if (phase === "setup") {
     return (
       <Page>
-        <Eyebrow index="01">{assisting ? `Assisting as ${ROLES[role].short}` : "Family check-in"}</Eyebrow>
+        <Eyebrow>{assisting ? `Assisting as ${ROLES[role].short}` : "Family check-in"}</Eyebrow>
         <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-          <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
+          <Display as="h1" className="text-[clamp(44px,6.4vw,92px)]">
             {assisting ? "Screen a" : "Start a"}
             <br />
             <span className="text-sea">{assisting ? "child." : "check-in."}</span>
@@ -855,7 +855,7 @@ export function CheckIn() {
             <Photo src={PHOTO.blocksGirl} alt="" wrapperClassName="absolute inset-0" className="opacity-55" eager />
             <div className="absolute inset-0 bg-gradient-to-t from-night via-night/70 to-night/20" />
             <div className="relative flex h-full min-h-[420px] flex-col justify-end p-8">
-              <Eyebrow tone="peach" index="02">Module {module} · {moduleMeta.label}</Eyebrow>
+              <Eyebrow tone="peach">Module {module} · {moduleMeta.label}</Eyebrow>
               <ul className="mt-5 space-y-4">
                 {[
                   ["6–12", "questions, one area at a time"],
@@ -928,7 +928,7 @@ export function CheckIn() {
         <section className="relative overflow-hidden rounded-[44px] bg-night text-paper">
           <div className="relative grid items-center gap-10 p-7 sm:p-10 lg:grid-cols-[1.05fr_0.95fr] lg:p-14">
             <div>
-              <Eyebrow tone="peach" index="01">Check-in complete</Eyebrow>
+              <Eyebrow tone="peach">Check-in complete</Eyebrow>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Chip tone="night">Module {result.module ?? module}</Chip>
                 <Chip tone="night">{result.ageMonths} months · {ageBand(result.ageMonths)}</Chip>
@@ -964,7 +964,7 @@ export function CheckIn() {
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="02" tone="muted">{tier === "Typical" ? "Keep this going" : "Try these first"}</Eyebrow>
+            <Eyebrow tone="muted">{tier === "Typical" ? "Keep this going" : "Try these first"}</Eyebrow>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {lows.map((k) => (
                 <div key={k} className="rounded-[26px] bg-rust p-6 text-white">
@@ -979,7 +979,7 @@ export function CheckIn() {
           </div>
           <div className="flex flex-col justify-between rounded-[36px] border border-line-2 bg-sand/60 p-7 sm:p-9">
             <div>
-              <Eyebrow index="03" tone="muted">Next step</Eyebrow>
+              <Eyebrow tone="muted">Next step</Eyebrow>
               <p className="mt-5 font-display text-[34px] leading-[1.02] uppercase">{meta.next}</p>
             </div>
             <div className="mt-8 flex flex-wrap gap-2.5">
@@ -1002,7 +1002,7 @@ export function CheckIn() {
 
         {(backendResult?.context_flags?.length || backendResult?.nutrition?.flags?.length) && (
           <section className="mt-4 rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="04" tone="muted">Context & nutrition</Eyebrow>
+            <Eyebrow tone="muted">Context & nutrition</Eyebrow>
             <div className="mt-5 flex flex-wrap gap-2">
               {(backendResult?.context_flags ?? []).map((flag) => (
                 <Chip key={flag} tone="lilac">{CONTEXT_LABELS[flag] ?? flag}</Chip>
@@ -1024,7 +1024,7 @@ export function CheckIn() {
   if (phase === "intake") {
     return (
       <Page>
-        <Eyebrow index="01">{assisting ? `Assisting as ${ROLES[role].short}` : "Module B · School age"}</Eyebrow>
+        <Eyebrow>{assisting ? `Assisting as ${ROLES[role].short}` : "Module B · School age"}</Eyebrow>
         <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <Display as="h1" className="text-[clamp(48px,7vw,108px)]">
             What have you
@@ -1117,7 +1117,7 @@ export function CheckIn() {
     const options = Object.entries(recallOptions);
     return (
       <Page>
-        <Eyebrow index="01">Module B · School age</Eyebrow>
+        <Eyebrow>Module B · School age</Eyebrow>
         <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,96px)]">
           Which of these <span className="text-sea">sound familiar?</span>
         </Display>
@@ -1218,7 +1218,7 @@ export function CheckIn() {
     <Page>
       <div className="grid items-start gap-x-14 gap-y-10 lg:grid-cols-[1fr_430px]">
         <div className="lg:col-start-1 lg:row-start-1">
-          <Eyebrow index="01">{assisting ? `Assisting as ${ROLES[role].short}` : "Try it together"}</Eyebrow>
+          <Eyebrow>{assisting ? `Assisting as ${ROLES[role].short}` : "Try it together"}</Eyebrow>
           <Display as="h1" className="mt-5 text-[clamp(48px,7vw,108px)]">
             Tap an answer.
             <br />
@@ -1331,7 +1331,7 @@ export function CheckIn() {
         {/* live result */}
         <div className="lg:col-start-1 lg:row-start-2">
           <div className="rounded-[40px] bg-night p-7 text-paper sm:p-10">
-            <Eyebrow tone="peach" index="02">Result so far</Eyebrow>
+            <Eyebrow tone="peach">Result so far</Eyebrow>
             <div className="mt-7 flex items-center gap-6">
               <GlowDot hex={answeredAny ? liveMeta.hexLight : "#6b5a44"} glow={answeredAny ? liveMeta.glow : "rgba(0,0,0,0)"} size={64} />
               <div>

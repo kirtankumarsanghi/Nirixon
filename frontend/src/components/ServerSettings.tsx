@@ -37,8 +37,16 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const onBack = (event: Event) => {
+      event.preventDefault();
+      onClose();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("nirixon:back", onBack);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("nirixon:back", onBack);
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -200,8 +208,17 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
 }
 
 /** Button + modal pair so any screen can expose the setting. */
-export function ServerSettingsButton({ className, children = "Server settings" }: { className?: string; children?: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function ServerSettingsButton({
+  className,
+  children = "Server settings",
+  autoOpen = false,
+}: {
+  className?: string;
+  children?: ReactNode;
+  /** Open immediately on mount (native first run, before a server is saved). */
+  autoOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(autoOpen);
   return (
     <Localize>
     <>

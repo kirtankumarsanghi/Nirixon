@@ -14,7 +14,7 @@ export function SupervisorTraining() {
 
   return (
     <Page>
-      <Eyebrow index="01">Supervisor training · oversight playbooks</Eyebrow>
+      <Eyebrow>Supervisor training · oversight playbooks</Eyebrow>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
         <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
           {tr("Lead the team.")}
@@ -59,7 +59,7 @@ export function SupervisorTraining() {
           <div key={active.id} className="rounded-[44px] bg-night p-7 text-paper sm:p-10">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Eyebrow tone="peach" index="02">Playbook</Eyebrow>
+                <Eyebrow tone="peach">Playbook</Eyebrow>
                 <p className="mt-3 font-display text-[clamp(34px,4vw,52px)] leading-[0.95] uppercase">{active.title}</p>
               </div>
               <Chip tone="night">{active.steps.length} steps</Chip>

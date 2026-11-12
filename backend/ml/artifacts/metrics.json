@@ -2,7 +2,7 @@
   "metadata": {
     "module": "module_a",
     "description": "Module A (Early Childhood 0-60mo) screening model evaluation metrics",
-    "timestamp": "2026-11-08 17:55:15",
+    "timestamp": "2026-11-12 02:30:35",
     "seed": 42,
     "dataset_rows": 8000,
     "production_model": "random_forest"
@@ -16,13 +16,13 @@
     "typical_pct": 45.46,
     "monitor_pct": 40.41,
     "refer_pct": 14.12,
-    "multilingual_mean_comm": 1.581,
-    "non_multilingual_mean_comm": 1.574,
+    "multilingual_mean_comm": 1.489,
+    "non_multilingual_mean_comm": 1.491,
     "comm_ps_correlation_residual": 0.435,
     "comm_ps_baseline_correlation": 0.29,
-    "regression_refer_rate_pct": 83.0,
-    "family_history_refer_rate_pct": 10.0,
-    "baseline_refer_rate_pct": 7.0
+    "regression_refer_rate_pct": 50.0,
+    "family_history_refer_rate_pct": 24.6,
+    "baseline_refer_rate_pct": 14.1
   },
   "validation_macro_auprc": {
     "logistic_regression": 0.9065897625246931,
@@ -603,27 +603,27 @@
   },
   "latency_benchmark": {
     "logistic_regression": {
-      "p50_ms": 7.983450001120218,
-      "p95_ms": 9.237139997094346,
-      "p99_ms": 10.713650000652704,
+      "p50_ms": 11.993349999102065,
+      "p95_ms": 13.525114996082266,
+      "p99_ms": 14.872213002381597,
       "n_samples": 200
     },
     "random_forest": {
-      "p50_ms": 32.66714999881515,
-      "p95_ms": 41.35980999963065,
-      "p99_ms": 50.91007500170235,
+      "p50_ms": 50.988700004381826,
+      "p95_ms": 60.38151000066135,
+      "p99_ms": 64.68920900188094,
       "n_samples": 200
     },
     "xgboost": {
-      "p50_ms": 12.958999999682419,
-      "p95_ms": 15.415730000495387,
-      "p99_ms": 16.37156800090451,
+      "p50_ms": 16.534000002138782,
+      "p95_ms": 20.96261999940907,
+      "p99_ms": 24.194238997224566,
       "n_samples": 200
     },
     "ensemble": {
-      "p50_ms": 71.4975000009872,
-      "p95_ms": 84.02129500063891,
-      "p99_ms": 90.48615500298183,
+      "p50_ms": 85.44509999774164,
+      "p95_ms": 111.53677999718639,
+      "p99_ms": 139.23952599885513,
       "n_samples": 200
     }
   },
@@ -632,7 +632,7 @@
     "val_macro_auprc": 0.9266626369520757,
     "test_macro_auprc": 0.9503064943620944,
     "test_refer_auprc": 0.9411693461420894,
-    "criteria": "Highest validation-set macro AUPRC across LR, RF, XGB and the soft-voting ensemble. If XGBoost and Random Forest are within 0.005 AUPRC, prefer Random Forest (lower latency, lower memory). Logistic Regression wins only if it strictly outperforms both tree models."
+    "criteria": "Highest validation-set macro AUPRC among Logistic Regression, Random Forest and XGBoost. If XGBoost and Random Forest are within 0.005 AUPRC, prefer Random Forest (lower latency, lower memory). Logistic Regression wins only if it strictly outperforms both tree models. The soft-voting ensemble is reported for comparison but is not eligible for production selection (slowest single-row latency)."
   },
   "ablation_study": {
     "metric": "macro_auprc",

@@ -9,7 +9,7 @@ export function PageHeader({
   subtitle,
   actions,
 }: {
-  index: string;
+  index?: string;
   eyebrow: string;
   title: ReactNode;
   subtitle: string;
@@ -19,7 +19,7 @@ export function PageHeader({
     <div className="grid items-end gap-6 lg:grid-cols-[1.35fr_0.65fr]">
       <div>
         <Eyebrow index={index}>{eyebrow}</Eyebrow>
-        <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+        <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
           {title}
         </Display>
       </div>

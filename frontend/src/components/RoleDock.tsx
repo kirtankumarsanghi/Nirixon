@@ -12,7 +12,7 @@ export function RoleDock() {
   const tr = useT();
   return (
     <Localize>
-    <div className="no-print pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-3">
+    <div className="no-print nrx-dock-safe pointer-events-none fixed inset-x-0 z-40 flex justify-center px-3">
       <div className="nrx-hide-scroll pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-night p-1.5 pl-1.5 shadow-[0_26px_50px_-18px_rgba(31,20,9,0.95)] sm:pl-6">
         <span className="hidden pr-3 font-mono text-[10px] font-semibold tracking-[0.3em] whitespace-nowrap text-paper/55 uppercase sm:block">
           {t(lang, "common.viewingAs")}

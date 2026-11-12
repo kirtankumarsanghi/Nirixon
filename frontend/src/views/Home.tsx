@@ -52,8 +52,8 @@ export function Home() {
     <Page>
       <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">{tr("Family workspace")}</Eyebrow>
-          <Display as="h1" className="mt-5 text-[clamp(52px,8vw,120px)]">
+          <Eyebrow>{tr("Family workspace")}</Eyebrow>
+          <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
             {tr("Namaste,")} <span className="text-rust">Priya.</span>
           </Display>
         </div>
@@ -75,7 +75,7 @@ export function Home() {
         />
         <div className="relative grid items-center gap-10 p-7 sm:p-10 lg:grid-cols-[1fr_1fr] lg:p-14">
           <div>
-            <Eyebrow tone="peach" index="02">
+            <Eyebrow tone="peach">
               {tr("Latest check-in")} · {fmtDate(latest.date, true)}
             </Eyebrow>
             <div className="mt-9 flex items-center gap-5">
@@ -134,7 +134,7 @@ export function Home() {
       <Reveal className="mt-14">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <Eyebrow index="03">{tr("{n} areas", { n: domainKeys(latest.scores).length })}</Eyebrow>
+            <Eyebrow>{tr("{n} areas", { n: domainKeys(latest.scores).length })}</Eyebrow>
             <Display as="h3" className="mt-4 text-[clamp(36px,4.6vw,64px)]">
               {tr("Tap an area to look closer.")}
             </Display>
@@ -198,7 +198,7 @@ export function Home() {
       <Reveal className="mt-14">
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="min-w-0 rounded-[32px] border border-line-2 bg-card p-7">
-            <Eyebrow index="04" tone="muted">{tr("Check-in rhythm")}</Eyebrow>
+            <Eyebrow tone="muted">{tr("Check-in rhythm")}</Eyebrow>
             <div ref={stripRef} className="nrx-hide-scroll mt-8 -mx-7 overflow-x-auto px-7">
               <div className="flex min-w-full items-start">
                 {rhythmOffset > 0 && (

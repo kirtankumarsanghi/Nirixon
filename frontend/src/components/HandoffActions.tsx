@@ -6,6 +6,7 @@ import type { ReferralSummary } from "../api/types";
 import { referralSmsText, referralWhatsAppText, smsLink, telLink, waLink } from "../lib/handoff";
 import { childLabel, type Child } from "../lib/model";
 import { caregiverPlanBody, planItemsFromScores, printSheet, referralSlipBody } from "../lib/printSheet";
+import { copyToClipboard, openExternalUrl } from "../lib/native";
 import { useT } from "../lib/useT";
 import { Localize } from "../lib/localize";
 import { useApp } from "../store";
@@ -47,16 +48,16 @@ export function HandoffActions({ child }: { child: Child }) {
     if (!s) return;
     const text = kind === "sms" ? referralSmsText(s) : referralWhatsAppText(s);
     if (kind === "wa") {
-      window.open(waLink(text), "_blank", "noopener");
+      openExternalUrl(waLink(text));
       return;
     }
     if (kind === "sms") {
-      window.location.href = smsLink(text);
+      openExternalUrl(smsLink(text));
       return;
     }
     try {
-      await navigator.clipboard.writeText(text);
-      showToast("Handoff copied");
+      const ok = await copyToClipboard(text);
+      showToast(ok ? "Handoff copied" : "Could not copy the handoff");
     } catch {
       showToast("Could not copy the handoff");
     }

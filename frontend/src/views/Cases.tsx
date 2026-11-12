@@ -124,8 +124,8 @@ export function Cases() {
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">{tr("Clinician tools · referral review")}</Eyebrow>
-          <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+          <Eyebrow>{tr("Clinician tools · referral review")}</Eyebrow>
+          <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
             {tr("Children who")}
             <br />
             <span className="text-rust">{tr("need you next.")}</span>
@@ -245,7 +245,7 @@ export function Cases() {
           <div key={selRef.id} className="nrx-rise overflow-hidden rounded-[44px] bg-night p-6 text-paper sm:p-9">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <Eyebrow tone="peach" index="02">Case review</Eyebrow>
+                <Eyebrow tone="peach">Case review</Eyebrow>
                 <p className="mt-3 font-mono text-[15px] font-semibold">{childLabel(selChild)}</p>
                 <p className="mt-1 text-[12.5px] text-paper/60">
                   {selChild.ageMonths} months ({ageBand(selChild.ageMonths)}) · {selRef.to_facility} · referred by{" "}

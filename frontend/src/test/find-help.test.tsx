@@ -173,11 +173,14 @@ describe("Find Help against the facility directory", () => {
   });
 
   it("refuses an invalid PIN without calling the API", async () => {
+    mocks.get.mockResolvedValue(nearby);
     renderView();
+    // let the automatic first lookup settle, then check a bad PIN adds no further call
+    await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByPlaceholderText("110029"), { target: { value: "12345" } });
     fireEvent.click(screen.getByRole("button", { name: /find nearest help/i }));
     await waitFor(() => expect(screen.getByPlaceholderText("110029")).toHaveValue("12345"));
-    expect(mocks.get).not.toHaveBeenCalled();
+    expect(mocks.get).toHaveBeenCalledTimes(1);
   });
 
   it("re-queries with the trusted-only filter when toggled", async () => {

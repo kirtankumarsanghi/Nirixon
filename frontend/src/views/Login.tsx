@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, ArrowUp, ArrowUpRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { MenuOverlay, Nav } from "../components/Nav";
 import { ServerSettingsButton } from "../components/ServerSettings";
-import { getApiBase } from "../api/client";
+import { getApiBase, getSavedApiBase, isApiUnavailable } from "../api/client";
+import { isNativeApp } from "../lib/native";
 import { LogoMark, Wordmark } from "../components/Brand";
 import { Photo } from "../components/Photo";
 import { Btn, Chip, Display, Eyebrow, Marquee, Reveal } from "../components/ui";
@@ -145,7 +146,9 @@ export function Login() {
       await signIn(email.trim().toLowerCase(), pw);
     } catch (err) {
       setBusy(false);
-      setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
+      // The reachability banner already explains an unreachable API.
+      if (isApiUnavailable(err)) setApiState("down");
+      else setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
     }
   };
 
@@ -155,12 +158,19 @@ export function Login() {
     try {
       await signInAs(r, v);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
+      if (isApiUnavailable(err)) setApiState("down");
+      else setError(err instanceof Error ? err.message : "Sign-in failed. Is the backend running?");
       document.getElementById("signin")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
   const ready = email.length > 0 && pw.length > 0;
+  // The packaged app has no same-origin proxy. On first run, open the server
+  // dialog so the phone is not left pointing at 127.0.0.1 by mistake.
+  const needsServer =
+    isNativeApp() &&
+    !getSavedApiBase() &&
+    !(import.meta.env.VITE_API_BASE_URL ?? "").trim();
 
   return (
     <Localize>
@@ -236,7 +246,7 @@ export function Login() {
 
         <div className="mx-auto grid max-w-[1360px] items-center gap-14 px-5 lg:grid-cols-[1.3fr_0.7fr] lg:gap-10 lg:px-8">
           <div className="relative">
-            <Eyebrow index="00">{tr("Secure access · demo workspace")}</Eyebrow>
+            <Eyebrow >{tr("Secure access · demo workspace")}</Eyebrow>
             <h1 className="mt-6 font-display text-[clamp(60px,9.6vw,150px)] leading-[0.88] uppercase">
               <span className="block text-ink">{tr("Every child.")}</span>
               <span
@@ -278,8 +288,8 @@ export function Login() {
 
               {apiState === "down" && (
                 <p role="alert" className="mt-4 rounded-2xl bg-brick/20 px-4 py-3 text-[12.5px] leading-snug text-[#ffb59f]">
-                  Can't reach {getApiBase()}. Use “Change” at the bottom of this card, and make sure the phone is on the
-                  same Wi-Fi as the backend.
+                  Can't reach the API at {getApiBase() || tr("this origin")}. Make sure the backend is running, then try
+                  again — or use “Change” below to point at a different server.
                 </p>
               )}
 
@@ -395,7 +405,10 @@ export function Login() {
                     </p>
                   )}
                 </div>
-                <ServerSettingsButton className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] font-semibold text-paper/75 transition-colors hover:border-white/40 hover:text-paper">
+                <ServerSettingsButton
+                  autoOpen={needsServer}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] font-semibold text-paper/75 transition-colors hover:border-white/40 hover:text-paper"
+                >
                   {tr("Change")}
                 </ServerSettingsButton>
               </div>
@@ -425,7 +438,7 @@ export function Login() {
         </div>
         <div className="relative mx-auto max-w-[1360px] px-5 lg:px-8">
           <Reveal>
-            <Eyebrow index="01" tone="peach">
+            <Eyebrow  tone="peach">
               {tr("Four workspaces")}
             </Eyebrow>
             <div className="mt-6 grid items-end gap-8 lg:grid-cols-[1.4fr_0.6fr]">
@@ -523,7 +536,7 @@ export function Login() {
       <section id="walkthrough" className="relative py-24 sm:py-32">
         <div className="mx-auto max-w-[1360px] px-5 lg:px-8">
           <Reveal>
-            <Eyebrow index="02">{tr("For faculty & evaluators")}</Eyebrow>
+            <Eyebrow >{tr("For faculty & evaluators")}</Eyebrow>
             <div className="mt-6 grid items-end gap-6 lg:grid-cols-[1.3fr_0.7fr]">
               <Display as="h2" className="text-[clamp(48px,7vw,108px)]">
                 {tr("A five-stop")}

@@ -13,7 +13,7 @@ export function SectionCard({
   tone = "light",
 }: {
   eyebrow: string;
-  index: string;
+  index?: string;
   title: string;
   action?: ReactNode;
   children: ReactNode;

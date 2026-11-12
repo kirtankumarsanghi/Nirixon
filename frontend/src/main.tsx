@@ -47,9 +47,14 @@ if (
   });
 }
 
-// Android hardware back: navigate the SPA first, exit only at the root.
+// Android hardware back: close the top-most in-app overlay first, then walk the
+// SPA history, and exit only at the root.
 if (Capacitor.isNativePlatform()) {
   void CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+    // Overlays (menu, server settings, dialogs) listen for this and cancel it.
+    const event = new CustomEvent("nirixon:back", { cancelable: true });
+    const proceed = window.dispatchEvent(event);
+    if (!proceed || event.defaultPrevented) return;
     if (canGoBack) {
       window.history.back();
       return;

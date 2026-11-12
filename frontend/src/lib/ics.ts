@@ -1,3 +1,5 @@
+import { downloadTextFile } from "./native";
+
 export interface Reminder {
   uid: string;
   title: string;
@@ -42,15 +44,12 @@ export function remindersIcs(reminders: Reminder[], now = new Date()): string {
   return lines.join("\r\n");
 }
 
-/** Trigger a .ics download (the user's calendar app imports it). */
+/**
+ * Trigger a .ics download (the user's calendar app imports it). On the native
+ * app this opens Android's share sheet because WebView anchor downloads are
+ * ignored.
+ */
 export function downloadIcs(filename: string, content: string): void {
-  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename.endsWith(".ics") ? filename : `${filename}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  const name = filename.endsWith(".ics") ? filename : `${filename}.ics`;
+  downloadTextFile(name, content, "text/calendar;charset=utf-8");
 }

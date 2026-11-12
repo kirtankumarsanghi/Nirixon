@@ -28,8 +28,8 @@ export function ClinicalReview() {
       <Page>
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <Eyebrow index="01">{tr("Clinician tools")}</Eyebrow>
-            <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+            <Eyebrow>{tr("Clinician tools")}</Eyebrow>
+            <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
               {tr("No completed")}
               <br />
               <span className="text-rust">{tr("check-ins yet.")}</span>
@@ -91,8 +91,8 @@ export function ClinicalReview() {
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">{tr("Clinician tools · latest completed screening")}</Eyebrow>
-          <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+          <Eyebrow>{tr("Clinician tools · latest completed screening")}</Eyebrow>
+          <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
             {tr("Last check-in.")}
             <br />
             <span className="text-rust">{tr("Clinical view.")}</span>
@@ -161,7 +161,7 @@ export function ClinicalReview() {
           <section className="flex h-full flex-col rounded-[44px] bg-night p-6 text-paper sm:p-9">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <Eyebrow index="02" tone="peach">{tr("Class probabilities")}</Eyebrow>
+                <Eyebrow tone="peach">{tr("Class probabilities")}</Eyebrow>
                 <p className="mt-3 font-display text-[clamp(40px,5vw,64px)] leading-none uppercase" style={{ color: meta.hexLight }}>
                   {tr(tier)}
                 </p>
@@ -212,7 +212,7 @@ export function ClinicalReview() {
           <Reveal delay={80}>
             <section className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <Eyebrow index="03" tone="muted">{tr("Review summary")}</Eyebrow>
+                <Eyebrow tone="muted">{tr("Review summary")}</Eyebrow>
                 <Chip tone="sea">{latest.source === "live" ? tr("Live backend result") : tr("Synthetic check-in")}</Chip>
               </div>
               <dl className="mt-5 divide-y divide-line">
@@ -235,7 +235,7 @@ export function ClinicalReview() {
 
           <Reveal delay={140}>
             <section className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
-              <Eyebrow index="04" tone="muted">{tr("Next steps")}</Eyebrow>
+              <Eyebrow tone="muted">{tr("Next steps")}</Eyebrow>
               <div className="mt-4 grid gap-2">
                 <Btn variant="rust" onClick={openWhatIf}>
                   <FlaskConical className="size-4" /> {tr("What-if simulator")}
@@ -261,7 +261,7 @@ export function ClinicalReview() {
       <Reveal className="mt-14">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Eyebrow index="05">{tr("Parent area highlights")}</Eyebrow>
+            <Eyebrow>{tr("Parent area highlights")}</Eyebrow>
             <h2 className="mt-3 max-w-[760px] font-display text-[clamp(30px,4vw,52px)] leading-none uppercase">
               {tr("The same areas the family sees, with the underlying SD score.")}
             </h2>

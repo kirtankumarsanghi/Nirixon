@@ -40,17 +40,14 @@ Run with: `cd backend/ml && python3 train.py`
 | Refer recall (sensitivity) | 0.9248 |
 | Monitor recall (sensitivity) | 0.8779 |
 
-**Winner: XGBoost**, beating Random Forest (0.9267 val AUPRC) and Logistic
-Regression (0.9066 val AUPRC).
+**Winner: Random Forest** (validation macro AUPRC 0.9267). XGBoost scored
+0.9310 and Logistic Regression 0.9066 on validation; the documented
+tie-break (within 0.005 AUPRC → prefer the cheaper model) determines the production
+winner. See `artifacts/MODEL_SELECTION.md` for the full comparison and test-set metrics.
 
-**Age ablation:** removing `corrected_age_months` drops macro AUPRC from
-0.9503 to 0.9547 (a -0.0044 drop). That's a real, meaningful drop — worth
-saying honestly rather than downplaying: the model leans heavily on
-explicit age access, which makes sense given how age-staggered the item
-bank is by design. The item-level signal alone (age removed) still beats
-random guessing by a wide margin, which is the actual claim the ablation
-study is meant to support — not "age doesn't matter," but "the items
-themselves carry real signal too."
+**Age ablation:** removing `corrected_age_months` changes test macro AUPRC from
+0.9503 to 0.9547 (delta -0.0044 in
+with-age-minus-without-age terms). Interpreted honestly: the item-level signal alone is at least as strong as the version that also gets explicit age, so the model is not merely proxying age — the milestone answers carry real signal.
 
 **Fairness check:** PASS. Refer-probability gap between multilingual and
 non-multilingual groups: 0.0062 (threshold 0.0500). `multilingual_home_flag`
@@ -142,7 +139,7 @@ exactly the "near-automatic red flag" behavior the design doc calls for).
 
 ## Artifacts produced (`backend/ml/artifacts/`)
 
-- `model.pkl` — the final calibrated XGBoost model
+- `model.pkl` — the final calibrated production model (Random Forest)
 - `preprocessor.pkl` — **required** before feeding raw features to the model or the explainer
 - `feature_columns.pkl` — exact ordered feature list used in training
 - `shap_explainer.pkl` — fitted TreeExplainer
@@ -154,8 +151,9 @@ exactly the "near-automatic red flag" behavior the design doc calls for).
   Refer-class performance on this dataset. `imbalanced-learn` is installed
   and ready if a future, larger dataset needs it.
 - GridSearchCV grids are intentionally small (a handful of values per
-  hyperparameter) — appropriate for a 5,000-row synthetic dataset and fast
-  iteration, not a production-scale search.
+  hyperparameter) — appropriate for an 8,000-row synthetic dataset (the
+  initial prototype used 5,000) and fast iteration, not a production-scale
+  search.
 - The k-means background-summary dataset mentioned in the original plan
   isn't used — it's only needed for SHAP's interventional perturbation
   mode or `KernelExplainer`. `TreeExplainer`'s default

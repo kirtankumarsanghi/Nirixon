@@ -606,6 +606,31 @@ npm run dev
 
 *The parent-facing application and CHW portal are now accessible at `http://localhost:5173`.*
 
+### Step 5 (optional): Android Mobile App (Capacitor)
+
+The native app is the same React bundle. A phone cannot reach `127.0.0.1`, so
+start the API on every interface and point the app at your computer's LAN IP:
+
+```bash
+# Terminal 1 — API reachable from the phone
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 — rebuild the bundle, sync it into Android, and package the APK
+cd frontend
+npm run build:mobile
+cd android
+gradlew.bat assembleDebug     # macOS/Linux: ./gradlew assembleDebug
+```
+
+Install `frontend/android/app/build/outputs/apk/debug/app-debug.apk`, then enter
+`http://<computer-LAN-IP>:8000` in the first-run server dialog (or tap **Change**
+on the sign-in screen). To bake the address into the build instead:
+
+```bash
+VITE_MOBILE_API_BASE_URL=http://192.168.1.20:8000 npm run build:mobile
+```
+
 ---
 
 ## 🔑 Default Seed Credentials

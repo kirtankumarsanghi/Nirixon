@@ -17,7 +17,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import require_parent, require_screen_read
+from app.auth import require_screen_access, require_screen_read
 from app.core.mandatory_items import record_mandatory_answer
 from app.core.module_b.age import months_to_module_b_age
 from app.core.module_b.domains import to_api_domain, to_engine_domain
@@ -103,9 +103,47 @@ def _get_inference_b() -> InferenceService:
     return inference_service_b
 
 
+_TIER_BY_CLASSIFICATION = {
+    "Refer": "Tier 3: Direct Referral",
+    "Monitor": "Tier 2: In-App Reflex Monitor",
+    "Typical": "Tier 1: Routine Pass",
+}
+
+
+async def _reflect_result_on_child(
+    db: AsyncSession,
+    db_row: DbSession,
+    *,
+    tier: str | None,
+    final_classification: str | None,
+    flagged_domains: list[str] | None,
+) -> None:
+    """Mirror a completed screening onto its linked caseload child record.
+
+    A worker screens a child through this API, so the caseload card must show the
+    new tier / last-screened date / flagged domains without waiting for an offline
+    sync. Parent sessions have no linked child record and are skipped.
+    """
+    if not db_row.child_record_id:
+        return
+    child = (
+        await db.execute(
+            select(ChildRecord).where(ChildRecord.id == db_row.child_record_id)
+        )
+    ).scalar_one_or_none()
+    if child is None:
+        return
+    child.current_tier = tier or _TIER_BY_CLASSIFICATION.get(
+        final_classification or "Typical", "Tier 1: Routine Pass"
+    )
+    child.last_screened_at = datetime.now(UTC)
+    child.domains_flagged = list(flagged_domains or [])
+    await db.flush()
+
+
 async def _get_inference_for_session(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> InferenceService:
     """
@@ -427,6 +465,13 @@ async def _run_completion_b(
                 child_ref=db_row.child_ref or db_row.id,
                 activity=first_activity,
             )
+            await _reflect_result_on_child(
+                db,
+                db_row,
+                tier=payload.triage_tier,
+                final_classification=payload.final_classification,
+                flagged_domains=payload.flagged_domains,
+            )
             return payload
 
     from data.generator.item_bank_b import MODULE_B_ITEM_BY_ID
@@ -519,6 +564,14 @@ async def _run_completion_b(
         state=db_row.location_state,
         pincode=db_row.location_pincode,
         triage_tier=triage_tier_b,
+        final_classification=final_classification,
+        flagged_domains=flagged_b,
+    )
+
+    await _reflect_result_on_child(
+        db,
+        db_row,
+        tier=triage_tier_b,
         final_classification=final_classification,
         flagged_domains=flagged_b,
     )
@@ -762,6 +815,13 @@ async def _run_completion(
         child_ref=db_row.child_ref or db_row.id,
         activity=None,
     )
+    await _reflect_result_on_child(
+        db,
+        db_row,
+        tier=triage_tier,
+        final_classification=res.final_classification,
+        flagged_domains=flagged_a,
+    )
     return res
 
 
@@ -785,7 +845,7 @@ async def get_live_tasks_for_bracket_endpoint(bracket: str):
 @router.post("/start", response_model=ScreenActionResponse)
 async def start_screen(
     body: StartScreenRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -802,6 +862,17 @@ async def start_screen(
                 detail=svc.load_error
                 or f"Module {module} model not trained — run train.py --module {module}",
             )
+    elif not module_b_service.is_loaded:
+        # The adaptive Module B engine owns recall help, rule-out questions and
+        # per-domain scoring; without it the intake cannot advance to the quiz.
+        # Fail fast instead of starting a session stuck on the intake screen.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Module B engine not loaded — run 'python ml/train.py --module B' "
+                "to enable school-age screening"
+            ),
+        )
 
     if not body.consent_given:
         raise HTTPException(
@@ -928,7 +999,7 @@ async def start_screen(
 async def submit_answer(
     session_id: str,
     body: AnswerRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
     inference: Annotated[InferenceService, Depends(_get_inference_for_session)],
@@ -1066,6 +1137,14 @@ async def submit_answer(
     if core.item_already_answered(body.item_id):
         raise HTTPException(status_code=400, detail="Item already answered")
 
+    if (
+        core.module == "A"
+        and body.item_id not in ITEM_METADATA
+        and body.item_id not in MANDATORY_IDS
+        and body.item_id not in SENSORY_IDS
+    ):
+        raise HTTPException(status_code=422, detail=f"Unknown item {body.item_id}")
+
     try:
         if body.item_id in MANDATORY_IDS:
             record_mandatory_answer(core, body.item_id, body.answer)
@@ -1130,7 +1209,7 @@ async def submit_answer(
 async def set_regression_override(
     session_id: str,
     body: RegressionOverrideRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ) -> dict[str, str]:
@@ -1156,7 +1235,7 @@ async def set_regression_override(
 @router.get("/{session_id}/result", response_model=ResultPayload)
 async def get_result(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     db_row = await _load_owned_session(db, session_id, user.id, with_result=True)
@@ -1292,7 +1371,7 @@ async def list_sessions(
 @router.get("/{session_id}", response_model=SessionStateResponse)
 async def get_session(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1378,7 +1457,7 @@ async def get_session(
 @router.get("/{session_id}/workers", response_model=list[WorkerSuggestion])
 async def list_suggested_workers(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     db_row = await _load_owned_session(db, session_id, user.id, with_result=True)
@@ -1418,7 +1497,7 @@ async def list_suggested_workers(
 async def contact_worker(
     session_id: str,
     body: WorkerContactRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     db_row = await _load_owned_session(db, session_id, user.id)
@@ -1489,7 +1568,7 @@ async def _load_owned_session(
 async def submit_intake(
     session_id: str,
     body: IntakeRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1679,7 +1758,7 @@ async def submit_intake(
 async def submit_recall_choice(
     session_id: str,
     body: RecallChoiceRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1723,7 +1802,7 @@ async def submit_recall_choice(
 @router.post("/{session_id}/b/next", response_model=ScreenActionResponse)
 async def get_next_screen_action(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1785,7 +1864,7 @@ async def get_next_screen_action(
 @router.post("/{session_id}/b/result", response_model=ResultPayload)
 async def get_b_result(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     return await get_result(session_id, user, db)
@@ -1794,7 +1873,7 @@ async def get_b_result(
 @router.get("/{session_id}/teacher-items", response_model=TeacherItemsResponse)
 async def get_teacher_items(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1844,7 +1923,7 @@ async def get_teacher_items(
 async def submit_teacher_form(
     session_id: str,
     body: TeacherAnswerRequest,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -1892,6 +1971,7 @@ async def submit_teacher_form(
 
     await db.flush()
     return TeacherAnswerResponse(
+        session_id=session_id,
         consistency_score=score,
         consistency_flags=flags,
         caveats=caveats,
@@ -1960,7 +2040,7 @@ def _compute_consistency(
 @router.post("/{session_id}/reflex_branch", response_model=ScreenActionResponse)
 async def create_reflex_branch_session(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -2033,7 +2113,7 @@ async def create_reflex_branch_session(
 )
 async def generate_teacher_invite(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TeacherInviteResponse:
     """Generate or retrieve a secure multi-informant teacher invite token for DSM-5 Criterion C concordance."""
@@ -2265,7 +2345,7 @@ async def submit_teacher_assessment(
 @router.get("/{session_id}/live-tasks")
 async def get_session_live_tasks(
     session_id: str,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):
@@ -2298,7 +2378,7 @@ async def get_session_live_tasks(
 async def submit_touch_telemetry(
     session_id: str,
     body: TouchTelemetrySubmission,
-    user: Annotated[User, Depends(require_parent)],
+    user: Annotated[User, Depends(require_screen_access)],
     db: Annotated[AsyncSession, Depends(get_db)],
     repo: Annotated[SessionRepository, Depends(get_session_repo)],
 ):

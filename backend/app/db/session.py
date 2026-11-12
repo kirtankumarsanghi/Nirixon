@@ -158,6 +158,19 @@ async def init_db() -> None:
                     text("ALTER TABLE risk_results ADD COLUMN domain_details JSON")
                 )
 
+            # Check notification_preferences table columns
+            res_pref = await conn.execute(
+                text("PRAGMA table_info(notification_preferences)")
+            )
+            pref_columns = {row[1] for row in res_pref.fetchall()}
+            if pref_columns and "phone_hash" not in pref_columns:
+                await conn.execute(
+                    text(
+                        "ALTER TABLE notification_preferences "
+                        "ADD COLUMN phone_hash VARCHAR(64)"
+                    )
+                )
+
     # Seed community healthcare workers
     factory = get_session_factory()
     async with factory() as db:

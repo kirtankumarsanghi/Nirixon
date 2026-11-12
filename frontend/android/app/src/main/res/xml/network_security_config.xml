@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The field API is plain HTTP on a local network / laptop. Android 9+ blocks
+  cleartext by default, which made the native app unable to reach the backend
+  even when the address was correct. Keep this permissive for the local demo
+  deployment; switch to an HTTPS API for production and tighten this file.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

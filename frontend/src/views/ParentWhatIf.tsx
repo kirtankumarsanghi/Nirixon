@@ -18,7 +18,7 @@ export function ParentWhatIf() {
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">{tr("Interactive illustration · Parent view")}</Eyebrow>
+          <Eyebrow>{tr("Interactive illustration · Parent view")}</Eyebrow>
           <Display as="h1" className="mt-5 text-[clamp(52px,8vw,118px)]">
             {tr("What-if")}
             <br />
@@ -44,7 +44,7 @@ export function ParentWhatIf() {
           <section className="rounded-[38px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <Eyebrow index="02" tone="muted">{tr("Domain score illustration")}</Eyebrow>
+                <Eyebrow tone="muted">{tr("Domain score illustration")}</Eyebrow>
                 <p className="mt-2 font-mono text-[11px] tracking-[0.12em] text-muted uppercase">Read-only for families · Module {latest.module ?? "A"} · {latest.ageMonths} months</p>
               </div>
               <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line-2 bg-card-2 text-muted">
@@ -85,7 +85,7 @@ export function ParentWhatIf() {
 
         <Reveal delay={80}>
           <section className="rounded-[38px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="03" tone="muted">{tr("Screening tier comparison")}</Eyebrow>
+            <Eyebrow tone="muted">{tr("Screening tier comparison")}</Eyebrow>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 [tr("Original result"), ev.tier, tr("Saved check-in")],

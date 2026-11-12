@@ -338,8 +338,20 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
     rule_sparse = metrics_data["rule_baseline_comparison"]["sparse_adaptive_data"]
     stress_tests = metrics_data.get("stress_tests", {})
 
-    rf_val = val_scores.get("random_forest", 0.0)
+    xgb_val = val_scores.get("xgboost", 0.0)
     lr_val = val_scores.get("logistic_regression", 0.0)
+    winner_label = {
+        "random_forest": "Random Forest",
+        "xgboost": "XGBoost",
+        "logistic_regression": "Logistic Regression",
+    }.get(winner_name, winner_name)
+    ablation_note = (
+        "the item-level signal alone is at least as strong as the version that also gets "
+        "explicit age, so the model is not merely proxying age — the milestone answers "
+        "carry real signal."
+        if ablation["without_age"] >= ablation["with_age"]
+        else "the model does use explicit age; the items alone score lower without it."
+    )
 
     refer_rec = winner_test.get("class_recall", {}).get(
         "Refer",
@@ -422,17 +434,14 @@ def _update_readme_report(metrics_data: dict, readme_path: Path) -> None:
 | Refer recall (sensitivity) | {refer_rec:.4f} |
 | Monitor recall (sensitivity) | {mon_rec:.4f} |
 
-**Winner: XGBoost**, beating Random Forest ({rf_val:.4f} val AUPRC) and Logistic
-Regression ({lr_val:.4f} val AUPRC).
+**Winner: {winner_label}** (validation macro AUPRC {val_scores[winner_name]:.4f}). XGBoost scored
+{xgb_val:.4f} and Logistic Regression {lr_val:.4f} on validation; the documented
+tie-break (within 0.005 AUPRC → prefer the cheaper model) determines the production
+winner. See `artifacts/MODEL_SELECTION.md` for the full comparison and test-set metrics.
 
-**Age ablation:** removing `corrected_age_months` drops macro AUPRC from
-{ablation['with_age']:.4f} to {ablation['without_age']:.4f} (a {ablation['delta']:.4f} drop). That's a real, meaningful drop — worth
-saying honestly rather than downplaying: the model leans heavily on
-explicit age access, which makes sense given how age-staggered the item
-bank is by design. The item-level signal alone (age removed) still beats
-random guessing by a wide margin, which is the actual claim the ablation
-study is meant to support — not "age doesn't matter," but "the items
-themselves carry real signal too."
+**Age ablation:** removing `corrected_age_months` changes test macro AUPRC from
+{ablation['with_age']:.4f} to {ablation['without_age']:.4f} (delta {ablation['delta']:+.4f} in
+with-age-minus-without-age terms). Interpreted honestly: {ablation_note}
 
 **Fairness check:** {f_status}. Refer-probability gap between multilingual and
 non-multilingual groups: {f_gap:.4f} (threshold {f_thresh:.4f}). `multilingual_home_flag`
@@ -940,7 +949,29 @@ def main():
     with open(stress_summary_path, "w", encoding="utf-8") as f:
         json.dump(stress_tests_data, f, indent=2)
 
-    # --- Dataset generation metadata ---
+    # --- Dataset generation metadata (computed from the dataset being trained) ---
+    cm_cols = [c for c in df.columns if c.startswith("CM")]
+    multilingual_mean_comm = round(
+        float(df.loc[df["multilingual_home_flag"] == 1, cm_cols].mean(axis=1).mean()), 3
+    )
+    non_multilingual_mean_comm = round(
+        float(df.loc[df["multilingual_home_flag"] == 0, cm_cols].mean(axis=1).mean()), 3
+    )
+    baseline_refer_rate = round(float((df["risk_label"] == "Refer").mean() * 100), 1)
+    regression_refer_rate = round(
+        float(
+            (df.loc[df["regression_flag"] == 1, "risk_label"] == "Refer").mean() * 100
+        ),
+        1,
+    )
+    family_history_refer_rate = round(
+        float(
+            (df.loc[df["family_history_flag"] == 1, "risk_label"] == "Refer").mean()
+            * 100
+        ),
+        1,
+    )
+
     dataset_generation_meta = {
         "n_children_prototype": 5000,
         "n_children_full_spec": 50000,
@@ -950,13 +981,13 @@ def main():
         "typical_pct": round(float((df["risk_label"] == "Typical").mean() * 100), 2),
         "monitor_pct": round(float((df["risk_label"] == "Monitor").mean() * 100), 2),
         "refer_pct": round(float((df["risk_label"] == "Refer").mean() * 100), 2),
-        "multilingual_mean_comm": 1.581,
-        "non_multilingual_mean_comm": 1.574,
+        "multilingual_mean_comm": multilingual_mean_comm,
+        "non_multilingual_mean_comm": non_multilingual_mean_comm,
         "comm_ps_correlation_residual": 0.435,
         "comm_ps_baseline_correlation": 0.29,
-        "regression_refer_rate_pct": 83.0,
-        "family_history_refer_rate_pct": 10.0,
-        "baseline_refer_rate_pct": 7.0,
+        "regression_refer_rate_pct": regression_refer_rate,
+        "family_history_refer_rate_pct": family_history_refer_rate,
+        "baseline_refer_rate_pct": baseline_refer_rate,
     }
 
     # --- COMPILE UNIFIED METRICS CONTRACT ---
@@ -1013,10 +1044,12 @@ def main():
             "test_macro_auprc": test_metrics_by_model[winner_name]["macro_auprc"],
             "test_refer_auprc": test_metrics_by_model[winner_name]["refer_auprc"],
             "criteria": (
-                "Highest validation-set macro AUPRC across LR, RF, XGB and the soft-voting "
-                "ensemble. If XGBoost and Random Forest are within 0.005 AUPRC, prefer Random "
-                "Forest (lower latency, lower memory). Logistic Regression wins only if it "
-                "strictly outperforms both tree models."
+                "Highest validation-set macro AUPRC among Logistic Regression, Random Forest "
+                "and XGBoost. If XGBoost and Random Forest are within 0.005 AUPRC, prefer "
+                "Random Forest (lower latency, lower memory). Logistic Regression wins only if "
+                "it strictly outperforms both tree models. The soft-voting ensemble is reported "
+                "for comparison but is not eligible for production selection (slowest "
+                "single-row latency)."
             ),
         },
         "ablation_study": {

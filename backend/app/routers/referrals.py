@@ -1899,8 +1899,12 @@ async def sync_chw_batch(
         elif op == "contact":
             child.contact_count = (child.contact_count or 0) + 1
             child.last_contacted_at = item.client_timestamp or _utcnow()
-            if child.follow_up_due_at and child.follow_up_due_at < _utcnow():
-                child.follow_up_due_at = _utcnow() + timedelta(days=14)
+            due = child.follow_up_due_at
+            if due is not None:
+                # SQLite returns naive datetimes; normalise before comparing.
+                due = due.replace(tzinfo=UTC) if due.tzinfo is None else due
+                if due < _utcnow():
+                    child.follow_up_due_at = _utcnow() + timedelta(days=14)
 
             sync_op = SyncOperation(
                 id=_uuid(),

@@ -42,7 +42,6 @@ from app.db.session_repo import SessionRepository, get_session_repo
 from app.ml.inference_service import (
     build_feature_vector,
     inference_service,
-    inference_service_b,
 )
 from app.schemas.share import (
     CreateJointInviteRequest,
@@ -99,9 +98,16 @@ def _evaluate_primary_prediction(core: CoreSession, db_row: DbSession) -> Any:
         else:
             override_rule = "safety_floor"
 
-    # 3. Predict via loaded inference model if available
-    inf_service = inference_service_b if core.module == "B" else inference_service
-    if inf_service.is_loaded and inf_service.feature_columns is not None:
+    # 3. Predict via the loaded statistical model if available.
+    # Module B is scored by its own adaptive engine (stored as a RiskResult when
+    # complete); there is no Module B model over the Module A feature space, so
+    # never feed school-age answers into the Module A model.
+    inf_service = inference_service if core.module == "A" else None
+    if (
+        inf_service is not None
+        and inf_service.is_loaded
+        and inf_service.feature_columns is not None
+    ):
         try:
             from data.generator.item_bank import ITEM_BANK
 

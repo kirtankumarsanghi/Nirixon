@@ -124,8 +124,8 @@ export function Caseload() {
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">Community health network · Ward 12</Eyebrow>
-          <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+          <Eyebrow>Community health network · Ward 12</Eyebrow>
+          <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
             {tr("Your ward,")}
             <br />
             <span className="text-rust">{tr("at a glance.")}</span>
@@ -216,12 +216,12 @@ export function Caseload() {
       </section>
 
       {/* ============================ map + side ============================ */}
-      <div className="mt-4 grid items-stretch gap-4 xl:grid-cols-[1fr_400px]">
-        <Reveal className="h-full">
-          <div className="flex h-full flex-col rounded-[44px] bg-night p-6 text-paper sm:p-9">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1fr_400px]">
+        <Reveal>
+          <div className="flex flex-col rounded-[44px] bg-night p-6 text-paper sm:p-9">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <Eyebrow tone="peach" index="02">{tr("Village map")}</Eyebrow>
+                <Eyebrow tone="peach">{tr("Village map")}</Eyebrow>
                 <h2 className="mt-3 font-display text-[clamp(32px,4vw,52px)] leading-none uppercase">
                   {filtered.length === total ? tr("Every child, one square.") : tr("{n} of {total} children", { n: filtered.length, total })}
                 </h2>
@@ -294,7 +294,7 @@ export function Caseload() {
               ))}
             </div>
 
-            <div className="mt-auto flex min-h-[56px] items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-5 py-3.5 pt-3.5 text-[13px]">
+            <div className="mt-8 flex min-h-[56px] items-center justify-between gap-3 rounded-2xl bg-white/[0.06] px-5 py-3.5 pt-3.5 text-[13px]">
               {hovered ? (
                 <>
                   <span className="flex items-center gap-3">
@@ -319,7 +319,7 @@ export function Caseload() {
           <Reveal delay={80}>
             <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between">
-                <Eyebrow index="03" tone="muted">{tr("Today's route")}</Eyebrow>
+                <Eyebrow tone="muted">{tr("Today's route")}</Eyebrow>
                 <Chip tone="lilac">{tr("{n} stops", { n: route.length })}</Chip>
               </div>
               <ul className="mt-5 divide-y divide-line">
@@ -353,7 +353,7 @@ export function Caseload() {
           <Reveal delay={140}>
             <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <Eyebrow index="04" tone="muted">{tr("Facility handoffs")}</Eyebrow>
+                <Eyebrow tone="muted">{tr("Facility handoffs")}</Eyebrow>
                 <Chip tone={queued.length ? "brick" : "moss"}>{tr("{n} waiting", { n: queued.length })}</Chip>
               </div>
               {queued.length === 0 ? (
@@ -382,7 +382,7 @@ export function Caseload() {
           <Reveal delay={200}>
             <div className="rounded-[36px] border border-line-2 bg-card p-6 sm:p-7">
               <div className="flex items-center justify-between gap-3">
-                <Eyebrow index="05" tone="muted">{tr("Follow-ups")}</Eyebrow>
+                <Eyebrow tone="muted">{tr("Follow-ups")}</Eyebrow>
                 <Btn size="xs" variant="light" onClick={exportReminders} disabled={followUps.length === 0}>
                   <CalendarPlus className="size-3.5" /> {tr("Export .ics")}
                 </Btn>
@@ -418,7 +418,7 @@ export function Caseload() {
       <Reveal className="mt-14">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Eyebrow index="06">{tr("Child registry")}</Eyebrow>
+            <Eyebrow>{tr("Child registry")}</Eyebrow>
             <h2 className="mt-3 font-display text-[clamp(36px,4.6vw,64px)] leading-none uppercase">
               {filtered.length} <span className="text-sea">{tr("matching")}</span>
             </h2>

@@ -27,7 +27,7 @@ export function Nav({ tabs, active, onTab, onCta, ctaLabel = "Start check-in", o
   const tr = useT();
   return (
     <Localize>
-    <header className="no-print fixed inset-x-0 top-3 z-50 px-3 sm:px-5">
+    <header className="no-print nrx-nav-safe fixed inset-x-0 z-50 px-3 sm:px-5">
       <div className="nrx-nav-shell mx-auto flex max-w-[1360px] items-center justify-between gap-3 rounded-full border py-2 pr-2 pl-2.5 shadow-[0_20px_44px_-24px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:pl-3">
         <button type="button" onClick={onHome} className="flex items-center gap-3 rounded-full pr-2 transition-transform hover:scale-[1.015]" aria-label="Nirixon home">
           <LogoMark size={46} />

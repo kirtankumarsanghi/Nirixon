@@ -209,8 +209,8 @@ export function Referrals() {
       <Page>
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <Eyebrow index="01">{isSupervisor ? tr("Field supervisor · referral oversight") : tr("Frontline · referral desk")}</Eyebrow>
-            <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+            <Eyebrow>{isSupervisor ? tr("Field supervisor · referral oversight") : tr("Frontline · referral desk")}</Eyebrow>
+            <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
               {tr("Every referral.")}
               <br />
               <span className="text-rust">{tr("A visible next step.")}</span>
@@ -321,7 +321,7 @@ export function Referrals() {
             <section className="overflow-hidden rounded-[36px] border border-line-2 bg-card">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line-2 p-5 sm:p-7">
                 <div>
-                  <Eyebrow index="02" tone="muted">Referral register</Eyebrow>
+                  <Eyebrow tone="muted">Referral register</Eyebrow>
                   <p className="mt-2 text-[13px] text-ink-2">{filtered.length} matching records</p>
                 </div>
                 <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -423,7 +423,7 @@ export function Referrals() {
           <div className="space-y-4">
             <Reveal delay={80}>
               <aside className="rounded-[36px] bg-night p-7 text-paper">
-                <Eyebrow index="03" tone="peach">{tr("Handoff pathway")}</Eyebrow>
+                <Eyebrow tone="peach">{tr("Handoff pathway")}</Eyebrow>
                 <ol className="mt-6 space-y-5">
                   {[
                     [ScanLine, "Screen", "A result reaches Refer or a safety rule fires."],

@@ -73,6 +73,21 @@ function backendDomainKey(module: Module, domain: string): string {
   return module === "A" ? (SANDBOX_BACKEND_DOMAIN[domain] ?? domain) : domain;
 }
 
+const SHAP_LABELS: Record<string, string> = {
+  corrected_age_months: "Age (months)",
+  age_bracket_ordinal: "Age bracket",
+  family_history_flag: "Family history",
+  regression_flag: "Regression reported",
+  mean_gross_motor: "Gross motor (mean)",
+  mean_fine_motor: "Fine motor (mean)",
+  mean_communication: "Communication (mean)",
+  mean_cognitive: "Cognitive (mean)",
+  mean_personal_social: "Personal-social (mean)",
+  mean_self_help: "Self-help (mean)",
+};
+const shapLabel = (feature: string): string =>
+  SHAP_LABELS[feature] ?? feature.replace(/^mean_/, "").replace(/_/g, " ");
+
 function baselineValues(session: SessionSummary): Record<string, number> {
   const out: Record<string, number> = {};
   for (const domain of sandboxDomains(session.module)) {
@@ -110,6 +125,7 @@ function RealSandbox() {
   const [age, setAge] = useState(60);
   const [values, setValues] = useState<Record<string, number>>({});
   const [regression, setRegression] = useState(false);
+  const [modelName, setModelName] = useState("");
   const [scenario, setScenario] = useState<ResultPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -146,6 +162,7 @@ function RealSandbox() {
     setAge(Math.round(baseline.corrected_age_months ?? (baseline.module === "B" ? 96 : 36)));
     setValues(baselineValues(baseline));
     setRegression(false);
+    setModelName("");
     setScenario(null);
   }, [baseline]);
 
@@ -166,6 +183,8 @@ function RealSandbox() {
         corrected_age_months: age,
         domain_scores,
         answer_overrides,
+        // Module B is engine-scored; a model switch is only valid for Module A.
+        ...(baseline.module === "A" && modelName ? { model_name: modelName } : {}),
       });
       setScenario(result);
     } catch (err) {
@@ -185,7 +204,7 @@ function RealSandbox() {
     <section className="mt-8 rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Eyebrow index="00" tone="muted">{tr("Real session sandbox")}</Eyebrow>
+          <Eyebrow tone="muted">{tr("Real session sandbox")}</Eyebrow>
           <h2 className="mt-3 font-display text-[clamp(32px,4vw,56px)] leading-[0.95] uppercase">
             {tr("Re-score a completed check-in.")}
           </h2>
@@ -255,6 +274,29 @@ function RealSandbox() {
                   </span>
                   <span className="text-[12.5px] font-bold">{tr("What if regression were reported?")}</span>
                 </button>
+              )}
+
+              {baseline?.module === "A" && (
+                <div className="mt-5">
+                  <label
+                    htmlFor="sandbox-model"
+                    className="font-mono text-[10.5px] font-bold tracking-[0.18em] text-muted uppercase"
+                  >
+                    {tr("Model")}
+                  </label>
+                  <select
+                    id="sandbox-model"
+                    value={modelName}
+                    onChange={(event) => setModelName(event.target.value)}
+                    className="nrx-select mt-2.5 w-full rounded-full border border-line-2 bg-card py-3 pr-10 pl-4 text-[13px] font-semibold text-ink outline-none focus:border-sea"
+                  >
+                    <option value="">{tr("Production model")}</option>
+                    <option value="logistic_regression">{tr("Logistic regression")}</option>
+                    <option value="random_forest">{tr("Random forest")}</option>
+                    <option value="xgboost">{tr("XGBoost")}</option>
+                    <option value="ensemble">{tr("Soft-voting ensemble")}</option>
+                  </select>
+                </div>
               )}
 
               <div className="mt-6 space-y-4">
@@ -349,6 +391,27 @@ function RealSandbox() {
                   </div>
                 ))}
               </div>
+              {scenario.shap_top_features?.length > 0 && (
+                <div className="mt-4 rounded-2xl bg-white/[0.06] p-4">
+                  <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-paper/55 uppercase">
+                    {tr("TreeSHAP contributions")}
+                  </p>
+                  <ul className="mt-2.5 space-y-1.5">
+                    {scenario.shap_top_features.slice(0, 5).map((feature) => (
+                      <li key={feature.feature} className="flex items-center justify-between gap-3 text-[11.5px]">
+                        <span className="truncate text-paper/75">{shapLabel(feature.feature)}</span>
+                        <span className={cn("font-mono font-semibold", feature.shap_value >= 0 ? "text-[#8fbf5a]" : "text-[#ff9b84]")}>
+                          {feature.shap_value > 0 ? "+" : ""}
+                          {feature.shap_value.toFixed(3)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[10.5px] leading-relaxed text-paper/45">
+                    {tr("How each input moved this scenario from the model's average prediction. Explanatory only — not a diagnosis.")}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-[32px] border border-dashed border-line-2 bg-card-2/60 p-6 text-[13px] leading-relaxed text-muted">
@@ -408,7 +471,6 @@ export function WhatIf() {
       <RealSandbox />
       <div className="mt-12">
         <PageHeader
-          index="01"
           eyebrow={tr("Illustrative safety demo")}
           title={tr("What if…?")}
           subtitle="Drag the score to watch the deterministic safety rule take over. This lower section is a local illustrative model — the real backend sandbox is at the top of the page."
@@ -526,7 +588,7 @@ export function WhatIf() {
         <Reveal>
           <div className="h-full rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex items-center justify-between gap-3">
-              <Eyebrow index="02" tone="muted">{tr("Probabilities")}</Eyebrow>
+              <Eyebrow tone="muted">{tr("Probabilities")}</Eyebrow>
               <span className="font-mono text-[10.5px] text-muted">baseline → scenario</span>
             </div>
             <div className="mt-7 space-y-6">
@@ -557,7 +619,7 @@ export function WhatIf() {
         <Reveal delay={100}>
           <div className="h-full rounded-[36px] border border-line-2 bg-card p-7 sm:p-9">
             <div className="flex items-center justify-between gap-3">
-              <Eyebrow index="03" tone="muted">{tr("Fine-tune each area")}</Eyebrow>
+              <Eyebrow tone="muted">{tr("Fine-tune each area")}</Eyebrow>
               <Btn
                 size="xs"
                 variant={mode === "advanced" ? "dark" : "outline"}

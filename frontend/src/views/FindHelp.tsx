@@ -25,9 +25,18 @@ import {
   Stethoscope,
   Tent,
 } from "lucide-react";
+import { FacilityMap, type MapPoint } from "../components/FacilityMap";
 import { SectionCard } from "../components/SectionCard";
 import { StatCard } from "../components/StatCard";
-import { Btn, Chip, Display, Eyebrow, GlowDot, Page, Reveal } from "../components/ui";
+import {
+  Btn,
+  Chip,
+  Display,
+  Eyebrow,
+  GlowDot,
+  Page,
+  Reveal,
+} from "../components/ui";
 import { api, facilitiesApi, referralApi } from "../api/client";
 import type {
   Facility,
@@ -51,6 +60,7 @@ import {
   type Scores,
   type Tier,
 } from "../lib/model";
+import { copyToClipboard, downloadBlobFile, downloadTextFile, printCurrentPage } from "../lib/native";
 import { useT } from "../lib/useT";
 import { useApp } from "../store";
 import { cn } from "../utils/cn";
@@ -60,7 +70,11 @@ type MapVisualMode = "radar" | "street";
 
 const TYPE_COL: Record<
   FacilityType,
-  { hex: string; short: string; chip: "sea" | "moss" | "amber" | "lilac" | "rust" | "brick" | "sand" }
+  {
+    hex: string;
+    short: string;
+    chip: "sea" | "moss" | "amber" | "lilac" | "rust" | "brick" | "sand";
+  }
 > = {
   DEIC: { hex: "#5aa6c4", short: "DEIC", chip: "sea" },
   RBSK: { hex: "#8fbf5a", short: "RBSK", chip: "moss" },
@@ -75,7 +89,10 @@ const FALLBACK_COL = { hex: "#8a7a63", short: "FAC", chip: "sand" as const };
 const colOf = (t: FacilityType) => TYPE_COL[t] ?? FALLBACK_COL;
 
 /** Provenance is shown, never hidden: official > verified > mapped-only. */
-const TRUST_CHIP: Record<FacilityTrust["level"], { tone: "moss" | "sea" | "sand"; label: string }> = {
+const TRUST_CHIP: Record<
+  FacilityTrust["level"],
+  { tone: "moss" | "sea" | "sand"; label: string }
+> = {
   official: { tone: "moss", label: "Government listing" },
   verified: { tone: "sea", label: "Verified" },
   unverified: { tone: "sand", label: "Mapped only" },
@@ -102,93 +119,115 @@ const DOMAIN_ROUTES: Record<string, DomainClinicalRoute> = {
   comm: {
     service: "Audiology & Speech-Language Therapy (DEIC / ENT)",
     subspecialtyId: "speech_audio",
-    ruleOut: "OAE / BERA audiological hearing rule-out before expressive language workup",
+    ruleOut:
+      "OAE / BERA audiological hearing rule-out before expressive language workup",
     preferredTypes: ["DEIC", "District Hospital", "RBSK"],
-    parentQuestion: "Should we do a hearing check (OAE/BERA) alongside speech-language therapy?",
+    parentQuestion:
+      "Should we do a hearing check (OAE/BERA) alongside speech-language therapy?",
   },
   listening_speaking: {
     service: "Audiology & Receptive/Expressive Speech Clinic",
     subspecialtyId: "speech_audio",
-    ruleOut: "Bilateral hearing & auditory processing check + classroom seating accommodation",
+    ruleOut:
+      "Bilateral hearing & auditory processing check + classroom seating accommodation",
     preferredTypes: ["DEIC", "District Hospital", "Hospital"],
-    parentQuestion: "Could a hearing check or speech evaluation help with following spoken instructions?",
+    parentQuestion:
+      "Could a hearing check or speech evaluation help with following spoken instructions?",
   },
   gross: {
     service: "Paediatric Physiotherapy & Neuromotor Early Intervention",
     subspecialtyId: "neuro_motor",
-    ruleOut: "Neuromuscular tone, postural reflex, and orthopaedic hip/gait evaluation",
+    ruleOut:
+      "Neuromuscular tone, postural reflex, and orthopaedic hip/gait evaluation",
     preferredTypes: ["DEIC", "District Hospital", "CHC"],
-    parentQuestion: "What daily physical therapy exercises can strengthen balance and movement at home?",
+    parentQuestion:
+      "What daily physical therapy exercises can strengthen balance and movement at home?",
   },
   fine: {
     service: "Paediatric Occupational Therapy (Fine Motor & Sensory)",
     subspecialtyId: "neuro_motor",
-    ruleOut: "Hand-eye coordination, pincer/grasp dexterity, and visual-motor acuity check",
+    ruleOut:
+      "Hand-eye coordination, pincer/grasp dexterity, and visual-motor acuity check",
     preferredTypes: ["DEIC", "RBSK", "Clinic"],
-    parentQuestion: "Can an occupational therapist show us hand-strengthening and grasp activities?",
+    parentQuestion:
+      "Can an occupational therapist show us hand-strengthening and grasp activities?",
   },
   motor: {
     service: "Occupational & Physical Therapy (School-Age Praxis)",
     subspecialtyId: "neuro_motor",
     ruleOut: "Developmental coordination & visual-motor integration assessment",
     preferredTypes: ["DEIC", "District Hospital", "Hospital"],
-    parentQuestion: "How can we support handwriting grip and physical coordination at school?",
+    parentQuestion:
+      "How can we support handwriting grip and physical coordination at school?",
   },
   social: {
     service: "Developmental Paediatrics & Social-Communication Clinic",
     subspecialtyId: "dev_peds",
-    ruleOut: "Joint attention, reciprocal play, and INCLEN/M-CHAT neurodevelopmental evaluation",
+    ruleOut:
+      "Joint attention, reciprocal play, and INCLEN/M-CHAT neurodevelopmental evaluation",
     preferredTypes: ["DEIC", "District Hospital"],
-    parentQuestion: "Can we do a full developmental play and social-communication assessment at the DEIC?",
+    parentQuestion:
+      "Can we do a full developmental play and social-communication assessment at the DEIC?",
   },
   emotion_conduct: {
     service: "Child Guidance Clinic (CGC) & Behavioural Psychology",
     subspecialtyId: "learning_cgc",
-    ruleOut: "Sleep, environmental stressors, caregiver wellbeing, and home-school consistency",
+    ruleOut:
+      "Sleep, environmental stressors, caregiver wellbeing, and home-school consistency",
     preferredTypes: ["District Hospital", "DEIC", "Hospital"],
-    parentQuestion: "What structured emotional-regulation routines can we use at home and school?",
+    parentQuestion:
+      "What structured emotional-regulation routines can we use at home and school?",
   },
   attention: {
     service: "Developmental Paediatrics & Child Guidance (Attention)",
     subspecialtyId: "learning_cgc",
-    ruleOut: "Sleep quality, iron/anaemia screen, vision/hearing check, and teacher concordance",
+    ruleOut:
+      "Sleep quality, iron/anaemia screen, vision/hearing check, and teacher concordance",
     preferredTypes: ["DEIC", "District Hospital", "Hospital"],
-    parentQuestion: "Since attention varies between home and school, what classroom supports should we try first?",
+    parentQuestion:
+      "Since attention varies between home and school, what classroom supports should we try first?",
   },
   cog: {
     service: "Early Intervention Special Educator & Developmental Paediatrics",
     subspecialtyId: "dev_peds",
     ruleOut: "Sensory (vision/hearing) screen + nutritional/anaemia evaluation",
     preferredTypes: ["DEIC", "RBSK", "District Hospital"],
-    parentQuestion: "What play-based early learning activities match my child's current stage?",
+    parentQuestion:
+      "What play-based early learning activities match my child's current stage?",
   },
   reading: {
     service: "Special Education & Learning Assessment (DEIC / CGC)",
     subspecialtyId: "learning_cgc",
-    ruleOut: "Snellen visual acuity / refraction rule-out + phonological decoding assessment",
+    ruleOut:
+      "Snellen visual acuity / refraction rule-out + phonological decoding assessment",
     preferredTypes: ["DEIC", "District Hospital", "Clinic"],
-    parentQuestion: "Should we check vision first and then evaluate phonics/reading support?",
+    parentQuestion:
+      "Should we check vision first and then evaluate phonics/reading support?",
   },
   writing: {
     service: "Occupational Therapy & Remedial Special Education",
     subspecialtyId: "learning_cgc",
     ruleOut: "Fine-motor graphomotor grip vs. orthographic spelling rule-out",
     preferredTypes: ["DEIC", "District Hospital", "Clinic"],
-    parentQuestion: "Is the writing difficulty mainly hand fatigue/grip or spelling and sentence structure?",
+    parentQuestion:
+      "Is the writing difficulty mainly hand fatigue/grip or spelling and sentence structure?",
   },
   numbers: {
     service: "Remedial Special Education & Cognitive Assessment",
     subspecialtyId: "learning_cgc",
-    ruleOut: "Number-sense / working memory assessment & instructional gap check",
+    ruleOut:
+      "Number-sense / working memory assessment & instructional gap check",
     preferredTypes: ["DEIC", "District Hospital", "Clinic"],
-    parentQuestion: "How can we use everyday objects at home to build number sense?",
+    parentQuestion:
+      "How can we use everyday objects at home to build number sense?",
   },
   adaptive: {
     service: "Early Intervention & Everyday Independence (ADL) Therapy",
     subspecialtyId: "neuro_motor",
     ruleOut: "Fine motor, oral-motor feeding, and sensory routine evaluation",
     preferredTypes: ["RBSK", "DEIC", "CHC"],
-    parentQuestion: "How can we break dressing and feeding into small step-by-step routines?",
+    parentQuestion:
+      "How can we break dressing and feeding into small step-by-step routines?",
   },
 };
 
@@ -208,7 +247,9 @@ const R = 190;
 
 const shortDate = (iso: string) => {
   const d = new Date(iso + "T00:00:00");
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 };
 
 function agoShort(iso: string | null | undefined): string | null {
@@ -223,7 +264,10 @@ function formatFacilityTarget(f: Facility): string {
   return `${f.name} (${f.type}, ~${f.km} km · ${f.district})`;
 }
 
-function referralMatchesFacility(ref: ReferralRecord | null | undefined, f: Facility): boolean {
+function referralMatchesFacility(
+  ref: ReferralRecord | null | undefined,
+  f: Facility,
+): boolean {
   if (!ref || !ref.to_facility) return false;
   const target = ref.to_facility.toLowerCase();
   const name = f.name.toLowerCase();
@@ -232,7 +276,12 @@ function referralMatchesFacility(ref: ReferralRecord | null | undefined, f: Faci
 
 function getFlaggedDomains(
   scores: Scores | undefined | null,
-): Array<{ key: string; z: number; label: string; route: DomainClinicalRoute }> {
+): Array<{
+  key: string;
+  z: number;
+  label: string;
+  route: DomainClinicalRoute;
+}> {
   if (!scores) return [];
   return domainKeys(scores)
     .filter((k) => scores[k] < -1.0)
@@ -246,17 +295,26 @@ function getFlaggedDomains(
         subspecialtyId: "dev_peds",
         ruleOut: "Comprehensive paediatric & sensory rule-out",
         preferredTypes: ["DEIC", "District Hospital"],
-        parentQuestion: "What follow-up assessment do you recommend for this area?",
+        parentQuestion:
+          "What follow-up assessment do you recommend for this area?",
       },
     }));
 }
 
-function facilityMatchesSubspecialty(f: Facility, sub: SubspecialtyId): boolean {
+function facilityMatchesSubspecialty(
+  f: Facility,
+  sub: SubspecialtyId,
+): boolean {
   if (sub === "all") return true;
   const specs = f.specialty.map((s) => s.toLowerCase());
   const nameLower = f.name.toLowerCase();
   if (sub === "dev_peds") {
-    return f.type === "DEIC" || f.type === "RBSK" || specs.includes("developmental") || specs.includes("pediatric");
+    return (
+      f.type === "DEIC" ||
+      f.type === "RBSK" ||
+      specs.includes("developmental") ||
+      specs.includes("pediatric")
+    );
   }
   if (sub === "speech_audio") {
     return (
@@ -287,18 +345,6 @@ function facilityMatchesSubspecialty(f: Facility, sub: SubspecialtyId): boolean 
     );
   }
   return true;
-}
-
-function downloadTextFile(filename: string, content: string, mime = "text/plain;charset=utf-8") {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 type LabelBox = { x: number; y: number; w: number; h: number };
@@ -336,54 +382,135 @@ function placeLabels(
       let a: number;
       if (origin && Number.isFinite(f.lat) && Number.isFinite(f.lng)) {
         const dLat = f.lat - origin.lat;
-        const dLng = (f.lng - origin.lng) * Math.cos((origin.lat * Math.PI) / 180);
+        const dLng =
+          (f.lng - origin.lng) * Math.cos((origin.lat * Math.PI) / 180);
         if (Math.hypot(dLat, dLng) > 1e-4) {
           // True geographic compass bearing: North (+dLat) = -90 deg (top), East (+dLng) = 0 deg (right)
           a = Math.atan2(-dLat, dLng);
         } else {
-          a = ((-90 + i * (360 / Math.max(1, list.length)) + 28) * Math.PI) / 180;
+          a =
+            ((-90 + i * (360 / Math.max(1, list.length)) + 28) * Math.PI) / 180;
         }
       } else {
         a = ((-90 + i * (360 / Math.max(1, list.length)) + 28) * Math.PI) / 180;
       }
       // Prevent exact angular overlap when two facilities share a hospital campus
-      while (usedAngles.some((prev) => Math.abs(Math.atan2(Math.sin(a - prev), Math.cos(a - prev))) < 0.16)) {
+      while (
+        usedAngles.some(
+          (prev) =>
+            Math.abs(Math.atan2(Math.sin(a - prev), Math.cos(a - prev))) < 0.16,
+        )
+      ) {
         a += 0.2;
       }
       usedAngles.push(a);
 
-      const r = Math.max(24, (Math.max(0.4, Math.min(f.km, maxKm)) / maxKm) * R);
+      const r = Math.max(
+        24,
+        (Math.max(0.4, Math.min(f.km, maxKm)) / maxKm) * R,
+      );
       return { f, i, x: C + r * Math.cos(a), y: C + r * Math.sin(a) };
     })
-    .sort((p, q) => Math.hypot(p.x - C, p.y - C) - Math.hypot(q.x - C, q.y - C));
+    .sort(
+      (p, q) => Math.hypot(p.x - C, p.y - C) - Math.hypot(q.x - C, q.y - C),
+    );
 
   const taken: LabelBox[] = [{ x: C - 34, y: C + 18, w: 68, h: 16 }];
   for (const p of pts) taken.push({ x: p.x - 12, y: p.y - 12, w: 24, h: 24 });
-  const hit = (b: LabelBox) => taken.some((o) => b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y);
+  const hit = (b: LabelBox) =>
+    taken.some(
+      (o) =>
+        b.x < o.x + o.w &&
+        b.x + b.w > o.x &&
+        b.y < o.y + o.h &&
+        b.y + b.h > o.y,
+    );
 
-  type Cand = { bx: number; by: number; anchor: "middle" | "start" | "end"; tx: number; ty: number };
+  type Cand = {
+    bx: number;
+    by: number;
+    anchor: "middle" | "start" | "end";
+    tx: number;
+    ty: number;
+  };
   return pts.map((p) => {
     const text = `${colOf(p.f.type).short} · ${p.f.km} km`;
     const w = text.length * CHAR_W + LABEL_PAD * 2;
     const cands: Cand[] = [
-      { bx: p.x - w / 2, by: p.y - LABEL_GAP - LABEL_H, anchor: "middle", tx: p.x, ty: p.y - LABEL_GAP - 4 },
-      { bx: p.x - w / 2, by: p.y + LABEL_GAP, anchor: "middle", tx: p.x, ty: p.y + LABEL_GAP + LABEL_H - 4 },
-      { bx: p.x + LABEL_GAP, by: p.y - LABEL_H / 2, anchor: "start", tx: p.x + LABEL_GAP + LABEL_PAD, ty: p.y + 4 },
-      { bx: p.x - LABEL_GAP - w, by: p.y - LABEL_H / 2, anchor: "end", tx: p.x - LABEL_GAP - LABEL_PAD, ty: p.y + 4 },
-      { bx: p.x + 8, by: p.y - LABEL_GAP - LABEL_H, anchor: "start", tx: p.x + 8 + LABEL_PAD, ty: p.y - LABEL_GAP - 4 },
-      { bx: p.x - 8 - w, by: p.y - LABEL_GAP - LABEL_H, anchor: "end", tx: p.x - 8 - LABEL_PAD, ty: p.y - LABEL_GAP - 4 },
-      { bx: p.x + 8, by: p.y + LABEL_GAP, anchor: "start", tx: p.x + 8 + LABEL_PAD, ty: p.y + LABEL_GAP + LABEL_H - 4 },
-      { bx: p.x - 8 - w, by: p.y + LABEL_GAP, anchor: "end", tx: p.x - 8 - LABEL_PAD, ty: p.y + LABEL_GAP + LABEL_H - 4 },
+      {
+        bx: p.x - w / 2,
+        by: p.y - LABEL_GAP - LABEL_H,
+        anchor: "middle",
+        tx: p.x,
+        ty: p.y - LABEL_GAP - 4,
+      },
+      {
+        bx: p.x - w / 2,
+        by: p.y + LABEL_GAP,
+        anchor: "middle",
+        tx: p.x,
+        ty: p.y + LABEL_GAP + LABEL_H - 4,
+      },
+      {
+        bx: p.x + LABEL_GAP,
+        by: p.y - LABEL_H / 2,
+        anchor: "start",
+        tx: p.x + LABEL_GAP + LABEL_PAD,
+        ty: p.y + 4,
+      },
+      {
+        bx: p.x - LABEL_GAP - w,
+        by: p.y - LABEL_H / 2,
+        anchor: "end",
+        tx: p.x - LABEL_GAP - LABEL_PAD,
+        ty: p.y + 4,
+      },
+      {
+        bx: p.x + 8,
+        by: p.y - LABEL_GAP - LABEL_H,
+        anchor: "start",
+        tx: p.x + 8 + LABEL_PAD,
+        ty: p.y - LABEL_GAP - 4,
+      },
+      {
+        bx: p.x - 8 - w,
+        by: p.y - LABEL_GAP - LABEL_H,
+        anchor: "end",
+        tx: p.x - 8 - LABEL_PAD,
+        ty: p.y - LABEL_GAP - 4,
+      },
+      {
+        bx: p.x + 8,
+        by: p.y + LABEL_GAP,
+        anchor: "start",
+        tx: p.x + 8 + LABEL_PAD,
+        ty: p.y + LABEL_GAP + LABEL_H - 4,
+      },
+      {
+        bx: p.x - 8 - w,
+        by: p.y + LABEL_GAP,
+        anchor: "end",
+        tx: p.x - 8 - LABEL_PAD,
+        ty: p.y + LABEL_GAP + LABEL_H - 4,
+      },
     ];
 
-    let pick: Cand | undefined = cands.find((c) => !hit({ x: c.bx, y: c.by, w, h: LABEL_H }));
+    let pick: Cand | undefined = cands.find(
+      (c) => !hit({ x: c.bx, y: c.by, w, h: LABEL_H }),
+    );
     if (!pick) {
       const dx = p.x - C || 0.01;
       const dy = p.y - C || 0.01;
       const len = Math.hypot(dx, dy) || 1;
       const cx = p.x + (dx / len) * 42;
       const cy = p.y + (dy / len) * 42;
-      pick = { bx: cx - w / 2, by: cy - LABEL_H / 2, anchor: "middle", tx: cx, ty: cy + 4 };
+      pick = {
+        bx: cx - w / 2,
+        by: cy - LABEL_H / 2,
+        anchor: "middle",
+        tx: cx,
+        ty: cy + 4,
+      };
     }
     taken.push({ x: pick.bx, y: pick.by, w, h: LABEL_H });
     return { ...p, ...pick, w, h: LABEL_H, col: colOf(p.f.type), text };
@@ -409,20 +536,46 @@ function RadarMap({
   onHover: (i: number | null) => void;
   onSelect: (f: Facility) => void;
 }) {
-  const maxKm = Math.max(10, Math.ceil(Math.max(0, ...list.map((f) => f.km)) / 5) * 5);
-  const placed = useMemo(() => placeLabels(list, maxKm, origin), [list, maxKm, origin]);
+  const farthest = Math.max(0, ...list.map((f) => f.km));
+  const step = farthest <= 4 ? 1 : farthest <= 12 ? 2 : 5;
+  const maxKm = Math.max(step * 2, Math.ceil(farthest / step) * step);
+  const placed = useMemo(
+    () => placeLabels(list, maxKm, origin),
+    [list, maxKm, origin],
+  );
   const wedge = (a0: number, a1: number) => {
-    const p = (a: number) => [C + R * Math.cos((a * Math.PI) / 180), C + R * Math.sin((a * Math.PI) / 180)];
+    const p = (a: number) => [
+      C + R * Math.cos((a * Math.PI) / 180),
+      C + R * Math.sin((a * Math.PI) / 180),
+    ];
     const [x0, y0] = p(a0);
     const [x1, y1] = p(a1);
     return `M${C} ${C} L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z`;
   };
   return (
-    <svg viewBox="-70 -70 580 580" className="w-full" role="img" aria-label="True-bearing radar map of nearby facilities">
+    <svg
+      viewBox="-70 -70 580 580"
+      className="w-full"
+      role="img"
+      aria-label="True-bearing radar map of nearby facilities"
+    >
       {[0.25, 0.5, 0.75, 1].map((f) => (
         <g key={f}>
-          <circle cx={C} cy={C} r={R * f} fill="none" stroke="rgba(255,244,220,.16)" strokeDasharray={f === 1 ? undefined : "3 6"} />
-          <text x={C + 6} y={C - R * f + 13} fontSize="9.5" fontFamily="JetBrains Mono, monospace" fill="rgba(255,244,220,.55)">
+          <circle
+            cx={C}
+            cy={C}
+            r={R * f}
+            fill="none"
+            stroke="rgba(255,244,220,.16)"
+            strokeDasharray={f === 1 ? undefined : "3 6"}
+          />
+          <text
+            x={C + 6}
+            y={C - R * f + 13}
+            fontSize="9.5"
+            fontFamily="JetBrains Mono, monospace"
+            fill="rgba(255,244,220,.55)"
+          >
             {Math.round(maxKm * f)} km
           </text>
         </g>
@@ -430,12 +583,55 @@ function RadarMap({
       <line x1={C - R} y1={C} x2={C + R} y2={C} stroke="rgba(255,244,220,.1)" />
       <line x1={C} y1={C - R} x2={C} y2={C + R} stroke="rgba(255,244,220,.1)" />
       {/* True cardinal compass markers */}
-      <text x={C} y={C - R - 10} textAnchor="middle" fontSize="9.5" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="rgba(255,244,220,.45)">N</text>
-      <text x={C + R + 12} y={C + 3} textAnchor="start" fontSize="9.5" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="rgba(255,244,220,.45)">E</text>
-      <text x={C} y={C + R + 18} textAnchor="middle" fontSize="9.5" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="rgba(255,244,220,.45)">S</text>
-      <text x={C - R - 12} y={C + 3} textAnchor="end" fontSize="9.5" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="rgba(255,244,220,.45)">W</text>
+      <text
+        x={C}
+        y={C - R - 10}
+        textAnchor="middle"
+        fontSize="9.5"
+        fontFamily="JetBrains Mono, monospace"
+        fontWeight="700"
+        fill="rgba(255,244,220,.45)"
+      >
+        N
+      </text>
+      <text
+        x={C + R + 12}
+        y={C + 3}
+        textAnchor="start"
+        fontSize="9.5"
+        fontFamily="JetBrains Mono, monospace"
+        fontWeight="700"
+        fill="rgba(255,244,220,.45)"
+      >
+        E
+      </text>
+      <text
+        x={C}
+        y={C + R + 18}
+        textAnchor="middle"
+        fontSize="9.5"
+        fontFamily="JetBrains Mono, monospace"
+        fontWeight="700"
+        fill="rgba(255,244,220,.45)"
+      >
+        S
+      </text>
+      <text
+        x={C - R - 12}
+        y={C + 3}
+        textAnchor="end"
+        fontSize="9.5"
+        fontFamily="JetBrains Mono, monospace"
+        fontWeight="700"
+        fill="rgba(255,244,220,.45)"
+      >
+        W
+      </text>
 
-      <g className="nrx-spin-slow" style={{ transformOrigin: `${C}px ${C}px`, animationDuration: "7s" }}>
+      <g
+        className="nrx-spin-slow"
+        style={{ transformOrigin: `${C}px ${C}px`, animationDuration: "7s" }}
+      >
         <path d={wedge(-50, -8)} fill="rgba(234,143,99,.18)" />
       </g>
 
@@ -461,7 +657,9 @@ function RadarMap({
               y1={C}
               x2={p.x}
               y2={p.y}
-              stroke={isHandoffTarget ? "#8fbf5a" : isSelected ? "#ea8f63" : p.col.hex}
+              stroke={
+                isHandoffTarget ? "#8fbf5a" : isSelected ? "#ea8f63" : p.col.hex
+              }
               strokeWidth={isHandoffTarget || isSelected ? 2.2 : 1}
               strokeOpacity={on ? 0.9 : 0.25}
               strokeDasharray={isHandoffTarget ? undefined : "3 4"}
@@ -482,49 +680,116 @@ function RadarMap({
               cy={p.y}
               r={on ? 12.5 : 9}
               fill={p.col.hex}
-              stroke={isHandoffTarget ? "#8fbf5a" : isSelected ? "#fff4dc" : "#21160b"}
+              stroke={
+                isHandoffTarget ? "#8fbf5a" : isSelected ? "#fff4dc" : "#21160b"
+              }
               strokeWidth={isHandoffTarget || isSelected ? 3.5 : 3}
               style={{ transition: "r .2s" }}
             />
-            <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize="10" fontWeight="800" fill="#21160b">
+            <text
+              x={p.x}
+              y={p.y + 4}
+              textAnchor="middle"
+              fontSize="10"
+              fontWeight="800"
+              fill="#21160b"
+            >
               {p.i + 1}
             </text>
             {refCount > 0 && (
               <g>
-                <circle cx={p.x + 10} cy={p.y - 10} r={7} fill="#8fbf5a" stroke="#21160b" strokeWidth={1.5} />
-                <text x={p.x + 10} y={p.y - 7} textAnchor="middle" fontSize="8.5" fontWeight="800" fill="#21160b">
+                <circle
+                  cx={p.x + 10}
+                  cy={p.y - 10}
+                  r={7}
+                  fill="#8fbf5a"
+                  stroke="#21160b"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={p.x + 10}
+                  y={p.y - 7}
+                  textAnchor="middle"
+                  fontSize="8.5"
+                  fontWeight="800"
+                  fill="#21160b"
+                >
                   {refCount}
                 </text>
               </g>
             )}
-            <rect
-              x={p.bx}
-              y={p.by}
-              width={p.w}
-              height={p.h}
-              rx={3}
-              fill={isHandoffTarget ? "rgba(143,191,90,.95)" : on ? "rgba(234,143,99,.92)" : "rgba(16,11,6,.72)"}
-            />
-            {leader && <line x1={p.x} y1={p.y} x2={cx} y2={cy} stroke={p.col.hex} strokeOpacity={on ? 0.95 : 0.5} strokeWidth={1} />}
-            <text
-              x={p.tx}
-              y={p.ty}
-              textAnchor={p.anchor}
-              fontSize={LABEL_SIZE}
-              fontFamily="JetBrains Mono, monospace"
-              fontWeight="600"
-              fill={on ? "#21160b" : "#fff4dc"}
-              letterSpacing={LABEL_TRACKING}
-            >
-              {p.text}
-            </text>
+            {(on || placed.length <= 5) && (
+              <rect
+                x={p.bx}
+                y={p.by}
+                width={p.w}
+                height={p.h}
+                rx={3}
+                fill={
+                  isHandoffTarget
+                    ? "rgba(143,191,90,.95)"
+                    : on
+                      ? "rgba(234,143,99,.92)"
+                      : "rgba(16,11,6,.72)"
+                }
+              />
+            )}
+            {(on || placed.length <= 5) && leader && (
+              <line
+                x1={p.x}
+                y1={p.y}
+                x2={cx}
+                y2={cy}
+                stroke={p.col.hex}
+                strokeOpacity={on ? 0.95 : 0.5}
+                strokeWidth={1}
+              />
+            )}
+            {(on || placed.length <= 5) && (
+              <text
+                x={p.tx}
+                y={p.ty}
+                textAnchor={p.anchor}
+                fontSize={LABEL_SIZE}
+                fontFamily="JetBrains Mono, monospace"
+                fontWeight="600"
+                fill={on ? "#21160b" : "#fff4dc"}
+                letterSpacing={LABEL_TRACKING}
+              >
+                {p.text}
+              </text>
+            )}
           </g>
         );
       })}
 
-      <circle cx={C} cy={C} r={20} fill="#ea8f63" opacity={0.25} className="nrx-ping" style={{ transformOrigin: `${C}px ${C}px` }} />
-      <circle cx={C} cy={C} r={8} fill="#ea8f63" stroke="#fff4dc" strokeWidth={3} />
-      <text x={C} y={C + 28} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono, monospace" fontWeight="700" fill="#ea8f63" letterSpacing="2">
+      <circle
+        cx={C}
+        cy={C}
+        r={20}
+        fill="#ea8f63"
+        opacity={0.25}
+        className="nrx-ping"
+        style={{ transformOrigin: `${C}px ${C}px` }}
+      />
+      <circle
+        cx={C}
+        cy={C}
+        r={8}
+        fill="#ea8f63"
+        stroke="#fff4dc"
+        strokeWidth={3}
+      />
+      <text
+        x={C}
+        y={C + 28}
+        textAnchor="middle"
+        fontSize="10"
+        fontFamily="JetBrains Mono, monospace"
+        fontWeight="700"
+        fill="#ea8f63"
+        letterSpacing="2"
+      >
         YOU
       </text>
     </svg>
@@ -562,20 +827,20 @@ const ROLE_META: Record<
     workspaceTab: "Visit pass",
   },
   chw: {
-    eyebrow: "Frontline · field referral directory",
-    line1: "Route every",
-    line2: "child to care.",
+    eyebrow: "Health worker · referral directory",
+    line1: "Send each child to",
+    line2: "the right centre.",
     blurb:
-      "Select a facility on the map, dispatch a live referral for any child in your ward, and track the handoff from sent to seen.",
+      "Pick a centre on the map, send a referral for any child in your ward, and follow it from sent to seen.",
     workspaceTab: "Referral slip",
   },
   supervisor: {
-    eyebrow: "Oversight · block catchment & coverage",
-    line1: "Every ward.",
-    line2: "Mapped to care.",
+    eyebrow: "Supervisor · coverage by area",
+    line1: "Every ward,",
+    line2: "within reach of care.",
     blurb:
-      "Compare facility coverage across sector PIN codes, reroute stuck referrals to verified DEICs on the map, and export directories.",
-    workspaceTab: "Catchment audit",
+      "Compare which areas have a nearby DEIC, move stuck referrals to a better centre, and export the directory for your block.",
+    workspaceTab: "Coverage check",
   },
   clinician: {
     eyebrow: "Clinical tools · subspecialty & rule-out directory",
@@ -602,14 +867,18 @@ export function FindHelp() {
   const tr = useT();
 
   const [mode, setMode] = useState<Mode>("directory");
-  const [mapVisualMode, setMapVisualMode] = useState<MapVisualMode>("radar");
+  const [mapVisualMode, setMapVisualMode] = useState<MapVisualMode>("street");
   const [pin, setPin] = useState("110029");
   const [age, setAge] = useState("3");
-  const [screeningResult, setScreeningResult] = useState<"typical" | "monitor" | "refer" | undefined>(undefined);
+  const [screeningResult, setScreeningResult] = useState<
+    "typical" | "monitor" | "refer" | undefined
+  >(undefined);
   const [res, setRes] = useState<FacilitiesResponse | null>(null);
   const [asked, setAsked] = useState("");
   const [hover, setHover] = useState<number | null>(null);
-  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(null);
+  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(
+    null,
+  );
   const [copied, setCopied] = useState<string | null>(null);
   const copiedTimer = useRef<number | null>(null);
 
@@ -617,16 +886,26 @@ export function FindHelp() {
   const [locating, setLocating] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [tierFilter, setTierFilter] = useState<TierFilterId>("all");
-  const [subspecialtyFilter, setSubspecialtyFilter] = useState<SubspecialtyId>("all");
-  const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [subspecialtyFilter, setSubspecialtyFilter] =
+    useState<SubspecialtyId>("all");
+  const [lastCoords, setLastCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const [selectedCheckInId, setSelectedCheckInId] = useState<string>("");
   const [selectedChildId, setSelectedChildId] = useState<string>("");
-  const [dispatchingChildId, setDispatchingChildId] = useState<string | null>(null);
+  const [dispatchingChildId, setDispatchingChildId] = useState<string | null>(
+    null,
+  );
 
   // Live parent community worker suggestions + contact log state
-  const [suggestedWorkers, setSuggestedWorkers] = useState<WorkerSuggestion[]>([]);
-  const [parentContactStatus, setParentContactStatus] = useState<string | null>(null);
+  const [suggestedWorkers, setSuggestedWorkers] = useState<WorkerSuggestion[]>(
+    [],
+  );
+  const [parentContactStatus, setParentContactStatus] = useState<string | null>(
+    null,
+  );
   const [loggingVisit, setLoggingVisit] = useState(false);
 
   // Live clinician note editor synced with the active referral record
@@ -645,7 +924,8 @@ export function FindHelp() {
 
   useEffect(
     () => () => {
-      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+      if (copiedTimer.current !== null)
+        window.clearTimeout(copiedTimer.current);
     },
     [],
   );
@@ -655,7 +935,11 @@ export function FindHelp() {
     const map = new Map<string, ReferralRecord>();
     for (const ref of referralRecords) {
       const prev = map.get(ref.child_id);
-      if (!prev || new Date(ref.created_at).getTime() >= new Date(prev.created_at).getTime()) {
+      if (
+        !prev ||
+        new Date(ref.created_at).getTime() >=
+          new Date(prev.created_at).getTime()
+      ) {
         map.set(ref.child_id, ref);
       }
     }
@@ -669,7 +953,10 @@ export function FindHelp() {
       setSelectedCheckInId(latest.id);
       setAge(String(Math.max(0, Math.round(latest.ageMonths / 12))));
       const ev = evaluate(latest.scores, latest.regression);
-      setScreeningResult((latest.tier ?? ev.tier).toLowerCase() as "typical" | "monitor" | "refer");
+      setScreeningResult(
+        (latest.tier ?? ev.tier).toLowerCase() as
+          "typical" | "monitor" | "refer",
+      );
     }
   }, [checkIns, selectedCheckInId]);
 
@@ -696,25 +983,33 @@ export function FindHelp() {
       if (role === "chw" || role === "supervisor" || role === "clinician") {
         setAge(String(Math.max(0, Math.round(first.ageMonths / 12))));
         setScreeningResult(
-          first.status === "refer" ? "refer" : first.status === "watch" || first.status === "overdue" ? "monitor" : "typical",
+          first.status === "refer"
+            ? "refer"
+            : first.status === "watch" || first.status === "overdue"
+              ? "monitor"
+              : "typical",
         );
       }
     }
   }, [actionableChildren, selectedChildId, role]);
 
   const activeCheckIn: CheckIn | null = useMemo(
-    () => checkIns.find((c) => c.id === selectedCheckInId) ?? checkIns[0] ?? null,
+    () =>
+      checkIns.find((c) => c.id === selectedCheckInId) ?? checkIns[0] ?? null,
     [checkIns, selectedCheckInId],
   );
 
   const activeChild: Child | null = useMemo(
-    () => children.find((c) => c.id === selectedChildId) ?? actionableChildren[0] ?? null,
+    () =>
+      children.find((c) => c.id === selectedChildId) ??
+      actionableChildren[0] ??
+      null,
     [children, actionableChildren, selectedChildId],
   );
 
   /** Live backend referral record for the currently selected child */
   const activeReferral: ReferralRecord | null = useMemo(
-    () => (activeChild ? latestRefByChild.get(activeChild.id) ?? null : null),
+    () => (activeChild ? (latestRefByChild.get(activeChild.id) ?? null) : null),
     [activeChild, latestRefByChild],
   );
 
@@ -727,7 +1022,11 @@ export function FindHelp() {
 
   // Fetch live suggested workers from /api/screen/{sessionId}/workers for Parent role
   useEffect(() => {
-    if (role !== "parent" || !activeCheckIn?.id || activeCheckIn.source !== "live") {
+    if (
+      role !== "parent" ||
+      !activeCheckIn?.id ||
+      activeCheckIn.source !== "live"
+    ) {
       setSuggestedWorkers([]);
       return;
     }
@@ -746,9 +1045,16 @@ export function FindHelp() {
   }, [role, activeCheckIn?.id, activeCheckIn?.source]);
 
   const activeContext = useMemo(() => {
-    if ((role === "chw" || role === "supervisor" || role === "clinician") && activeChild) {
+    if (
+      (role === "chw" || role === "supervisor" || role === "clinician") &&
+      activeChild
+    ) {
       const tier: Tier =
-        activeChild.status === "refer" ? "Refer" : activeChild.status === "watch" || activeChild.status === "overdue" ? "Monitor" : "Typical";
+        activeChild.status === "refer"
+          ? "Refer"
+          : activeChild.status === "watch" || activeChild.status === "overdue"
+            ? "Monitor"
+            : "Typical";
       return {
         name: childLabel(activeChild),
         sub: `${activeChild.ageMonths} mo · ${activeChild.ward ?? `Sector ${activeChild.sector}`}`,
@@ -770,7 +1076,8 @@ export function FindHelp() {
         tier,
         regression: activeCheckIn.regression,
         scores: activeCheckIn.scores,
-        module: activeCheckIn.module ?? (activeCheckIn.ageMonths >= 60 ? "B" : "A"),
+        module:
+          activeCheckIn.module ?? (activeCheckIn.ageMonths >= 60 ? "B" : "A"),
         flagged: getFlaggedDomains(activeCheckIn.scores),
       };
     }
@@ -780,7 +1087,11 @@ export function FindHelp() {
   const ageGroup: "0-5" | "6-12" | undefined =
     age === "" ? undefined : parseInt(age || "0", 10) >= 6 ? "6-12" : "0-5";
 
-  const search = async (raw: string, only = verifiedOnly, resultOverride = screeningResult) => {
+  const search = async (
+    raw: string,
+    only = verifiedOnly,
+    resultOverride = screeningResult,
+  ) => {
     const d = raw.replace(/\D/g, "").slice(0, 6);
     if (d.length < 6 || d[0] === "0") {
       showToast(tr("Enter a 6-digit PIN code"));
@@ -795,18 +1106,26 @@ export function FindHelp() {
         limit: 12,
         verifiedOnly: only,
       });
+      if (!r) return;
       setRes(r);
       setAsked(d);
       setLastCoords(null);
       setSelectedFacilityId(r.facilities[0]?.id ?? null);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not reach the facility directory.");
+      showToast(
+        e instanceof Error
+          ? e.message
+          : "Could not reach the facility directory.",
+      );
     } finally {
       setBusy(false);
     }
   };
 
-  const searchNear = async (coords: { lat: number; lng: number }, only = verifiedOnly) => {
+  const searchNear = async (
+    coords: { lat: number; lng: number },
+    only = verifiedOnly,
+  ) => {
     try {
       const r = await facilitiesApi.getNear(coords, {
         ageGroup,
@@ -839,7 +1158,10 @@ export function FindHelp() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          await searchNear({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          await searchNear({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
         } finally {
           setLocating(false);
         }
@@ -852,11 +1174,32 @@ export function FindHelp() {
     );
   };
 
+  // Load the default PIN once on arrival so the page opens with real results, not an empty panel.
+  // Deferred a tick so the child / check-in sync effects have set the right age and result first.
+  const searchRef = useRef(search);
+  searchRef.current = search;
+  const pinRef = useRef(pin);
+  pinRef.current = pin;
+  useEffect(() => {
+    const t = window.setTimeout(
+      () => void searchRef.current(pinRef.current),
+      120,
+    );
+    return () => window.clearTimeout(t);
+  }, []);
+
   const rawList = useMemo(() => res?.facilities ?? [], [res]);
   const list = useMemo(() => {
     return rawList.filter((f) => {
-      if (tierFilter === "deic_rbsk" && f.type !== "DEIC" && f.type !== "RBSK") return false;
-      if (tierFilter === "gov_hosp" && f.type !== "District Hospital" && f.type !== "CHC" && f.type !== "PHC") return false;
+      if (tierFilter === "deic_rbsk" && f.type !== "DEIC" && f.type !== "RBSK")
+        return false;
+      if (
+        tierFilter === "gov_hosp" &&
+        f.type !== "District Hospital" &&
+        f.type !== "CHC" &&
+        f.type !== "PHC"
+      )
+        return false;
       if (!facilityMatchesSubspecialty(f, subspecialtyFilter)) return false;
       return true;
     });
@@ -879,7 +1222,9 @@ export function FindHelp() {
   /** Find which facility on the map is the current destination of activeReferral */
   const activeHandoffFacility: Facility | null = useMemo(() => {
     if (!activeReferral) return null;
-    return rawList.find((f) => referralMatchesFacility(activeReferral, f)) ?? null;
+    return (
+      rawList.find((f) => referralMatchesFacility(activeReferral, f)) ?? null
+    );
   }, [activeReferral, rawList]);
 
   // When switching children, if their live referral already points to a facility in the list, select it on the map!
@@ -891,30 +1236,35 @@ export function FindHelp() {
   }, [activeHandoffFacilityId]);
 
   const selectedFacility: Facility | null = useMemo(
-    () => list.find((f) => f.id === selectedFacilityId) ?? list[0] ?? rawList[0] ?? null,
+    () =>
+      list.find((f) => f.id === selectedFacilityId) ??
+      list[0] ??
+      rawList[0] ??
+      null,
     [list, rawList, selectedFacilityId],
   );
 
   const mapOrigin = useMemo<{ lat: number; lng: number } | null>(() => {
     if (lastCoords) return lastCoords;
-    if (res?.resolved && Number.isFinite(res.resolved.lat) && Number.isFinite(res.resolved.lng)) {
+    if (
+      res?.resolved &&
+      Number.isFinite(res.resolved.lat) &&
+      Number.isFinite(res.resolved.lng)
+    ) {
       return { lat: res.resolved.lat, lng: res.resolved.lng };
     }
     return null;
   }, [lastCoords, res?.resolved]);
 
   const coverage = res?.coverage ?? null;
-  const showSuggestions = res !== null && coverage !== "nearby" && res.suggestions.length > 0;
+  const showSuggestions =
+    res !== null && coverage !== "nearby" && res.suggestions.length > 0;
   const hasOsm = list.some((f) => /openstreetmap/i.test(f.source));
 
   const copyText = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      /* ignore */
-    }
+    const ok = await copyToClipboard(text);
     setCopied(label);
-    showToast(`${label} copied`);
+    showToast(ok ? `${label} copied` : "Could not copy on this device");
     if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
     copiedTimer.current = window.setTimeout(() => setCopied(null), 1800);
   };
@@ -931,16 +1281,28 @@ export function FindHelp() {
       activeContext
         ? `Child: ${activeContext.name} · ${activeContext.sub} · Module ${activeContext.module}`
         : `Child age group: ${age} years (${ageGroup ?? "0-5"})`,
-      activeContext ? `Overall result: ${activeContext.tier} (${TIER_META[activeContext.tier].hint})` : "",
-      f ? `Chosen centre: ${f.name} (${f.type}) — about ${f.km} km` : "Chosen centre: Nearest District Early Intervention Centre (DEIC)",
-      f ? `Address: ${f.address || `${f.district}, ${f.state}`}${f.phone ? ` · Phone: ${f.phone}` : ""}` : "",
+      activeContext
+        ? `Overall result: ${activeContext.tier} (${TIER_META[activeContext.tier].hint})`
+        : "",
+      f
+        ? `Chosen centre: ${f.name} (${f.type}) — about ${f.km} km`
+        : "Chosen centre: Nearest District Early Intervention Centre (DEIC)",
+      f
+        ? `Address: ${f.address || `${f.district}, ${f.state}`}${f.phone ? ` · Phone: ${f.phone}` : ""}`
+        : "",
       "",
-      flagged.length > 0 ? "Areas to discuss with the doctor:" : "Checked areas are currently inside the expected range.",
-      ...flagged.map((d) => `• ${d.label} (${d.z.toFixed(1)} SD) → ${d.route.service}`),
+      flagged.length > 0
+        ? "Areas to discuss with the doctor:"
+        : "Checked areas are currently inside the expected range.",
+      ...flagged.map(
+        (d) => `• ${d.label} (${d.z.toFixed(1)} SD) → ${d.route.service}`,
+      ),
       "",
       "Questions to ask:",
       ...(flagged.length > 0
-        ? flagged.slice(0, 3).map((d, idx) => `${idx + 1}. ${d.route.parentQuestion}`)
+        ? flagged
+            .slice(0, 3)
+            .map((d, idx) => `${idx + 1}. ${d.route.parentQuestion}`)
         : ["1. When should we repeat our next developmental check-in?"]),
       "",
       "Screening summary for discussion — not a medical diagnosis.",
@@ -949,7 +1311,10 @@ export function FindHelp() {
       .join("\n");
   };
 
-  const buildChwFieldSlip = (f: Facility | null, forWhatsApp = false): string => {
+  const buildChwFieldSlip = (
+    f: Facility | null,
+    forWhatsApp = false,
+  ): string => {
     const c = activeChild;
     const flagged = activeContext?.flagged ?? [];
     if (forWhatsApp) {
@@ -961,7 +1326,9 @@ export function FindHelp() {
         f
           ? `${f.name} (${f.type}, about ${f.km} km)\n${f.address || `${f.district}, ${f.state}`}${f.phone ? `\nPhone: ${f.phone}` : ""}`
           : "Nearest District Early Intervention Centre (DEIC)",
-        flagged.length > 0 ? `Areas to mention: ${flagged.map((d) => d.label).join(", ")}.` : "",
+        flagged.length > 0
+          ? `Areas to mention: ${flagged.map((d) => d.label).join(", ")}.`
+          : "",
         `Please bring your MCP / immunization card.`,
       ]
         .filter(Boolean)
@@ -970,13 +1337,17 @@ export function FindHelp() {
     return [
       "Nirixon frontline referral slip (RBSK / DEIC)",
       `Worker: ${workerName ?? "Sunita Devi (ASHA)"} · ${c?.ward ?? "Ward 12"}`,
-      c ? `Child: ${childLabel(c)} · ${c.ageMonths} months · ${STATUS_META[c.status].long}` : "Child: Unlinked lookup",
+      c
+        ? `Child: ${childLabel(c)} · ${c.ageMonths} months · ${STATUS_META[c.status].long}`
+        : "Child: Unlinked lookup",
       f
         ? `Receiving facility: ${f.name} (${f.type}, ~${f.km} km)\nAddress: ${f.address || `${f.district}, ${f.state}`}\nListing source: ${TRUST_CHIP[f.trust.level].label}`
         : "Receiving facility: Nodal District DEIC / RBSK team",
       "",
       flagged.length > 0 ? "Flagged areas:" : "General developmental follow-up",
-      ...flagged.map((d) => `• ${d.label} (${d.z.toFixed(1)} SD) → ${d.route.service}`),
+      ...flagged.map(
+        (d) => `• ${d.label} (${d.z.toFixed(1)} SD) → ${d.route.service}`,
+      ),
     ].join("\n");
   };
 
@@ -995,15 +1366,23 @@ export function FindHelp() {
       "Domain z-score profile:",
       ...(ctx?.scores
         ? domainKeys(ctx.scores).map(
-            (k) => `• ${DOMAINS[k]?.label ?? k}: ${ctx.scores![k].toFixed(2)} SD (${domainStatus(ctx.scores![k]).label})`,
+            (k) =>
+              `• ${DOMAINS[k]?.label ?? k}: ${ctx.scores![k].toFixed(2)} SD (${domainStatus(ctx.scores![k]).label})`,
           )
         : ["• No domain profile attached"]),
       "",
       "Recommended rule-outs & specialist workup:",
       ...(flagged.length > 0
-        ? flagged.map((d, i) => `${i + 1}. ${d.label} → ${d.route.service}\n   Rule-out: ${d.route.ruleOut}`)
-        : ["1. Routine developmental surveillance; all domains above -1.0 SD."]),
-      ...(clinicalNoteDraft.trim() ? ["", `Clinician note: ${clinicalNoteDraft.trim()}`] : []),
+        ? flagged.map(
+            (d, i) =>
+              `${i + 1}. ${d.label} → ${d.route.service}\n   Rule-out: ${d.route.ruleOut}`,
+          )
+        : [
+            "1. Routine developmental surveillance; all domains above -1.0 SD.",
+          ]),
+      ...(clinicalNoteDraft.trim()
+        ? ["", `Clinician note: ${clinicalNoteDraft.trim()}`]
+        : []),
     ].join("\n");
   };
 
@@ -1012,7 +1391,10 @@ export function FindHelp() {
    * with the exact facility selected on the map, then dispatch it (/api/referrals/{id}/send)
    * and reload all app state so the map, facility cards, and referral desk update in real time.
    */
-  const handleLiveFacilityReferral = async (f: Facility, targetChild: Child | null = activeChild) => {
+  const handleLiveFacilityReferral = async (
+    f: Facility,
+    targetChild: Child | null = activeChild,
+  ) => {
     if (!targetChild) {
       showToast("Select a child first");
       return;
@@ -1022,7 +1404,8 @@ export function FindHelp() {
     try {
       const dest = formatFacilityTarget(f);
       const flagged = getFlaggedDomains(targetChild.scores);
-      const domains = flagged.length > 0 ? flagged.map((d) => d.key) : ["communication"];
+      const domains =
+        flagged.length > 0 ? flagged.map((d) => d.key) : ["communication"];
       const reason =
         flagged.length > 0
           ? `Routed via Find Help map to ${f.name} (${f.type}): ${flagged.map((d) => `${d.label} (${d.z.toFixed(1)} SD)`).join(", ")}`
@@ -1049,7 +1432,9 @@ export function FindHelp() {
           reason,
           tier,
           domains_of_concern: domains,
-          safety_rule_trigger: targetChild.regression ? "Skill regression reported" : null,
+          safety_rule_trigger: targetChild.regression
+            ? "Skill regression reported"
+            : null,
         });
       }
 
@@ -1059,12 +1444,21 @@ export function FindHelp() {
       });
 
       if (role === "chw") {
-        void contactChild(targetChild.id, { handoff: "queued", status: "refer" });
+        void contactChild(targetChild.id, {
+          handoff: "queued",
+          status: "refer",
+        });
       }
       reload();
-      showToast(`${childLabel(targetChild)} routed to ${f.name} · ${dispatchRes.detail}`);
+      showToast(
+        `${childLabel(targetChild)} routed to ${f.name} · ${dispatchRes.detail}`,
+      );
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not dispatch referral to facility");
+      showToast(
+        e instanceof Error
+          ? e.message
+          : "Could not dispatch referral to facility",
+      );
     } finally {
       setDispatchingChildId(null);
     }
@@ -1077,12 +1471,18 @@ export function FindHelp() {
     try {
       await referralApi.updateReferral(activeReferral.id, {
         status: "seen",
-        ...(selectedFacility ? { to_facility: formatFacilityTarget(selectedFacility) } : {}),
+        ...(selectedFacility
+          ? { to_facility: formatFacilityTarget(selectedFacility) }
+          : {}),
       });
       reload();
-      showToast(`${childLabel(activeChild)} marked seen at ${selectedFacility?.name ?? activeReferral.to_facility}`);
+      showToast(
+        `${childLabel(activeChild)} marked seen at ${selectedFacility?.name ?? activeReferral.to_facility}`,
+      );
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not mark referral seen");
+      showToast(
+        e instanceof Error ? e.message : "Could not mark referral seen",
+      );
     } finally {
       setDispatchingChildId(null);
     }
@@ -1098,7 +1498,8 @@ export function FindHelp() {
     try {
       const dest = selectedFacility
         ? formatFacilityTarget(selectedFacility)
-        : activeReferral?.to_facility ?? "Nodal DEIC / Developmental Paediatrics";
+        : (activeReferral?.to_facility ??
+          "Nodal DEIC / Developmental Paediatrics");
       const flagged = activeContext?.flagged ?? [];
       const noteToSave =
         clinicalNoteDraft.trim() ||
@@ -1125,9 +1526,13 @@ export function FindHelp() {
         clinical_notes: noteToSave,
       });
       reload();
-      showToast(`Handoff acknowledged & routed to ${selectedFacility?.name ?? dest}`);
+      showToast(
+        `Handoff acknowledged & routed to ${selectedFacility?.name ?? dest}`,
+      );
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not save clinical handoff");
+      showToast(
+        e instanceof Error ? e.message : "Could not save clinical handoff",
+      );
     } finally {
       setSavingClinicalHandoff(false);
     }
@@ -1142,7 +1547,9 @@ export function FindHelp() {
     setLoggingVisit(true);
     try {
       const workerId = suggestedWorkers[0]?.id ?? "asha-ward-12";
-      const facLabel = f ? `${f.name} (${f.type}, ~${f.km} km)` : "Nearest DEIC";
+      const facLabel = f
+        ? `${f.name} (${f.type}, ~${f.km} km)`
+        : "Nearest DEIC";
       if (activeCheckIn.source === "live") {
         const resp = await api.contactWorker(activeCheckIn.id, {
           worker_id: workerId,
@@ -1152,11 +1559,15 @@ export function FindHelp() {
         setParentContactStatus(`${resp.message} · Destination: ${facLabel}`);
         showToast(resp.message);
       } else {
-        setParentContactStatus(`Visit plan logged for ${activeCheckIn.child} at ${facLabel}.`);
+        setParentContactStatus(
+          `Visit plan logged for ${activeCheckIn.child} at ${facLabel}.`,
+        );
         showToast(`Visit plan logged for ${facLabel}`);
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Could not log facility contact");
+      showToast(
+        e instanceof Error ? e.message : "Could not log facility contact",
+      );
     } finally {
       setLoggingVisit(false);
     }
@@ -1169,9 +1580,17 @@ export function FindHelp() {
       const pinsToAudit = SAMPLE_PINS.filter((p) => p.pin !== "999999");
       const results = await Promise.all(
         pinsToAudit.map(async (item) => {
-          const r = await facilitiesApi.get(item.pin, { ageGroup: "0-5", result: "refer", limit: 15 });
-          const deicRbsk = r.facilities.filter((f) => f.type === "DEIC" || f.type === "RBSK");
-          const trusted = r.facilities.filter((f) => f.trust.level === "official" || f.trust.level === "verified");
+          const r = await facilitiesApi.get(item.pin, {
+            ageGroup: "0-5",
+            result: "refer",
+            limit: 15,
+          });
+          const deicRbsk = r.facilities.filter(
+            (f) => f.type === "DEIC" || f.type === "RBSK",
+          );
+          const trusted = r.facilities.filter(
+            (f) => f.trust.level === "official" || f.trust.level === "verified",
+          );
           return {
             pin: item.pin,
             label: item.label,
@@ -1181,7 +1600,10 @@ export function FindHelp() {
             totalCount: r.facilities.length,
             deicRbskCount: deicRbsk.length,
             trustedCount: trusted.length,
-            nearestDeicKm: deicRbsk.length > 0 ? Math.min(...deicRbsk.map((f) => f.km)) : null,
+            nearestDeicKm:
+              deicRbsk.length > 0
+                ? Math.min(...deicRbsk.map((f) => f.km))
+                : null,
           } satisfies CatchmentAuditRow;
         }),
       );
@@ -1195,7 +1617,12 @@ export function FindHelp() {
   };
 
   useEffect(() => {
-    if (role === "supervisor" && mode === "workspace" && auditRows.length === 0 && !auditingBlock) {
+    if (
+      role === "supervisor" &&
+      mode === "workspace" &&
+      auditRows.length === 0 &&
+      !auditingBlock
+    ) {
       void runBlockCatchmentAudit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1206,7 +1633,17 @@ export function FindHelp() {
       showToast("Search a PIN first to export facilities");
       return;
     }
-    const header = ["Rank", "Name", "Type", "Distance_km", "District", "State", "Phone", "Trust_Level", "Source"];
+    const header = [
+      "Rank",
+      "Name",
+      "Type",
+      "Distance_km",
+      "District",
+      "State",
+      "Phone",
+      "Trust_Level",
+      "Source",
+    ];
     const rows = list.map((f, i) => [
       String(i + 1),
       `"${f.name.replace(/"/g, '""')}"`,
@@ -1219,17 +1656,31 @@ export function FindHelp() {
       `"${f.source}"`,
     ]);
     const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    downloadTextFile(`nirixon-facilities-${asked || pin}.csv`, csv, "text/csv;charset=utf-8");
+    downloadTextFile(
+      `nirixon-facilities-${asked || pin}.csv`,
+      csv,
+      "text/csv;charset=utf-8",
+    );
     showToast(`Exported ${list.length} facilities to CSV`);
   };
 
   const supervisorStats = useMemo(() => {
     const referCount = children.filter((c) => c.status === "refer").length;
-    const watchCount = children.filter((c) => c.status === "watch" || c.status === "overdue").length;
-    const queuedHandoffs = children.filter((c) => c.handoff === "queued").length;
-    const completedHandoffs = children.filter((c) => c.handoff === "done").length;
-    const deicCountInList = rawList.filter((f) => f.type === "DEIC" || f.type === "RBSK").length;
-    const trustedCountInList = rawList.filter((f) => f.trust.level === "official" || f.trust.level === "verified").length;
+    const watchCount = children.filter(
+      (c) => c.status === "watch" || c.status === "overdue",
+    ).length;
+    const queuedHandoffs = children.filter(
+      (c) => c.handoff === "queued",
+    ).length;
+    const completedHandoffs = children.filter(
+      (c) => c.handoff === "done",
+    ).length;
+    const deicCountInList = rawList.filter(
+      (f) => f.type === "DEIC" || f.type === "RBSK",
+    ).length;
+    const trustedCountInList = rawList.filter(
+      (f) => f.trust.level === "official" || f.trust.level === "verified",
+    ).length;
     return {
       referCount,
       watchCount,
@@ -1243,37 +1694,37 @@ export function FindHelp() {
 
   const meta = ROLE_META[role] ?? ROLE_META.parent;
 
-  // Compute OpenStreetMap embed URL for the selected facility or resolved PIN coordinates
-  const osmTarget = useMemo(() => {
-    if (selectedFacility && Number.isFinite(selectedFacility.lat) && Number.isFinite(selectedFacility.lng)) {
-      return {
-        lat: selectedFacility.lat,
-        lng: selectedFacility.lng,
-        label: selectedFacility.name,
-      };
-    }
-    if (mapOrigin) {
-      return {
-        lat: mapOrigin.lat,
-        lng: mapOrigin.lng,
-        label: res?.resolved ? `${res.resolved.district}, ${res.resolved.state}` : asked || pin,
-      };
-    }
-    return null;
-  }, [selectedFacility, mapOrigin, res?.resolved, asked, pin]);
+  // One marker per listed facility that has usable coordinates.
+  const mapPoints = useMemo<MapPoint[]>(
+    () =>
+      list
+        .filter((f) => Number.isFinite(f.lat) && Number.isFinite(f.lng))
+        .map((f) => ({
+          id: f.id,
+          lat: f.lat,
+          lng: f.lng,
+          color: colOf(f.type).hex,
+          label: f.name,
+        })),
+    [list],
+  );
 
   return (
     <Page>
       {/* ============================ HEADER ============================ */}
-      <Eyebrow index="01">{tr(meta.eyebrow)}</Eyebrow>
+      <Eyebrow>{tr(meta.eyebrow)}</Eyebrow>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
-        <Display as="h1" className="text-[clamp(52px,8vw,118px)]">
+        <Display as="h1" className="text-[clamp(44px,6.4vw,92px)]">
           {tr(meta.line1)}
           <br />
           <span className="text-rust">{tr(meta.line2)}</span>
         </Display>
 
-        <div className="flex rounded-full border border-line-2 bg-card p-1" role="group" aria-label="Find help mode">
+        <div
+          className="flex rounded-full border border-line-2 bg-card p-1"
+          role="group"
+          aria-label="Find help mode"
+        >
           {(
             [
               ["directory", "Directory & map"],
@@ -1287,7 +1738,9 @@ export function FindHelp() {
               aria-pressed={mode === val}
               className={cn(
                 "rounded-full px-5 py-2.5 text-[12px] font-bold transition-colors",
-                mode === val ? "bg-ink text-paper" : "text-ink-2 hover:text-ink",
+                mode === val
+                  ? "bg-ink text-paper"
+                  : "text-ink-2 hover:text-ink",
               )}
             >
               {tr(label)}
@@ -1296,33 +1749,43 @@ export function FindHelp() {
         </div>
       </div>
 
-      <p className="mt-5 max-w-[620px] text-[15px] leading-relaxed text-ink-2">{meta.blurb}</p>
+      <p className="mt-5 max-w-[620px] text-[15px] leading-relaxed text-ink-2">
+        {meta.blurb}
+      </p>
 
       {/* ================================================================= */}
       {/* LIVE CASE / HANDOFF BRIDGE BAR (CONNECTS MAP TO REAL DB RECORDS)  */}
       {/* ================================================================= */}
       <Reveal className="mt-8">
-        <div className="rounded-[32px] border border-line-2 bg-card p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+        <div className="rounded-[32px] border border-line-2 bg-card p-5 sm:p-7">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:gap-0">
+            <div className="space-y-3 lg:pr-8">
               {/* Role selector for which child / check-in is linked to the map */}
               {role === "parent" && checkIns.length > 0 && (
-                <label className="flex items-center gap-2.5 text-[13px] font-semibold">
-                  <span className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">Child check-in:</span>
+                <label className="block max-w-[460px] text-[13px] font-semibold">
+                  <span className="mb-1.5 block text-[12px] font-semibold text-muted">
+                    Child check-in
+                  </span>
                   <select
                     value={activeCheckIn?.id ?? ""}
                     onChange={(e) => {
-                      const next = checkIns.find((c) => c.id === e.target.value);
+                      const next = checkIns.find(
+                        (c) => c.id === e.target.value,
+                      );
                       if (next) {
                         setSelectedCheckInId(next.id);
-                        setAge(String(Math.max(0, Math.round(next.ageMonths / 12))));
+                        setAge(
+                          String(Math.max(0, Math.round(next.ageMonths / 12))),
+                        );
                         const ev = evaluate(next.scores, next.regression);
-                        const nextRes = (next.tier ?? ev.tier).toLowerCase() as "typical" | "monitor" | "refer";
+                        const nextRes = (next.tier ?? ev.tier).toLowerCase() as
+                          "typical" | "monitor" | "refer";
                         setScreeningResult(nextRes);
-                        if (res?.pin) void search(res.pin, verifiedOnly, nextRes);
+                        if (res?.pin)
+                          void search(res.pin, verifiedOnly, nextRes);
                       }
                     }}
-                    className="nrx-select rounded-full border border-line-2 bg-card-2 py-2 pr-9 pl-4 text-[12.5px] font-bold text-ink"
+                    className="nrx-select w-full rounded-full border border-line-2 bg-card-2 py-2.5 pr-9 pl-4 text-[13px] font-bold text-ink"
                   >
                     {checkIns.map((c) => {
                       const ev = evaluate(c.scores, c.regression);
@@ -1336,114 +1799,182 @@ export function FindHelp() {
                 </label>
               )}
 
-              {(role === "chw" || role === "supervisor" || role === "clinician") && actionableChildren.length > 0 && (
-                <label className="flex items-center gap-2.5 text-[13px] font-semibold">
-                  <span className="font-mono text-[10px] tracking-[0.16em] text-muted uppercase">
-                    {role === "clinician" ? "Patient case:" : "Active child:"}
-                  </span>
-                  <select
-                    value={activeChild?.id ?? ""}
-                    onChange={(e) => {
-                      const next = children.find((c) => c.id === e.target.value);
-                      if (next) {
-                        setSelectedChildId(next.id);
-                        setAge(String(Math.max(0, Math.round(next.ageMonths / 12))));
-                        const nextRes =
-                          next.status === "refer"
-                            ? "refer"
-                            : next.status === "watch" || next.status === "overdue"
-                              ? "monitor"
-                              : "typical";
-                        setScreeningResult(nextRes);
-                      }
-                    }}
-                    className="nrx-select rounded-full border border-line-2 bg-card-2 py-2 pr-9 pl-4 text-[12.5px] font-bold text-ink"
-                  >
-                    {actionableChildren.map((c) => {
-                      const ref = latestRefByChild.get(c.id);
-                      return (
-                        <option key={c.id} value={c.id}>
-                          {childLabel(c)} ({c.ageMonths}m · {STATUS_META[c.status].label}
-                          {ref ? ` · ${ref.status}` : ""})
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-              )}
+              {(role === "chw" ||
+                role === "supervisor" ||
+                role === "clinician") &&
+                actionableChildren.length > 0 && (
+                  <label className="block max-w-[460px] text-[13px] font-semibold">
+                    <span className="mb-1.5 block text-[12px] font-semibold text-muted">
+                      {role === "clinician" ? "Patient case" : "Working on"}
+                    </span>
+                    <select
+                      value={activeChild?.id ?? ""}
+                      onChange={(e) => {
+                        const next = children.find(
+                          (c) => c.id === e.target.value,
+                        );
+                        if (next) {
+                          setSelectedChildId(next.id);
+                          setAge(
+                            String(
+                              Math.max(0, Math.round(next.ageMonths / 12)),
+                            ),
+                          );
+                          const nextRes =
+                            next.status === "refer"
+                              ? "refer"
+                              : next.status === "watch" ||
+                                  next.status === "overdue"
+                                ? "monitor"
+                                : "typical";
+                          setScreeningResult(nextRes);
+                        }
+                      }}
+                      className="nrx-select w-full rounded-full border border-line-2 bg-card-2 py-2.5 pr-9 pl-4 text-[13px] font-bold text-ink"
+                    >
+                      {actionableChildren.map((c) => {
+                        const ref = latestRefByChild.get(c.id);
+                        return (
+                          <option key={c.id} value={c.id}>
+                            {childLabel(c)} ({c.ageMonths}m ·{" "}
+                            {STATUS_META[c.status].label}
+                            {ref ? ` · ${ref.status}` : ""})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                )}
 
               {activeReferral ? (
-                <Chip
-                  tone={
-                    activeReferral.status === "seen" || activeReferral.status === "outcome recorded"
-                      ? "moss"
-                      : activeReferral.status === "sent"
-                        ? "amber"
-                        : "brick"
-                  }
-                >
-                  Live DB referral: {activeReferral.status.toUpperCase()} → {activeReferral.to_facility}
-                </Chip>
+                <p className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <span
+                    className={cn(
+                      "size-2.5 shrink-0 rounded-full",
+                      activeReferral.status === "seen" ||
+                        activeReferral.status === "outcome recorded"
+                        ? "bg-moss"
+                        : activeReferral.status === "sent"
+                          ? "bg-amber"
+                          : "bg-brick",
+                    )}
+                  />
+                  <span>
+                    <b className="text-ink">
+                      {activeReferral.status === "sent"
+                        ? "Referral sent"
+                        : activeReferral.status === "seen" ||
+                            activeReferral.status === "outcome recorded"
+                          ? "Child seen"
+                          : "Referral ready"}
+                    </b>{" "}
+                    to {activeReferral.to_facility.split(" (")[0]}
+                  </span>
+                </p>
               ) : (
                 role !== "parent" &&
-                activeChild && <Chip tone="sand">No referral sent yet for {childLabel(activeChild)}</Chip>
+                activeChild && (
+                  <p className="flex items-center gap-2 text-[13px] text-ink-2">
+                    <span className="size-2.5 shrink-0 rounded-full bg-line-2" />
+                    No referral yet for {childLabel(activeChild)}
+                  </p>
+                )
               )}
 
-              {role === "parent" && parentContactStatus && <Chip tone="moss">{parentContactStatus}</Chip>}
+              {role === "parent" && parentContactStatus && (
+                <Chip tone="moss">{parentContactStatus}</Chip>
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {selectedFacility && (
-                <Chip tone="sea">
-                  Map pin: {selectedFacility.name.slice(0, 26)}
-                  {selectedFacility.name.length > 26 ? "…" : ""} (~{selectedFacility.km} km)
-                </Chip>
-              )}
-              {selectedFacility && (role === "chw" || role === "supervisor") && activeChild && (
-                <Btn
-                  size="xs"
-                  variant="rust"
-                  disabled={dispatchingChildId === activeChild.id}
-                  onClick={() => void handleLiveFacilityReferral(selectedFacility, activeChild)}
-                >
-                  {dispatchingChildId === activeChild.id ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Send className="size-3.5" />
+            <div className="space-y-3 lg:border-l lg:border-line-2 lg:pl-8">
+              <div>
+                <p className="text-[12px] font-semibold text-muted">
+                  Selected centre
+                </p>
+                {selectedFacility ? (
+                  <p className="mt-1 text-[15px] leading-snug font-bold">
+                    {selectedFacility.name}
+                    <span className="font-normal text-ink-2">
+                      {" "}
+                      · {selectedFacility.km} km away
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[13px] text-ink-2">
+                    Pick a centre on the map or in the list.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedFacility &&
+                  (role === "chw" || role === "supervisor") &&
+                  activeChild && (
+                    <Btn
+                      size="xs"
+                      variant="rust"
+                      disabled={dispatchingChildId === activeChild.id}
+                      onClick={() =>
+                        void handleLiveFacilityReferral(
+                          selectedFacility,
+                          activeChild,
+                        )
+                      }
+                    >
+                      {dispatchingChildId === activeChild.id ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
+                      {activeReferral
+                        ? "Send to this centre instead"
+                        : "Send referral to this centre"}
+                    </Btn>
                   )}
-                  {activeReferral ? "Reroute & send to pin" : "Send referral to pin"}
-                </Btn>
-              )}
-              {selectedFacility && role === "clinician" && activeChild && (
+                {selectedFacility && role === "clinician" && activeChild && (
+                  <Btn
+                    size="xs"
+                    variant="rust"
+                    disabled={savingClinicalHandoff}
+                    onClick={() => void handleClinicianAcknowledgeAndRoute()}
+                  >
+                    {savingClinicalHandoff ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <CheckCheck className="size-3.5" />
+                    )}
+                    Acknowledge & route here
+                  </Btn>
+                )}
+                {selectedFacility && role === "parent" && activeCheckIn && (
+                  <Btn
+                    size="xs"
+                    variant="rust"
+                    disabled={loggingVisit}
+                    onClick={() =>
+                      void handleParentLogFacilityVisit(selectedFacility)
+                    }
+                  >
+                    {loggingVisit ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <MapPin className="size-3.5" />
+                    )}
+                    Log visit to this centre
+                  </Btn>
+                )}
                 <Btn
                   size="xs"
-                  variant="rust"
-                  disabled={savingClinicalHandoff}
-                  onClick={() => void handleClinicianAcknowledgeAndRoute()}
+                  variant="light"
+                  onClick={() =>
+                    setMode(mode === "directory" ? "workspace" : "directory")
+                  }
                 >
-                  {savingClinicalHandoff ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <CheckCheck className="size-3.5" />
-                  )}
-                  Acknowledge & route to pin
+                  {mode === "directory"
+                    ? `Open ${meta.workspaceTab.toLowerCase()}`
+                    : "Back to map"}{" "}
+                  <ArrowRight className="size-3.5" />
                 </Btn>
-              )}
-              {selectedFacility && role === "parent" && activeCheckIn && (
-                <Btn
-                  size="xs"
-                  variant="rust"
-                  disabled={loggingVisit}
-                  onClick={() => void handleParentLogFacilityVisit(selectedFacility)}
-                >
-                  {loggingVisit ? <Loader2 className="size-3.5 animate-spin" /> : <MapPin className="size-3.5" />}
-                  Log visit to this centre
-                </Btn>
-              )}
-              <Btn size="xs" variant="light" onClick={() => setMode(mode === "directory" ? "workspace" : "directory")}>
-                {mode === "directory" ? `Open ${meta.workspaceTab.toLowerCase()}` : "Back to map"}{" "}
-                <ArrowRight className="size-3.5" />
-              </Btn>
+              </div>
             </div>
           </div>
         </div>
@@ -1464,7 +1995,9 @@ export function FindHelp() {
                   </span>
                   <input
                     value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(e) =>
+                      setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     onKeyDown={(e) => e.key === "Enter" && void search(pin)}
                     inputMode="numeric"
                     placeholder="110029"
@@ -1477,27 +2010,51 @@ export function FindHelp() {
                   </span>
                   <input
                     value={age}
-                    onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                    onChange={(e) =>
+                      setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
+                    }
                     inputMode="numeric"
                     className="w-full rounded-2xl border border-line-2 bg-card-2 px-5 py-4 font-mono text-[22px] font-semibold focus:border-sea focus:outline-none"
                   />
                 </label>
               </div>
               <p className="mt-3 text-[12px] text-muted">
-                Under 6 → DEIC & RBSK first · 6 and over → child guidance & referral services first
+                Under 6 → DEIC & RBSK first · 6 and over → child guidance &
+                referral services first
               </p>
 
-              <Btn size="lg" className="mt-6 w-full" onClick={() => void search(pin)} disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}{" "}
+              <Btn
+                size="lg"
+                className="mt-6 w-full"
+                onClick={() => void search(pin)}
+                disabled={busy}
+              >
+                {busy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Search className="size-4" />
+                )}{" "}
                 {busy ? tr("Searching…") : tr("Find nearest help")}
               </Btn>
-              <Btn size="lg" variant="light" className="mt-2 w-full" onClick={useMyLocation} disabled={busy || locating}>
-                {locating ? <Loader2 className="size-4 animate-spin" /> : <LocateFixed className="size-4" />}{" "}
+              <Btn
+                size="lg"
+                variant="light"
+                className="mt-2 w-full"
+                onClick={useMyLocation}
+                disabled={busy || locating}
+              >
+                {locating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="size-4" />
+                )}{" "}
                 {locating ? tr("Locating…") : tr("Use my location")}
               </Btn>
 
               <div className="mt-7 border-t border-line pt-6">
-                <p className="mb-3 font-mono text-[10px] tracking-[0.22em] text-muted uppercase">{tr("Try a sample PIN")}</p>
+                <p className="mb-3 font-mono text-[10px] tracking-[0.22em] text-muted uppercase">
+                  {tr("Try a sample PIN")}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {SAMPLE_PINS.map((s) => (
                     <button
@@ -1509,11 +2066,18 @@ export function FindHelp() {
                       }}
                       className={cn(
                         "rounded-full border px-4 py-2 text-[12.5px] font-semibold transition-all hover:-translate-y-0.5",
-                        asked === s.pin ? "border-ink bg-ink text-paper" : "border-line-2 bg-card-2 hover:border-ink",
+                        asked === s.pin
+                          ? "border-ink bg-ink text-paper"
+                          : "border-line-2 bg-card-2 hover:border-ink",
                       )}
                     >
                       {s.label}{" "}
-                      <span className={cn("font-mono text-[11px]", asked === s.pin ? "text-paper/75" : "text-muted")}>
+                      <span
+                        className={cn(
+                          "font-mono text-[11px]",
+                          asked === s.pin ? "text-paper/75" : "text-muted",
+                        )}
+                      >
                         {s.pin}
                       </span>
                     </button>
@@ -1525,8 +2089,8 @@ export function FindHelp() {
             {/* Interactive Map Card: True-Bearing Compass Radar OR Live OpenStreetMap */}
             <div className="relative overflow-hidden rounded-[40px] bg-night p-5 text-paper sm:p-8">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <Eyebrow tone="peach" index="02">
-                  {mapVisualMode === "radar" ? tr("True-bearing radar") : tr("Live street map")}
+                <Eyebrow tone="peach">
+                  {mapVisualMode === "radar" ? tr("Distance radar") : tr("Map")}
                 </Eyebrow>
                 <div className="flex items-center gap-2">
                   <div className="flex rounded-full border border-white/15 bg-white/[0.06] p-0.5">
@@ -1535,7 +2099,9 @@ export function FindHelp() {
                       onClick={() => setMapVisualMode("radar")}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
-                        mapVisualMode === "radar" ? "bg-peach text-night" : "text-paper/70 hover:text-paper",
+                        mapVisualMode === "radar"
+                          ? "bg-peach text-night"
+                          : "text-paper/70 hover:text-paper",
                       )}
                     >
                       <Compass className="size-3" /> Radar
@@ -1545,10 +2111,12 @@ export function FindHelp() {
                       onClick={() => setMapVisualMode("street")}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
-                        mapVisualMode === "street" ? "bg-peach text-night" : "text-paper/70 hover:text-paper",
+                        mapVisualMode === "street"
+                          ? "bg-peach text-night"
+                          : "text-paper/70 hover:text-paper",
                       )}
                     >
-                      <MapIcon className="size-3" /> Street map
+                      <MapIcon className="size-3" /> Map
                     </button>
                   </div>
                 </div>
@@ -1558,9 +2126,14 @@ export function FindHelp() {
                 <>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] tracking-wider text-paper/60 uppercase">
                     <div className="flex flex-wrap gap-3">
-                      {(["DEIC", "RBSK", "District Hospital"] as FacilityType[]).map((t) => (
+                      {(
+                        ["DEIC", "RBSK", "District Hospital"] as FacilityType[]
+                      ).map((t) => (
                         <span key={t} className="flex items-center gap-1.5">
-                          <span className="size-2 rounded-full" style={{ background: TYPE_COL[t].hex }} />
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ background: TYPE_COL[t].hex }}
+                          />
                           {TYPE_COL[t].short}
                         </span>
                       ))}
@@ -1568,7 +2141,8 @@ export function FindHelp() {
                     {activeHandoffFacility && (
                       <span className="flex items-center gap-1.5 text-[#8fbf5a]">
                         <span className="size-2 rounded-full bg-[#8fbf5a]" />
-                        Active handoff: {activeHandoffFacility.name.slice(0, 22)}
+                        Active handoff:{" "}
+                        {activeHandoffFacility.name.slice(0, 22)}
                       </span>
                     )}
                   </div>
@@ -1583,38 +2157,28 @@ export function FindHelp() {
                     onSelect={(f) => setSelectedFacilityId(f.id)}
                   />
                 </>
-              ) : osmTarget ? (
+              ) : mapPoints.length > 0 || mapOrigin ? (
                 <div className="space-y-3">
-                  <div className="overflow-hidden rounded-[24px] border border-white/15 bg-card">
-                    <iframe
-                      title={`OpenStreetMap around ${osmTarget.label}`}
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${osmTarget.lng - 0.035}%2C${osmTarget.lat - 0.025}%2C${osmTarget.lng + 0.035}%2C${osmTarget.lat + 0.025}&layer=mapnik&marker=${osmTarget.lat}%2C${osmTarget.lng}`}
-                      className="h-[360px] w-full border-0"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {list.slice(0, 6).map((f, idx) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setSelectedFacilityId(f.id)}
-                        className={cn(
-                          "rounded-full border px-3 py-1 font-mono text-[10.5px] font-semibold transition-colors",
-                          selectedFacility?.id === f.id
-                            ? "border-peach bg-peach text-night"
-                            : "border-white/15 bg-white/[0.06] text-paper/75 hover:text-paper",
-                        )}
-                      >
-                        #{idx + 1} {colOf(f.type).short} · {f.km}km
-                      </button>
-                    ))}
-                  </div>
+                  <FacilityMap
+                    points={mapPoints}
+                    origin={mapOrigin}
+                    selectedId={selectedFacility?.id ?? null}
+                    highlightId={activeHandoffFacility?.id ?? null}
+                    onSelect={setSelectedFacilityId}
+                  />
+                  <p className="text-[11.5px] text-paper/60">
+                    Numbers match the list. Drag to move the map, use + / − to
+                    zoom.
+                  </p>
                 </div>
               ) : (
-                <p className="py-12 text-center text-[13px] text-paper/60">
-                  Search a PIN code to load the street map.
-                </p>
+                <div className="grid h-[300px] place-items-center rounded-[24px] border border-dashed border-white/20 text-center">
+                  <p className="max-w-[260px] text-[13px] leading-relaxed text-paper/65">
+                    {res
+                      ? "Nothing to plot for this search. The suggestions on the right show where to go instead."
+                      : "Enter a PIN code or tap “Use my location” and the nearest centres will appear here."}
+                  </p>
+                </div>
               )}
 
               {/* Live Selected Facility Handoff Dock right inside the map card */}
@@ -1623,74 +2187,107 @@ export function FindHelp() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-mono text-[10px] font-semibold tracking-[0.18em] text-peach uppercase">
-                        Selected on map · {selectedFacility.type} · ~{selectedFacility.km} km
+                        Selected on map · {selectedFacility.type} · ~
+                        {selectedFacility.km} km
                       </p>
-                      <p className="mt-1 font-display text-[24px] leading-tight uppercase">{selectedFacility.name}</p>
+                      <p className="mt-1 text-[20px] leading-snug font-bold tracking-tight">
+                        {selectedFacility.name}
+                      </p>
                       <p className="mt-1 text-[12px] text-paper/70">
-                        {selectedFacility.address || `${selectedFacility.district}, ${selectedFacility.state}`}
-                        {selectedFacility.phone ? ` · ${selectedFacility.phone}` : ""}
+                        {selectedFacility.address ||
+                          `${selectedFacility.district}, ${selectedFacility.state}`}
+                        {selectedFacility.phone
+                          ? ` · ${selectedFacility.phone}`
+                          : ""}
                       </p>
                     </div>
-                    <Chip tone="night">{TRUST_CHIP[selectedFacility.trust.level].label}</Chip>
+                    <Chip tone="night">
+                      {TRUST_CHIP[selectedFacility.trust.level].label}
+                    </Chip>
                   </div>
 
                   {/* Live referral timeline if the selected child has an open referral */}
                   {activeReferral && role !== "parent" && (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/[0.06] px-3.5 py-2.5 text-[11.5px]">
                       <span className="text-paper/80">
-                        <b className="text-peach">{activeContext?.name}:</b> status{" "}
-                        <b className="uppercase text-paper">{activeReferral.status}</b>
-                        {activeReferral.sent_at ? ` · sent ${agoShort(activeReferral.sent_at)}` : ""}
-                        {activeReferral.seen_at ? ` · seen ${agoShort(activeReferral.seen_at)}` : ""}
+                        <b className="text-peach">{activeContext?.name}:</b>{" "}
+                        status{" "}
+                        <b className="uppercase text-paper">
+                          {activeReferral.status}
+                        </b>
+                        {activeReferral.sent_at
+                          ? ` · sent ${agoShort(activeReferral.sent_at)}`
+                          : ""}
+                        {activeReferral.seen_at
+                          ? ` · seen ${agoShort(activeReferral.seen_at)}`
+                          : ""}
                       </span>
-                      {referralMatchesFacility(activeReferral, selectedFacility) ? (
+                      {referralMatchesFacility(
+                        activeReferral,
+                        selectedFacility,
+                      ) ? (
                         <span className="font-mono text-[10px] font-bold text-[#8fbf5a] uppercase">
                           ● Matched to this pin
                         </span>
                       ) : (
                         <span className="font-mono text-[10px] text-paper/55">
-                          Currently at: {activeReferral.to_facility.slice(0, 28)}
+                          Currently at:{" "}
+                          {activeReferral.to_facility.slice(0, 28)}
                         </span>
                       )}
                     </div>
                   )}
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {(role === "chw" || role === "supervisor") && activeChild && (
-                      <>
-                        <Btn
-                          size="xs"
-                          variant="peach"
-                          disabled={dispatchingChildId === activeChild.id}
-                          onClick={() => void handleLiveFacilityReferral(selectedFacility, activeChild)}
-                        >
-                          {dispatchingChildId === activeChild.id ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Send className="size-3.5" />
-                          )}
-                          {activeReferral && referralMatchesFacility(activeReferral, selectedFacility)
-                            ? `Re-send handoff (${childLabel(activeChild)})`
-                            : `Route & send ${childLabel(activeChild)} here`}
-                        </Btn>
-                        {activeReferral && activeReferral.status === "sent" && (
+                    {(role === "chw" || role === "supervisor") &&
+                      activeChild && (
+                        <>
                           <Btn
                             size="xs"
-                            variant="ghostDark"
+                            variant="peach"
                             disabled={dispatchingChildId === activeChild.id}
-                            onClick={() => void handleMarkReferralSeen()}
+                            onClick={() =>
+                              void handleLiveFacilityReferral(
+                                selectedFacility,
+                                activeChild,
+                              )
+                            }
                           >
-                            <CheckCheck className="size-3.5" /> Mark child seen
+                            {dispatchingChildId === activeChild.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Send className="size-3.5" />
+                            )}
+                            {activeReferral &&
+                            referralMatchesFacility(
+                              activeReferral,
+                              selectedFacility,
+                            )
+                              ? `Re-send handoff (${childLabel(activeChild)})`
+                              : `Route & send ${childLabel(activeChild)} here`}
                           </Btn>
-                        )}
-                      </>
-                    )}
+                          {activeReferral &&
+                            activeReferral.status === "sent" && (
+                              <Btn
+                                size="xs"
+                                variant="ghostDark"
+                                disabled={dispatchingChildId === activeChild.id}
+                                onClick={() => void handleMarkReferralSeen()}
+                              >
+                                <CheckCheck className="size-3.5" /> Mark child
+                                seen
+                              </Btn>
+                            )}
+                        </>
+                      )}
                     {role === "clinician" && activeChild && (
                       <Btn
                         size="xs"
                         variant="peach"
                         disabled={savingClinicalHandoff}
-                        onClick={() => void handleClinicianAcknowledgeAndRoute()}
+                        onClick={() =>
+                          void handleClinicianAcknowledgeAndRoute()
+                        }
                       >
                         {savingClinicalHandoff ? (
                           <Loader2 className="size-3.5 animate-spin" />
@@ -1705,13 +2302,23 @@ export function FindHelp() {
                         size="xs"
                         variant="peach"
                         disabled={loggingVisit}
-                        onClick={() => void handleParentLogFacilityVisit(selectedFacility)}
+                        onClick={() =>
+                          void handleParentLogFacilityVisit(selectedFacility)
+                        }
                       >
-                        {loggingVisit ? <Loader2 className="size-3.5 animate-spin" /> : <MapPin className="size-3.5" />}
+                        {loggingVisit ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <MapPin className="size-3.5" />
+                        )}
                         Log visit / request ASHA support
                       </Btn>
                     )}
-                    <Btn size="xs" variant="ghostDark" onClick={() => setMode("workspace")}>
+                    <Btn
+                      size="xs"
+                      variant="ghostDark"
+                      onClick={() => setMode("workspace")}
+                    >
                       Open {meta.workspaceTab.toLowerCase()} →
                     </Btn>
                   </div>
@@ -1743,11 +2350,17 @@ export function FindHelp() {
                 </p>
                 {res.resolved?.approximate && (
                   <p className="mt-3 text-[12.5px] text-muted">
-                    {tr("Approximate location (exact coordinates unavailable for this PIN).")}
+                    {tr(
+                      "Approximate location (exact coordinates unavailable for this PIN).",
+                    )}
                   </p>
                 )}
                 {res.verified_only && (
-                  <Btn variant="light" className="mt-5" onClick={() => setTrustFilter(false)}>
+                  <Btn
+                    variant="light"
+                    className="mt-5"
+                    onClick={() => setTrustFilter(false)}
+                  >
                     {tr("Show all listings")}
                   </Btn>
                 )}
@@ -1758,10 +2371,17 @@ export function FindHelp() {
               <div>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="flex items-center gap-3 text-[13px] font-semibold text-ink-2">
-                    <span className="font-display text-[34px] leading-none text-ink">{list.length}</span>{" "}
-                    {coverage === "nearby" ? "facilities near" : "closest facilities to"}
+                    <span className="font-display text-[34px] leading-none text-ink">
+                      {list.length}
+                    </span>{" "}
+                    {coverage === "nearby"
+                      ? "facilities near"
+                      : "closest facilities to"}
                     <b className="text-ink">
-                      {res.resolved ? `${res.resolved.district}, ${res.resolved.state}` : asked} ({asked})
+                      {res.resolved
+                        ? `${res.resolved.district}, ${res.resolved.state}`
+                        : asked}{" "}
+                      ({asked})
                     </b>
                   </p>
                   <button
@@ -1770,10 +2390,14 @@ export function FindHelp() {
                     onClick={() => setTrustFilter(!verifiedOnly)}
                     className={cn(
                       "rounded-full border px-4 py-2 text-[12px] font-bold transition-colors",
-                      verifiedOnly ? "border-ink bg-ink text-paper" : "border-line-2 text-ink-2 hover:bg-sand",
+                      verifiedOnly
+                        ? "border-ink bg-ink text-paper"
+                        : "border-line-2 text-ink-2 hover:bg-sand",
                     )}
                   >
-                    {verifiedOnly ? tr("Showing trusted only") : tr("Show trusted only")}
+                    {verifiedOnly
+                      ? tr("Showing trusted only")
+                      : tr("Show trusted only")}
                   </button>
                 </div>
 
@@ -1784,7 +2408,10 @@ export function FindHelp() {
                       [
                         { id: "all", label: "All types" },
                         { id: "deic_rbsk", label: "DEIC & RBSK" },
-                        { id: "gov_hosp", label: "District Hospital / CHC / PHC" },
+                        {
+                          id: "gov_hosp",
+                          label: "District Hospital / CHC / PHC",
+                        },
                       ] as const
                     ).map((tf) => (
                       <button
@@ -1802,36 +2429,47 @@ export function FindHelp() {
                       </button>
                     ))}
                     {role === "clinician" &&
-                      SUBSPECIALTY_FILTERS.filter((s) => s.id !== "all").map((sf) => (
-                        <button
-                          key={sf.id}
-                          type="button"
-                          onClick={() => setSubspecialtyFilter(subspecialtyFilter === sf.id ? "all" : sf.id)}
-                          className={cn(
-                            "rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
-                            subspecialtyFilter === sf.id
-                              ? "border-sea bg-sea text-paper"
-                              : "border-line-2 bg-card text-ink-2 hover:border-ink/50",
-                          )}
-                        >
-                          {sf.label}
-                        </button>
-                      ))}
+                      SUBSPECIALTY_FILTERS.filter((s) => s.id !== "all").map(
+                        (sf) => (
+                          <button
+                            key={sf.id}
+                            type="button"
+                            onClick={() =>
+                              setSubspecialtyFilter(
+                                subspecialtyFilter === sf.id ? "all" : sf.id,
+                              )
+                            }
+                            className={cn(
+                              "rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-colors",
+                              subspecialtyFilter === sf.id
+                                ? "border-sea bg-sea text-paper"
+                                : "border-line-2 bg-card text-ink-2 hover:border-ink/50",
+                            )}
+                          >
+                            {sf.label}
+                          </button>
+                        ),
+                      )}
                   </div>
                 )}
 
                 {(coverage !== "nearby" || res.resolved?.approximate) && (
                   <p className="mb-4 text-[12.5px] leading-relaxed text-muted">
-                    {coverage === "district" && `No listed facility within 25 km — showing the closest in your district. `}
-                    {coverage === "state" && `No listed facility in your district — showing the closest in your state. `}
-                    {res.resolved?.approximate && "Approximate location (exact coordinates unavailable for this PIN). "}
+                    {coverage === "district" &&
+                      `No listed facility within 25 km — showing the closest in your district. `}
+                    {coverage === "state" &&
+                      `No listed facility in your district — showing the closest in your state. `}
+                    {res.resolved?.approximate &&
+                      "Approximate location (exact coordinates unavailable for this PIN). "}
                     Distances are straight-line.
                   </p>
                 )}
 
                 {list.length === 0 && rawList.length > 0 && (
                   <div className="rounded-[30px] border border-dashed border-line-2 p-8 text-center">
-                    <p className="text-[14px] font-semibold text-ink">No facilities match this filter.</p>
+                    <p className="text-[14px] font-semibold text-ink">
+                      No facilities match this filter.
+                    </p>
                     <Btn
                       size="xs"
                       variant="light"
@@ -1849,9 +2487,15 @@ export function FindHelp() {
                 <div className="space-y-3">
                   {list.map((f, i) => {
                     const isSelected = selectedFacility?.id === f.id;
-                    const isCurrentChildHandoff = referralMatchesFacility(activeReferral, f);
-                    const facilityRefCount = referralCountByFacilityId.get(f.id) ?? 0;
-                    const matchedDomain = activeContext?.flagged.find((d) => d.route.preferredTypes.includes(f.type));
+                    const isCurrentChildHandoff = referralMatchesFacility(
+                      activeReferral,
+                      f,
+                    );
+                    const facilityRefCount =
+                      referralCountByFacilityId.get(f.id) ?? 0;
+                    const matchedDomain = activeContext?.flagged.find((d) =>
+                      d.route.preferredTypes.includes(f.type),
+                    );
                     return (
                       <Reveal key={f.id} delay={i * 60}>
                         <div
@@ -1882,21 +2526,36 @@ export function FindHelp() {
                                     Active handoff ({activeReferral.status})
                                   </Chip>
                                 )}
-                                {!isCurrentChildHandoff && facilityRefCount > 0 && (
-                                  <Chip tone="amber">{facilityRefCount} ward referral{facilityRefCount > 1 ? "s" : ""}</Chip>
-                                )}
+                                {!isCurrentChildHandoff &&
+                                  facilityRefCount > 0 && (
+                                    <Chip tone="amber">
+                                      {facilityRefCount} ward referral
+                                      {facilityRefCount > 1 ? "s" : ""}
+                                    </Chip>
+                                  )}
                                 {ageGroup && f.relevance.tier === 0 && (
-                                  <Chip tone="rust">{tr("Best for age {n}", { n: age })}</Chip>
+                                  <Chip tone="rust">
+                                    {tr("Best for age {n}", { n: age })}
+                                  </Chip>
                                 )}
-                                {matchedDomain && <Chip tone="sea">Fits {matchedDomain.label}</Chip>}
+                                {matchedDomain && (
+                                  <Chip tone="sea">
+                                    Fits {matchedDomain.label}
+                                  </Chip>
+                                )}
                                 <Chip tone={TRUST_CHIP[f.trust.level].tone}>
-                                  {f.trust.level === "verified" && f.trust.verified_at
+                                  {f.trust.level === "verified" &&
+                                  f.trust.verified_at
                                     ? `${tr("Verified")} ${shortDate(f.trust.verified_at)}`
                                     : tr(TRUST_CHIP[f.trust.level].label)}
                                 </Chip>
                               </div>
-                              <h3 className="mt-3 font-display text-[28px] leading-[1.02] uppercase">{f.name}</h3>
-                              <p className="mt-1 text-[13px] text-ink-2">{f.address || `${f.district}, ${f.state}`}</p>
+                              <h3 className="mt-3 text-[19px] leading-snug font-bold tracking-tight text-ink">
+                                {f.name}
+                              </h3>
+                              <p className="mt-1 text-[13px] text-ink-2">
+                                {f.address || `${f.district}, ${f.state}`}
+                              </p>
                               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                                 <p className="font-mono text-[13px] font-semibold">
                                   {tr("about {n} km", { n: f.km })}
@@ -1907,31 +2566,51 @@ export function FindHelp() {
                                     </>
                                   ) : null}
                                 </p>
-                                <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                                  {(role === "chw" || role === "supervisor") && activeChild && (
-                                    <Btn
-                                      size="xs"
-                                      variant={isCurrentChildHandoff ? "outline" : "dark"}
-                                      disabled={dispatchingChildId === activeChild.id}
-                                      onClick={() => void handleLiveFacilityReferral(f, activeChild)}
-                                    >
-                                      <Send className="size-3.5" />{" "}
-                                      {isCurrentChildHandoff
-                                        ? "Sent · Re-dispatch"
-                                        : `Refer ${childLabel(activeChild)}`}
-                                    </Btn>
-                                  )}
+                                <div
+                                  className="flex flex-wrap gap-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {(role === "chw" || role === "supervisor") &&
+                                    activeChild && (
+                                      <Btn
+                                        size="xs"
+                                        variant={
+                                          isCurrentChildHandoff
+                                            ? "outline"
+                                            : "dark"
+                                        }
+                                        disabled={
+                                          dispatchingChildId === activeChild.id
+                                        }
+                                        onClick={() =>
+                                          void handleLiveFacilityReferral(
+                                            f,
+                                            activeChild,
+                                          )
+                                        }
+                                      >
+                                        <Send className="size-3.5" />{" "}
+                                        {isCurrentChildHandoff
+                                          ? "Sent · Re-dispatch"
+                                          : `Refer ${childLabel(activeChild)}`}
+                                      </Btn>
+                                    )}
                                   {role === "clinician" && activeChild && (
                                     <Btn
                                       size="xs"
-                                      variant={isCurrentChildHandoff ? "outline" : "dark"}
+                                      variant={
+                                        isCurrentChildHandoff
+                                          ? "outline"
+                                          : "dark"
+                                      }
                                       disabled={savingClinicalHandoff}
                                       onClick={() => {
                                         setSelectedFacilityId(f.id);
                                         setMode("workspace");
                                       }}
                                     >
-                                      <Stethoscope className="size-3.5" /> Route case here
+                                      <Stethoscope className="size-3.5" /> Route
+                                      case here
                                     </Btn>
                                   )}
                                   {role === "parent" && (
@@ -1946,7 +2625,11 @@ export function FindHelp() {
                                       Attach to visit pass
                                     </Btn>
                                   )}
-                                  <Btn size="xs" variant="light" onClick={() => copyFacility(f)}>
+                                  <Btn
+                                    size="xs"
+                                    variant="light"
+                                    onClick={() => copyFacility(f)}
+                                  >
                                     {copied === f.name ? (
                                       <Check className="size-3.5" />
                                     ) : (
@@ -1956,13 +2639,17 @@ export function FindHelp() {
                                   </Btn>
                                   <a
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                      f.name + " " + (f.address || f.district + " " + f.state),
+                                      f.name +
+                                        " " +
+                                        (f.address ||
+                                          f.district + " " + f.state),
                                     )}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-paper transition-colors hover:bg-night-3"
                                   >
-                                    <ExternalLink className="size-3.5" /> {tr("Map")}
+                                    <ExternalLink className="size-3.5" />{" "}
+                                    {tr("Map")}
                                   </a>
                                 </div>
                               </div>
@@ -1973,21 +2660,35 @@ export function FindHelp() {
                     );
                   })}
                 </div>
-                <p className="mt-4 text-[12px] leading-relaxed text-muted">{res.trust_note}</p>
+                <p className="mt-4 text-[12px] leading-relaxed text-muted">
+                  {res.trust_note}
+                </p>
               </div>
             )}
 
             {res && showSuggestions && (
-              <div className={cn("rounded-[36px] border border-line-2 bg-card p-7 sm:p-8", coverage !== "none" && "mt-4")}>
-                <Eyebrow index="03" tone="muted">
-                  {tr("Where to go next")}
-                </Eyebrow>
+              <div
+                className={cn(
+                  "rounded-[36px] border border-line-2 bg-card p-7 sm:p-8",
+                  coverage !== "none" && "mt-4",
+                )}
+              >
+                <Eyebrow tone="muted">{tr("Where to go next")}</Eyebrow>
                 <ul className="mt-5 space-y-3.5">
                   {res.suggestions.map((s) => (
-                    <li key={s.id} className="border-b border-line pb-3.5 last:border-0 last:pb-0">
+                    <li
+                      key={s.id}
+                      className="border-b border-line pb-3.5 last:border-0 last:pb-0"
+                    >
                       <p className="text-[14px] font-bold">{s.title}</p>
-                      <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">{s.detail}</p>
-                      {s.note && <p className="mt-1 text-[12px] leading-relaxed text-muted">{s.note}</p>}
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
+                        {s.detail}
+                      </p>
+                      {s.note && (
+                        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                          {s.note}
+                        </p>
+                      )}
                       {s.maps_url && (
                         <a
                           href={s.maps_url}
@@ -2011,15 +2712,20 @@ export function FindHelp() {
                   (coverage !== "none" || showSuggestions) && "mt-4",
                 )}
               >
-                <Eyebrow index="04" tone="muted">
-                  {tr("Helplines")}
-                </Eyebrow>
+                <Eyebrow tone="muted">{tr("Helplines")}</Eyebrow>
                 <ul className="mt-4 space-y-2.5">
                   {res.helplines.map((h) => (
-                    <li key={h.number} className="flex flex-wrap items-center justify-between gap-2">
+                    <li
+                      key={h.number}
+                      className="flex flex-wrap items-center justify-between gap-2"
+                    >
                       <span className="text-[13px] font-semibold">
                         {h.name}
-                        {h.note ? <span className="ml-2 text-[11.5px] font-normal text-muted">{h.note}</span> : null}
+                        {h.note ? (
+                          <span className="ml-2 text-[11.5px] font-normal text-muted">
+                            {h.note}
+                          </span>
+                        ) : null}
                       </span>
                       <a
                         href={`tel:${h.number}`}
@@ -2035,7 +2741,8 @@ export function FindHelp() {
 
             {hasOsm && (
               <p className="mt-4 text-[11.5px] text-muted">
-                Facility data © OpenStreetMap contributors (ODbL). Crowd-sourced — verify before travelling.
+                Facility data © OpenStreetMap contributors (ODbL). Crowd-sourced
+                — verify before travelling.
               </p>
             )}
           </div>
@@ -2068,8 +2775,13 @@ export function FindHelp() {
                         type="button"
                         onClick={() => {
                           setSelectedCheckInId(c.id);
-                          setAge(String(Math.max(0, Math.round(c.ageMonths / 12))));
-                          setScreeningResult(tier.toLowerCase() as "typical" | "monitor" | "refer");
+                          setAge(
+                            String(Math.max(0, Math.round(c.ageMonths / 12))),
+                          );
+                          setScreeningResult(
+                            tier.toLowerCase() as
+                              "typical" | "monitor" | "refer",
+                          );
                         }}
                         className={cn(
                           "flex w-full items-center gap-4 rounded-[26px] border p-5 text-left transition-all duration-300",
@@ -2078,19 +2790,29 @@ export function FindHelp() {
                             : "border-line-2 bg-card hover:-translate-y-0.5 hover:bg-card-2",
                         )}
                       >
-                        <span className="size-4 shrink-0 rounded-full" style={{ background: m.hexLight }} />
+                        <span
+                          className="size-4 shrink-0 rounded-full"
+                          style={{ background: m.hexLight }}
+                        />
                         <span className="flex-1">
                           <span className="block font-display text-[30px] leading-none uppercase">
                             {c.child} · {tier}
                           </span>
-                          <span className={cn("mt-1 block font-mono text-[11px]", sel ? "text-paper/60" : "text-muted")}>
+                          <span
+                            className={cn(
+                              "mt-1 block font-mono text-[11px]",
+                              sel ? "text-paper/60" : "text-muted",
+                            )}
+                          >
                             {fmtDate(c.date, true)} · {c.ageMonths} mo
                           </span>
                         </span>
                         <span
                           className={cn(
                             "grid size-7 place-items-center rounded-full border",
-                            sel ? "border-peach bg-peach text-night" : "border-line-2",
+                            sel
+                              ? "border-peach bg-peach text-night"
+                              : "border-line-2",
                           )}
                         >
                           {sel && <Check className="size-4" />}
@@ -2100,11 +2822,18 @@ export function FindHelp() {
                   })
                 ) : (
                   <div className="rounded-[28px] border border-dashed border-line-2 p-6">
-                    <p className="text-[14px] font-bold">No check-in linked yet</p>
-                    <p className="mt-1 text-[13px] text-ink-2">
-                      Run a short developmental check-in to tailor this visit pass to your child.
+                    <p className="text-[14px] font-bold">
+                      No check-in linked yet
                     </p>
-                    <Btn size="sm" className="mt-4" onClick={() => go("checkin")}>
+                    <p className="mt-1 text-[13px] text-ink-2">
+                      Run a short developmental check-in to tailor this visit
+                      pass to your child.
+                    </p>
+                    <Btn
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => go("checkin")}
+                    >
                       Start check-in
                     </Btn>
                   </div>
@@ -2112,13 +2841,25 @@ export function FindHelp() {
 
                 <div className="rounded-[32px] border border-line-2 bg-card p-6">
                   <p className="flex items-center gap-2 font-mono text-[10.5px] font-semibold tracking-[0.2em] text-muted uppercase">
-                    <ClipboardCheck className="size-3.5 text-rust" /> What to bring to the clinic
+                    <ClipboardCheck className="size-3.5 text-rust" /> What to
+                    bring to the clinic
                   </p>
                   <ul className="mt-4 space-y-3 text-[13.5px]">
                     {[
-                      { id: "mcp_card", label: "Mother & Child Protection (MCP) / immunization card" },
-                      { id: "nirixon_pass", label: "This Nirixon visit pass (copied or printed)" },
-                      { id: "birth_records", label: "Birth discharge summary & any prior hearing/vision notes" },
+                      {
+                        id: "mcp_card",
+                        label:
+                          "Mother & Child Protection (MCP) / immunization card",
+                      },
+                      {
+                        id: "nirixon_pass",
+                        label: "This Nirixon visit pass (copied or printed)",
+                      },
+                      {
+                        id: "birth_records",
+                        label:
+                          "Birth discharge summary & any prior hearing/vision notes",
+                      },
                       {
                         id: "school_notes",
                         label:
@@ -2132,10 +2873,22 @@ export function FindHelp() {
                           <input
                             type="checkbox"
                             checked={!!prepChecked[item.id]}
-                            onChange={(e) => setPrepChecked((prev) => ({ ...prev, [item.id]: e.target.checked }))}
+                            onChange={(e) =>
+                              setPrepChecked((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.checked,
+                              }))
+                            }
                             className="mt-1 size-4 rounded border-line-2 accent-ink"
                           />
-                          <span className={cn("leading-relaxed", prepChecked[item.id] ? "font-semibold text-ink" : "text-ink-2")}>
+                          <span
+                            className={cn(
+                              "leading-relaxed",
+                              prepChecked[item.id]
+                                ? "font-semibold text-ink"
+                                : "text-ink-2",
+                            )}
+                          >
                             {item.label}
                           </span>
                         </label>
@@ -2152,27 +2905,43 @@ export function FindHelp() {
                     </p>
                     <ul className="mt-4 space-y-3">
                       {suggestedWorkers.slice(0, 3).map((w) => (
-                        <li key={w.id} className="rounded-2xl border border-line-2 bg-card-2 p-4">
+                        <li
+                          key={w.id}
+                          className="rounded-2xl border border-line-2 bg-card-2 p-4"
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[13.5px] font-bold">{w.name}</span>
+                            <span className="text-[13.5px] font-bold">
+                              {w.name}
+                            </span>
                             <Chip tone="sea">{w.role}</Chip>
                           </div>
-                          {w.facility_name && <p className="mt-1 text-[12px] text-ink-2">{w.facility_name}</p>}
+                          {w.facility_name && (
+                            <p className="mt-1 text-[12px] text-ink-2">
+                              {w.facility_name}
+                            </p>
+                          )}
                           <div className="mt-3 flex flex-wrap gap-2">
                             <Btn
                               size="xs"
                               onClick={async () => {
                                 if (!activeCheckIn) return;
                                 try {
-                                  const resp = await api.contactWorker(activeCheckIn.id, {
-                                    worker_id: w.id,
-                                    contact_method: "whatsapp",
-                                    notes: `Requested accompaniment to ${selectedFacility?.name ?? "DEIC"}`,
-                                  });
+                                  const resp = await api.contactWorker(
+                                    activeCheckIn.id,
+                                    {
+                                      worker_id: w.id,
+                                      contact_method: "whatsapp",
+                                      notes: `Requested accompaniment to ${selectedFacility?.name ?? "DEIC"}`,
+                                    },
+                                  );
                                   setParentContactStatus(resp.message);
                                   showToast(resp.message);
                                 } catch (err) {
-                                  showToast(err instanceof Error ? err.message : "Could not log worker request");
+                                  showToast(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Could not log worker request",
+                                  );
                                 }
                               }}
                             >
@@ -2197,7 +2966,11 @@ export function FindHelp() {
               {/* Right: Editorial Visit Pass Card */}
               <div>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 no-print">
-                  <Btn size="sm" variant="light" onClick={() => setMode("directory")}>
+                  <Btn
+                    size="sm"
+                    variant="light"
+                    onClick={() => setMode("directory")}
+                  >
                     ← Change facility on map
                   </Btn>
                   <div className="flex flex-wrap gap-2">
@@ -2205,18 +2978,39 @@ export function FindHelp() {
                       size="sm"
                       variant="rust"
                       disabled={loggingVisit}
-                      onClick={() => void handleParentLogFacilityVisit(selectedFacility)}
+                      onClick={() =>
+                        void handleParentLogFacilityVisit(selectedFacility)
+                      }
                     >
-                      {loggingVisit ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />} Confirm visit to centre
+                      {loggingVisit ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Check className="size-3.5" />
+                      )}{" "}
+                      Confirm visit to centre
                     </Btn>
                     <Btn
                       size="sm"
                       variant="light"
-                      onClick={() => void copyText(buildParentVisitPass(selectedFacility), "Visit pass")}
+                      onClick={() =>
+                        void copyText(
+                          buildParentVisitPass(selectedFacility),
+                          "Visit pass",
+                        )
+                      }
                     >
-                      {copied === "Visit pass" ? <Check className="size-3.5" /> : <ClipboardCopy className="size-3.5" />} Copy pass
+                      {copied === "Visit pass" ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        <ClipboardCopy className="size-3.5" />
+                      )}{" "}
+                      Copy pass
                     </Btn>
-                    <Btn size="sm" variant="light" onClick={() => window.print()}>
+                    <Btn
+                      size="sm"
+                      variant="light"
+                      onClick={() => printCurrentPage("Nirixon visit pass")}
+                    >
                       <Printer className="size-3.5" /> Print
                     </Btn>
                     <Btn
@@ -2236,14 +3030,14 @@ export function FindHelp() {
                 <div className="rounded-[44px] bg-night p-8 text-paper sm:p-11">
                   <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-6">
                     <div>
-                      <Eyebrow tone="peach" index="02">
-                        Clinic visit pass
-                      </Eyebrow>
+                      <Eyebrow tone="peach">Clinic visit pass</Eyebrow>
                       <p className="mt-3 font-display text-[clamp(36px,4.5vw,56px)] leading-[0.94] uppercase">
                         {activeContext ? activeContext.name : "Family check-in"}
                       </p>
                       <p className="mt-2 font-mono text-[11.5px] tracking-[0.14em] text-paper/60 uppercase">
-                        {activeContext ? `${activeContext.sub} · Module ${activeContext.module}` : `Age ${age} years`}
+                        {activeContext
+                          ? `${activeContext.sub} · Module ${activeContext.module}`
+                          : `Age ${age} years`}
                       </p>
                     </div>
                     {activeContext && (
@@ -2254,10 +3048,14 @@ export function FindHelp() {
                           size={34}
                         />
                         <div>
-                          <p className="font-mono text-[9.5px] tracking-[0.18em] text-paper/55 uppercase">Overall</p>
+                          <p className="font-mono text-[9.5px] tracking-[0.18em] text-paper/55 uppercase">
+                            Overall
+                          </p>
                           <p
                             className="font-display text-[28px] leading-none uppercase"
-                            style={{ color: TIER_META[activeContext.tier].hexLight }}
+                            style={{
+                              color: TIER_META[activeContext.tier].hexLight,
+                            }}
                           >
                             {activeContext.tier}
                           </p>
@@ -2272,10 +3070,16 @@ export function FindHelp() {
                       <span className="font-mono text-[10px] font-semibold tracking-[0.2em] text-peach uppercase">
                         Selected map destination
                       </span>
-                      {selectedFacility && <Chip tone="night">{selectedFacility.type} · ~{selectedFacility.km} km</Chip>}
+                      {selectedFacility && (
+                        <Chip tone="night">
+                          {selectedFacility.type} · ~{selectedFacility.km} km
+                        </Chip>
+                      )}
                     </div>
                     <p className="mt-2 font-display text-[30px] leading-tight uppercase">
-                      {selectedFacility ? selectedFacility.name : "Nearest District Early Intervention Centre (DEIC)"}
+                      {selectedFacility
+                        ? selectedFacility.name
+                        : "Nearest District Early Intervention Centre (DEIC)"}
                     </p>
                     <p className="mt-1 text-[13.5px] text-paper/75">
                       {selectedFacility
@@ -2292,20 +3096,29 @@ export function FindHelp() {
                     {activeContext && activeContext.flagged.length > 0 ? (
                       <div className="mt-3 space-y-3">
                         {activeContext.flagged.map((d) => (
-                          <div key={d.key} className="rounded-2xl bg-white/[0.06] p-4">
+                          <div
+                            key={d.key}
+                            className="rounded-2xl bg-white/[0.06] p-4"
+                          >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="text-[14px] font-bold">{d.label}</span>
-                              <span className="font-mono text-[11px] text-peach">{d.route.service}</span>
+                              <span className="text-[14px] font-bold">
+                                {d.label}
+                              </span>
+                              <span className="font-mono text-[11px] text-peach">
+                                {d.route.service}
+                              </span>
                             </div>
                             <p className="mt-2 text-[13px] leading-relaxed text-paper/75">
-                              <b className="text-paper">Ask the doctor:</b> “{d.route.parentQuestion}”
+                              <b className="text-paper">Ask the doctor:</b> “
+                              {d.route.parentQuestion}”
                             </p>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <p className="mt-3 rounded-2xl bg-white/[0.06] p-4 text-[13.5px] text-paper/80">
-                        Every checked area is currently in the expected range. Keep this pass for routine well-child visits.
+                        Every checked area is currently in the expected range.
+                        Keep this pass for routine well-child visits.
                       </p>
                     )}
                   </div>
@@ -2338,21 +3151,44 @@ export function FindHelp() {
                           type="button"
                           onClick={() => {
                             setSelectedChildId(c.id);
-                            setAge(String(Math.max(0, Math.round(c.ageMonths / 12))));
+                            setAge(
+                              String(Math.max(0, Math.round(c.ageMonths / 12))),
+                            );
                           }}
                           className={cn(
                             "flex w-full items-center gap-3 rounded-[22px] px-4 py-3.5 text-left transition-colors",
                             on ? "bg-ink text-paper" : "hover:bg-card-2",
                           )}
                         >
-                          <span className="size-3 shrink-0 rounded-full" style={{ background: sm.hex }} />
+                          <span
+                            className="size-3 shrink-0 rounded-full"
+                            style={{ background: sm.hex }}
+                          />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-[13.5px] font-bold">{childLabel(c)}</span>
-                            <span className={cn("block truncate font-mono text-[11px]", on ? "text-paper/60" : "text-muted")}>
-                              {c.ageMonths}m · {ref ? ref.to_facility : c.ward ?? `Sector ${c.sector}`}
+                            <span className="block text-[13.5px] font-bold">
+                              {childLabel(c)}
+                            </span>
+                            <span
+                              className={cn(
+                                "block truncate font-mono text-[11px]",
+                                on ? "text-paper/60" : "text-muted",
+                              )}
+                            >
+                              {c.ageMonths}m ·{" "}
+                              {ref
+                                ? ref.to_facility
+                                : (c.ward ?? `Sector ${c.sector}`)}
                             </span>
                           </span>
-                          <Chip tone={ref ? (ref.status === "seen" ? "moss" : "amber") : "sand"}>
+                          <Chip
+                            tone={
+                              ref
+                                ? ref.status === "seen"
+                                  ? "moss"
+                                  : "amber"
+                                : "sand"
+                            }
+                          >
                             {ref ? ref.status : "ready"}
                           </Chip>
                         </button>
@@ -2365,7 +3201,7 @@ export function FindHelp() {
               <div className="rounded-[44px] bg-night p-7 text-paper sm:p-10">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-6">
                   <div>
-                    <Eyebrow tone="peach" index="02">
+                    <Eyebrow tone="peach">
                       RBSK / DEIC field referral slip
                     </Eyebrow>
                     <p className="mt-3 font-display text-[clamp(34px,4vw,52px)] leading-[0.95] uppercase">
@@ -2382,7 +3218,11 @@ export function FindHelp() {
                       DB Status: {activeReferral.status.toUpperCase()}
                     </Chip>
                   ) : (
-                    activeChild && <Chip tone="night">{STATUS_META[activeChild.status].long}</Chip>
+                    activeChild && (
+                      <Chip tone="night">
+                        {STATUS_META[activeChild.status].long}
+                      </Chip>
+                    )
                   )}
                 </div>
 
@@ -2390,13 +3230,20 @@ export function FindHelp() {
                 {activeReferral && (
                   <div className="mt-5 rounded-2xl border border-moss/40 bg-moss/15 px-5 py-3.5 text-[12.5px]">
                     <p className="font-bold text-paper">
-                      Live referral record #{activeReferral.id.slice(0, 8)} · Routed to: {activeReferral.to_facility}
+                      Live referral record #{activeReferral.id.slice(0, 8)} ·
+                      Routed to: {activeReferral.to_facility}
                     </p>
                     <p className="mt-1 font-mono text-[11px] text-paper/70">
                       Created {agoShort(activeReferral.created_at) ?? "today"}
-                      {activeReferral.sent_at ? ` · Sent ${agoShort(activeReferral.sent_at)}` : ""}
-                      {activeReferral.seen_at ? ` · Seen ${agoShort(activeReferral.seen_at)}` : ""}
-                      {activeReferral.clinical_notes ? ` · Clinician note: "${activeReferral.clinical_notes}"` : ""}
+                      {activeReferral.sent_at
+                        ? ` · Sent ${agoShort(activeReferral.sent_at)}`
+                        : ""}
+                      {activeReferral.seen_at
+                        ? ` · Seen ${agoShort(activeReferral.seen_at)}`
+                        : ""}
+                      {activeReferral.clinical_notes
+                        ? ` · Clinician note: "${activeReferral.clinical_notes}"`
+                        : ""}
                     </p>
                   </div>
                 )}
@@ -2416,13 +3263,19 @@ export function FindHelp() {
                     </button>
                   </div>
                   <p className="mt-2 font-display text-[28px] leading-tight uppercase">
-                    {selectedFacility ? selectedFacility.name : activeReferral?.to_facility ?? "Nodal District Early Intervention Centre (DEIC)"}
+                    {selectedFacility
+                      ? selectedFacility.name
+                      : (activeReferral?.to_facility ??
+                        "Nodal District Early Intervention Centre (DEIC)")}
                   </p>
                   {selectedFacility && (
                     <p className="mt-1 text-[13px] text-paper/75">
                       {selectedFacility.type} · about {selectedFacility.km} km ·{" "}
-                      {selectedFacility.address || `${selectedFacility.district}, ${selectedFacility.state}`}
-                      {selectedFacility.phone ? ` · ${selectedFacility.phone}` : ""}
+                      {selectedFacility.address ||
+                        `${selectedFacility.district}, ${selectedFacility.state}`}
+                      {selectedFacility.phone
+                        ? ` · ${selectedFacility.phone}`
+                        : ""}
                     </p>
                   )}
                 </div>
@@ -2444,16 +3297,22 @@ export function FindHelp() {
                           </span>
                           <div>
                             <p className="font-bold text-paper">
-                              {d.label} <span className="font-mono text-[11px] text-peach">({d.z.toFixed(1)} SD)</span>
+                              {d.label}{" "}
+                              <span className="font-mono text-[11px] text-peach">
+                                ({d.z.toFixed(1)} SD)
+                              </span>
                             </p>
-                            <p className="mt-0.5 text-[12.5px] text-paper/75">{d.route.service}</p>
+                            <p className="mt-0.5 text-[12.5px] text-paper/75">
+                              {d.route.service}
+                            </p>
                           </div>
                         </li>
                       ))}
                     </ol>
                   ) : (
                     <p className="mt-3 rounded-2xl bg-white/[0.06] p-4 text-[13.5px] text-paper/75">
-                      General developmental surveillance — no single domain below -1.0 SD on last check-in.
+                      General developmental surveillance — no single domain
+                      below -1.0 SD on last check-in.
                     </p>
                   )}
                 </div>
@@ -2464,7 +3323,12 @@ export function FindHelp() {
                     <Btn
                       variant="peach"
                       disabled={dispatchingChildId === activeChild.id}
-                      onClick={() => void handleLiveFacilityReferral(selectedFacility, activeChild)}
+                      onClick={() =>
+                        void handleLiveFacilityReferral(
+                          selectedFacility,
+                          activeChild,
+                        )
+                      }
                     >
                       {dispatchingChildId === activeChild.id ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -2482,30 +3346,68 @@ export function FindHelp() {
                       disabled={dispatchingChildId === activeChild?.id}
                       onClick={() => void handleMarkReferralSeen()}
                     >
-                      <CheckCheck className="size-4" /> Mark child seen at facility
+                      <CheckCheck className="size-4" /> Mark child seen at
+                      facility
                     </Btn>
                   )}
                   {activeReferral && (
-                    <a
-                      href={referralApi.getSummaryPdfUrl(activeReferral.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2.5 text-[12.5px] font-bold text-paper hover:bg-white/10"
+                    <Btn
+                      variant="ghostDark"
+                      onClick={() =>
+                        void (async () => {
+                          try {
+                            const blob = await referralApi.getSummaryPdf(activeReferral.id);
+                            const saved = await downloadBlobFile(
+                              `referral_summary_${activeReferral.id}.pdf`,
+                              blob,
+                            );
+                            showToast(
+                              saved.ok
+                                ? "PDF summary saved"
+                                : saved.message ?? "Could not save the PDF",
+                            );
+                          } catch (e) {
+                            showToast(
+                              e instanceof Error ? e.message : "Could not download the PDF",
+                            );
+                          }
+                        })()
+                      }
                     >
                       <FileText className="size-4" /> Official PDF summary
-                    </a>
+                    </Btn>
                   )}
                   <Btn
                     variant="ghostDark"
-                    onClick={() => void copyText(buildChwFieldSlip(selectedFacility, true), "Family WhatsApp message")}
+                    onClick={() =>
+                      void copyText(
+                        buildChwFieldSlip(selectedFacility, true),
+                        "Family WhatsApp message",
+                      )
+                    }
                   >
-                    {copied === "Family WhatsApp message" ? <Check className="size-4" /> : <MessageCircle className="size-4" />} Copy family WhatsApp / SMS
+                    {copied === "Family WhatsApp message" ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <MessageCircle className="size-4" />
+                    )}{" "}
+                    Copy family WhatsApp / SMS
                   </Btn>
                   <Btn
                     variant="ghostDark"
-                    onClick={() => void copyText(buildChwFieldSlip(selectedFacility, false), "Official RBSK slip")}
+                    onClick={() =>
+                      void copyText(
+                        buildChwFieldSlip(selectedFacility, false),
+                        "Official RBSK slip",
+                      )
+                    }
                   >
-                    {copied === "Official RBSK slip" ? <Check className="size-4" /> : <ClipboardCopy className="size-4" />} Copy RBSK slip
+                    {copied === "Official RBSK slip" ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <ClipboardCopy className="size-4" />
+                    )}{" "}
+                    Copy RBSK slip
                   </Btn>
                 </div>
               </div>
@@ -2545,28 +3447,43 @@ export function FindHelp() {
                   {
                     label: "Trusted listings",
                     value: `${supervisorStats.trustedCountInList}/${rawList.length || 0}`,
-                    helper: "Government & verified entries vs. mapped-only leads",
+                    helper:
+                      "Government & verified entries vs. mapped-only leads",
                     tone: "text-moss",
                     icon: <CheckCheck className="size-4" />,
                   },
                 ].map((item, i) => (
                   <Reveal key={item.label} delay={i * 50} className="h-full">
-                    <StatCard label={item.label} value={item.value} helper={item.helper} tone={item.tone} icon={item.icon} />
+                    <StatCard
+                      label={item.label}
+                      value={item.value}
+                      helper={item.helper}
+                      tone={item.tone}
+                      icon={item.icon}
+                    />
                   </Reveal>
                 ))}
               </div>
 
               <SectionCard
-                index="02"
                 eyebrow="Multi-PIN block catchment audit"
                 title="Compare DEIC/RBSK availability, nearest specialist distance and provenance across sector PINs."
                 action={
                   <div className="flex flex-wrap gap-2">
                     <Btn size="xs" variant="light" onClick={exportDirectoryCsv}>
-                      <FileSpreadsheet className="size-3.5" /> Export current PIN (.CSV)
+                      <FileSpreadsheet className="size-3.5" /> Export current
+                      PIN (.CSV)
                     </Btn>
-                    <Btn size="xs" onClick={() => void runBlockCatchmentAudit()} disabled={auditingBlock}>
-                      {auditingBlock ? <Loader2 className="size-3.5 animate-spin" /> : <Building2 className="size-3.5" />}
+                    <Btn
+                      size="xs"
+                      onClick={() => void runBlockCatchmentAudit()}
+                      disabled={auditingBlock}
+                    >
+                      {auditingBlock ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Building2 className="size-3.5" />
+                      )}
                       {auditingBlock ? "Auditing…" : "Refresh 5-PIN audit"}
                     </Btn>
                   </div>
@@ -2581,27 +3498,45 @@ export function FindHelp() {
                         <th className="px-4 py-3.5">Coverage tier</th>
                         <th className="px-4 py-3.5 text-right">DEIC / RBSK</th>
                         <th className="px-4 py-3.5 text-right">Nearest DEIC</th>
-                        <th className="px-4 py-3.5 text-right">Trusted / Total</th>
+                        <th className="px-4 py-3.5 text-right">
+                          Trusted / Total
+                        </th>
                         <th className="px-6 py-3.5 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line text-[13.5px]">
                       {auditRows.map((row) => (
-                        <tr key={row.pin} className="transition-colors hover:bg-sand/30">
+                        <tr
+                          key={row.pin}
+                          className="transition-colors hover:bg-sand/30"
+                        >
                           <td className="px-6 py-4 font-bold">
-                            <span className="font-mono">{row.pin}</span> · {row.label}
+                            <span className="font-mono">{row.pin}</span> ·{" "}
+                            {row.label}
                           </td>
                           <td className="px-4 py-4 text-ink-2">
                             {row.district}, {row.state}
                           </td>
                           <td className="px-4 py-4">
-                            <Chip tone={row.coverage === "nearby" ? "moss" : row.coverage === "district" ? "amber" : "brick"}>
+                            <Chip
+                              tone={
+                                row.coverage === "nearby"
+                                  ? "moss"
+                                  : row.coverage === "district"
+                                    ? "amber"
+                                    : "brick"
+                              }
+                            >
                               {row.coverage}
                             </Chip>
                           </td>
-                          <td className="px-4 py-4 text-right font-mono font-bold">{row.deicRbskCount}</td>
+                          <td className="px-4 py-4 text-right font-mono font-bold">
+                            {row.deicRbskCount}
+                          </td>
                           <td className="px-4 py-4 text-right font-mono">
-                            {row.nearestDeicKm !== null ? `${row.nearestDeicKm} km` : "Gap"}
+                            {row.nearestDeicKm !== null
+                              ? `${row.nearestDeicKm} km`
+                              : "Gap"}
                           </td>
                           <td className="px-4 py-4 text-right font-mono">
                             {row.trustedCount}/{row.totalCount}
@@ -2627,11 +3562,14 @@ export function FindHelp() {
               </SectionCard>
 
               <SectionCard
-                index="03"
                 eyebrow="Live referral routing desk"
                 title="Reroute open ward referrals to the currently selected map facility."
                 action={
-                  <Btn size="xs" variant="light" onClick={() => go("referrals")}>
+                  <Btn
+                    size="xs"
+                    variant="light"
+                    onClick={() => go("referrals")}
+                  >
                     Open full referral desk →
                   </Btn>
                 }
@@ -2641,29 +3579,50 @@ export function FindHelp() {
                     const c = children.find((ch) => ch.id === ref.child_id);
                     if (!c) return null;
                     return (
-                      <div key={ref.id} className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-8">
+                      <div
+                        key={ref.id}
+                        className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-8"
+                      >
                         <div>
                           <div className="flex items-center gap-2.5">
-                            <span className="font-mono text-[13px] font-bold">{childLabel(c)}</span>
-                            <Chip tone={ref.status === "seen" ? "moss" : ref.status === "sent" ? "amber" : "brick"}>
+                            <span className="font-mono text-[13px] font-bold">
+                              {childLabel(c)}
+                            </span>
+                            <Chip
+                              tone={
+                                ref.status === "seen"
+                                  ? "moss"
+                                  : ref.status === "sent"
+                                    ? "amber"
+                                    : "brick"
+                              }
+                            >
                               {ref.status}
                             </Chip>
                           </div>
                           <p className="mt-1 text-[12px] text-ink-2">
-                            Current destination: <b className="text-ink">{ref.to_facility}</b>
+                            Current destination:{" "}
+                            <b className="text-ink">{ref.to_facility}</b>
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {selectedFacility && (ref.status ?? "").toLowerCase() !== "closed" && (
-                            <Btn
-                              size="xs"
-                              variant="rust"
-                              disabled={dispatchingChildId === c.id}
-                              onClick={() => void handleLiveFacilityReferral(selectedFacility, c)}
-                            >
-                              <Send className="size-3.5" /> Route to {selectedFacility.name.slice(0, 22)}
-                            </Btn>
-                          )}
+                          {selectedFacility &&
+                            (ref.status ?? "").toLowerCase() !== "closed" && (
+                              <Btn
+                                size="xs"
+                                variant="rust"
+                                disabled={dispatchingChildId === c.id}
+                                onClick={() =>
+                                  void handleLiveFacilityReferral(
+                                    selectedFacility,
+                                    c,
+                                  )
+                                }
+                              >
+                                <Send className="size-3.5" /> Route to{" "}
+                                {selectedFacility.name.slice(0, 22)}
+                              </Btn>
+                            )}
                         </div>
                       </div>
                     );
@@ -2693,22 +3652,43 @@ export function FindHelp() {
                           type="button"
                           onClick={() => {
                             setSelectedChildId(c.id);
-                            setAge(String(Math.max(0, Math.round(c.ageMonths / 12))));
+                            setAge(
+                              String(Math.max(0, Math.round(c.ageMonths / 12))),
+                            );
                           }}
                           className={cn(
                             "flex w-full items-center gap-3 rounded-[22px] px-4 py-3.5 text-left transition-colors",
                             on ? "bg-ink text-paper" : "hover:bg-card-2",
                           )}
                         >
-                          <span className="size-3 shrink-0 rounded-full" style={{ background: sm.hex }} />
+                          <span
+                            className="size-3 shrink-0 rounded-full"
+                            style={{ background: sm.hex }}
+                          />
                           <span className="min-w-0 flex-1">
-                            <span className="block text-[13.5px] font-bold">{childLabel(c)}</span>
-                            <span className={cn("block truncate font-mono text-[11px]", on ? "text-paper/60" : "text-muted")}>
-                              {c.ageMonths}m · {ref ? ref.to_facility : sm.label}
+                            <span className="block text-[13.5px] font-bold">
+                              {childLabel(c)}
+                            </span>
+                            <span
+                              className={cn(
+                                "block truncate font-mono text-[11px]",
+                                on ? "text-paper/60" : "text-muted",
+                              )}
+                            >
+                              {c.ageMonths}m ·{" "}
+                              {ref ? ref.to_facility : sm.label}
                             </span>
                           </span>
                           {ref && (
-                            <Chip tone={ref.status === "seen" ? "moss" : ref.status === "sent" ? "amber" : "brick"}>
+                            <Chip
+                              tone={
+                                ref.status === "seen"
+                                  ? "moss"
+                                  : ref.status === "sent"
+                                    ? "amber"
+                                    : "brick"
+                              }
+                            >
                               {ref.status}
                             </Chip>
                           )}
@@ -2748,14 +3728,16 @@ export function FindHelp() {
               <div className="rounded-[44px] bg-night p-7 text-paper sm:p-10">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-6">
                   <div>
-                    <Eyebrow tone="peach" index="02">
+                    <Eyebrow tone="peach">
                       Clinical counter-referral & rule-out protocol
                     </Eyebrow>
                     <p className="mt-3 font-display text-[clamp(34px,4vw,52px)] leading-[0.95] uppercase">
                       {activeContext ? activeContext.name : "Clinical case"}
                     </p>
                     <p className="mt-2 font-mono text-[11px] tracking-[0.14em] text-paper/60 uppercase">
-                      {activeContext ? `${activeContext.sub} · Module ${activeContext.module}` : "Multidisciplinary routing"}
+                      {activeContext
+                        ? `${activeContext.sub} · Module ${activeContext.module}`
+                        : "Multidisciplinary routing"}
                     </p>
                   </div>
                   {activeContext && (
@@ -2767,7 +3749,9 @@ export function FindHelp() {
                       />
                       <span
                         className="font-display text-[26px] leading-none uppercase"
-                        style={{ color: TIER_META[activeContext.tier].hexLight }}
+                        style={{
+                          color: TIER_META[activeContext.tier].hexLight,
+                        }}
                       >
                         {activeContext.tier}
                       </span>
@@ -2779,11 +3763,15 @@ export function FindHelp() {
                 {activeReferral && (
                   <div className="mt-5 rounded-2xl border border-moss/40 bg-moss/15 px-5 py-3.5 text-[12.5px]">
                     <p className="font-bold text-paper">
-                      Live referral #{activeReferral.id.slice(0, 8)} · Status: {activeReferral.status.toUpperCase()}
+                      Live referral #{activeReferral.id.slice(0, 8)} · Status:{" "}
+                      {activeReferral.status.toUpperCase()}
                     </p>
                     <p className="mt-1 text-paper/75">
-                      Assigned facility: <b className="text-paper">{activeReferral.to_facility}</b>
-                      {activeReferral.seen_at ? ` · Acknowledged ${agoShort(activeReferral.seen_at)}` : ""}
+                      Assigned facility:{" "}
+                      <b className="text-paper">{activeReferral.to_facility}</b>
+                      {activeReferral.seen_at
+                        ? ` · Acknowledged ${agoShort(activeReferral.seen_at)}`
+                        : ""}
                     </p>
                   </div>
                 )}
@@ -2803,12 +3791,19 @@ export function FindHelp() {
                     </button>
                   </div>
                   <p className="mt-2 font-display text-[28px] leading-tight uppercase">
-                    {selectedFacility ? selectedFacility.name : activeReferral?.to_facility ?? "Nodal DEIC / Developmental Paediatrics"}
+                    {selectedFacility
+                      ? selectedFacility.name
+                      : (activeReferral?.to_facility ??
+                        "Nodal DEIC / Developmental Paediatrics")}
                   </p>
                   {selectedFacility && (
                     <p className="mt-1 text-[13px] text-paper/75">
-                      {selectedFacility.type} · ~{selectedFacility.km} km · Provenance:{" "}
-                      <b className="text-paper">{selectedFacility.trust.label}</b> ({selectedFacility.source})
+                      {selectedFacility.type} · ~{selectedFacility.km} km ·
+                      Provenance:{" "}
+                      <b className="text-paper">
+                        {selectedFacility.trust.label}
+                      </b>{" "}
+                      ({selectedFacility.source})
                     </p>
                   )}
                 </div>
@@ -2831,12 +3826,18 @@ export function FindHelp() {
                           <div className="flex-1">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <span className="font-bold text-paper">
-                                {d.label} <span className="font-mono text-[11px] text-peach">({d.z.toFixed(2)} SD)</span>
+                                {d.label}{" "}
+                                <span className="font-mono text-[11px] text-peach">
+                                  ({d.z.toFixed(2)} SD)
+                                </span>
                               </span>
-                              <span className="font-mono text-[11px] text-paper/70">{d.route.service}</span>
+                              <span className="font-mono text-[11px] text-paper/70">
+                                {d.route.service}
+                              </span>
                             </div>
                             <p className="mt-1 text-[12.5px] text-paper/75">
-                              <b className="text-paper">Rule-out:</b> {d.route.ruleOut}
+                              <b className="text-paper">Rule-out:</b>{" "}
+                              {d.route.ruleOut}
                             </p>
                           </div>
                         </li>
@@ -2844,7 +3845,8 @@ export function FindHelp() {
                     </ol>
                   ) : (
                     <p className="mt-3 rounded-2xl bg-white/[0.06] p-4 text-[13.5px] text-paper/75">
-                      All domains sit above -1.0 SD for this case. Routine developmental surveillance applies.
+                      All domains sit above -1.0 SD for this case. Routine
+                      developmental surveillance applies.
                     </p>
                   )}
                 </div>
@@ -2853,7 +3855,8 @@ export function FindHelp() {
                 <div className="mt-6">
                   <label className="block">
                     <span className="mb-2 block font-mono text-[10.5px] font-semibold tracking-[0.2em] text-paper/55 uppercase">
-                      Clinical counter-referral note (persisted to referral record)
+                      Clinical counter-referral note (persisted to referral
+                      record)
                     </span>
                     <textarea
                       value={clinicalNoteDraft}
@@ -2871,14 +3874,31 @@ export function FindHelp() {
                     disabled={savingClinicalHandoff || !activeChild}
                     onClick={() => void handleClinicianAcknowledgeAndRoute()}
                   >
-                    {savingClinicalHandoff ? <Loader2 className="size-4 animate-spin" /> : <CheckCheck className="size-4" />}
-                    Acknowledge & save route to {selectedFacility ? selectedFacility.name.slice(0, 20) : "DEIC"}
+                    {savingClinicalHandoff ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCheck className="size-4" />
+                    )}
+                    Acknowledge & save route to{" "}
+                    {selectedFacility
+                      ? selectedFacility.name.slice(0, 20)
+                      : "DEIC"}
                   </Btn>
                   <Btn
                     variant="ghostDark"
-                    onClick={() => void copyText(buildClinicianCounterReferral(selectedFacility), "Clinical handoff note")}
+                    onClick={() =>
+                      void copyText(
+                        buildClinicianCounterReferral(selectedFacility),
+                        "Clinical handoff note",
+                      )
+                    }
                   >
-                    {copied === "Clinical handoff note" ? <Check className="size-4" /> : <ClipboardCopy className="size-4" />} Copy handoff note
+                    {copied === "Clinical handoff note" ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <ClipboardCopy className="size-4" />
+                    )}{" "}
+                    Copy handoff note
                   </Btn>
                   <Btn
                     variant="ghostDark"

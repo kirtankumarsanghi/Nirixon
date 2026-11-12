@@ -84,6 +84,20 @@ async def require_parent(user: Annotated[User, Depends(get_current_user)]) -> Us
     return user
 
 
+async def require_screen_access(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Screening can be run by a caregiver or by an assisting frontline worker.
+
+    Sessions stay bound to the user who started them (`_load_owned_session`), so
+    a CHW can run a screening for a child without gaining access to another
+    family's sessions.
+    """
+    if user.role not in ("parent", "chw", "supervisor", "internal"):
+        raise HTTPException(status_code=403, detail="Screening role required")
+    return user
+
+
 async def require_internal(user: Annotated[User, Depends(get_current_user)]) -> User:
     if user.role not in ("internal", "clinician"):
         raise HTTPException(status_code=403, detail="Internal role required")

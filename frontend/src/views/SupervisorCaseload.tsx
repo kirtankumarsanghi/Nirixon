@@ -180,8 +180,8 @@ export function SupervisorCaseload() {
         {/* ============================ header ============================ */}
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <Eyebrow index="01">{tr("Oversight · ward team")}</Eyebrow>
-            <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+            <Eyebrow>{tr("Oversight · ward team")}</Eyebrow>
+            <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
               {tr("The whole team.")}
               <br />
               <span className="text-rust">{tr("Every gap visible.")}</span>
@@ -243,7 +243,6 @@ export function SupervisorCaseload() {
         {/* ============================ team coverage ============================ */}
         <Reveal className="mt-4">
           <SectionCard
-            index="02"
             eyebrow="Team coverage"
             title="Caseload and referral load by assigned area."
             action={<Chip tone="lilac">{areaRows.length} areas</Chip>}
@@ -312,7 +311,7 @@ export function SupervisorCaseload() {
             <section className="flex h-full flex-col rounded-[36px] bg-night p-6 text-paper sm:p-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <Eyebrow tone="peach" index="03">
+                  <Eyebrow tone="peach">
                     Coverage by ward
                   </Eyebrow>
                   <p className="mt-3 font-display text-[clamp(28px,3.2vw,40px)] leading-none uppercase">
@@ -369,7 +368,6 @@ export function SupervisorCaseload() {
           <div className="flex flex-col gap-4">
             <Reveal className="flex-1">
               <SectionCard
-                index="04"
                 eyebrow="Referral follow-through"
                 title={
                   stuckReferrals.length
@@ -417,7 +415,6 @@ export function SupervisorCaseload() {
 
             <Reveal className="flex-1">
               <SectionCard
-                index="05"
                 eyebrow="Overdue visits"
                 title="Families past their home-visit date."
                 action={<Chip tone={overdueChildren.length ? "brick" : "moss"}>{totals.overdue} overdue</Chip>}

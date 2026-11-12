@@ -50,9 +50,9 @@ export function Growth() {
 
   return (
     <Page>
-      <Eyebrow index="01">{tr("Growth over time")}</Eyebrow>
+      <Eyebrow>{tr("Growth over time")}</Eyebrow>
       <div className="mt-5 grid items-end gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-        <Display as="h1" className="text-[clamp(52px,8vw,124px)]">
+        <Display as="h1" className="text-[clamp(44px,6.4vw,92px)]">
           Aarav’s <span className="text-sea">{tr("path,")}</span>
           <br />
           {tr("not a snapshot.")}
@@ -225,7 +225,7 @@ export function Growth() {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Reveal>
           <div className="h-full rounded-[32px] bg-night p-7 text-paper sm:p-9">
-            <Eyebrow tone="peach" index="02">
+            <Eyebrow tone="peach">
               {tr("Since the previous check-in")}
             </Eyebrow>
             {prev && shared.length > 0 ? (
@@ -268,7 +268,7 @@ export function Growth() {
 
         <Reveal delay={100}>
           <div className="h-full rounded-[32px] border border-line-2 bg-card p-7 sm:p-9">
-            <Eyebrow index="03" tone="muted">
+            <Eyebrow tone="muted">
               {tr("Timeline")}
             </Eyebrow>
             <ol className="mt-6 space-y-0">

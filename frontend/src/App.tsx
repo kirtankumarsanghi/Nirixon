@@ -119,6 +119,18 @@ function Workspace() {
     mainRef.current?.focus({ preventScroll: true });
   }, [role, view, cfg.short, tr]);
 
+  // Android back button: the menu is not a history entry, so close it here
+  // before the shell falls through to history navigation.
+  useEffect(() => {
+    const onBack = (event: Event) => {
+      if (!menuOpen) return;
+      event.preventDefault();
+      setMenuOpen(false);
+    };
+    window.addEventListener("nirixon:back", onBack);
+    return () => window.removeEventListener("nirixon:back", onBack);
+  }, [menuOpen, setMenuOpen]);
+
   const items = cfg.tabs.map((t) => ({
     label: tr(t.label),
     active: view === t.view,

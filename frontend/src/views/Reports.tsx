@@ -118,8 +118,8 @@ export function Reports() {
     <Page>
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Eyebrow index="01">{tr("Field supervisor · ward report")}</Eyebrow>
-          <Display as="h1" className="mt-5 text-[clamp(52px,8vw,124px)]">
+          <Eyebrow>{tr("Field supervisor · ward report")}</Eyebrow>
+          <Display as="h1" className="mt-5 text-[clamp(44px,6.4vw,92px)]">
             {tr("The ward,")}
             <br />
             <span className="text-rust">{tr("in numbers.")}</span>
@@ -156,7 +156,7 @@ export function Reports() {
         {/* tier mix */}
         <Reveal className="h-full">
           <div className="h-full rounded-[40px] border border-line-2 bg-card p-6 sm:p-8">
-            <Eyebrow index="02" tone="muted">{tr("Tier mix")}</Eyebrow>
+            <Eyebrow tone="muted">{tr("Tier mix")}</Eyebrow>
             <div className="mt-6 flex h-4 gap-1 overflow-hidden rounded-full" role="img" aria-label="Distribution of children by status">
               {ORDER.map((s) => (
                 <span key={s} className="h-full rounded-full" style={{ flexGrow: Math.max(data.counts[s], 0.01), background: STATUS_META[s].hex }} />
@@ -185,7 +185,7 @@ export function Reports() {
         <Reveal delay={80} className="h-full">
           <div className="h-full rounded-[40px] border border-line-2 bg-card p-6 sm:p-8">
             <div className="flex items-center justify-between gap-3">
-              <Eyebrow index="03" tone="muted">{tr("Referral funnel")}</Eyebrow>
+              <Eyebrow tone="muted">{tr("Referral funnel")}</Eyebrow>
               <Chip tone={data.stuck ? "brick" : "moss"}>{tr("{n} stuck", { n: data.stuck })}</Chip>
             </div>
             {data.funnel[0].n === 0 ? (
@@ -221,7 +221,7 @@ export function Reports() {
       {/* coverage by worker */}
       <Reveal className="mt-4">
         <section className="rounded-[40px] border border-line-2 bg-card p-6 sm:p-8">
-          <Eyebrow index="04" tone="muted">{tr("Coverage by worker")}</Eyebrow>
+          <Eyebrow tone="muted">{tr("Coverage by worker")}</Eyebrow>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {data.sectors.map((s) => {
               const cov = pct(s.screened, s.total);
@@ -246,7 +246,7 @@ export function Reports() {
       {/* domains of concern */}
       <Reveal className="mt-4">
         <section className="rounded-[40px] bg-night p-6 text-paper sm:p-8">
-          <Eyebrow index="05" tone="peach">{tr("Main domain of concern")}</Eyebrow>
+          <Eyebrow tone="peach">{tr("Main domain of concern")}</Eyebrow>
           <p className="mt-2 text-[12.5px] text-paper/60">{tr("Lowest-scoring area for children on Watch or Refer.")}</p>
           {data.domains.length === 0 ? (
             <p className="mt-6 text-[13px] text-paper/70">{tr("No Watch or Refer children with scores yet.")}</p>
