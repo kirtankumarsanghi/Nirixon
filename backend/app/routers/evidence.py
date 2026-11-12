@@ -173,8 +173,9 @@ def _build_module_a(data: dict) -> EvidenceModuleA:
 
 
 def _build_module_b(data: list[dict]) -> EvidenceModuleB:
-    # Entries are a list of {name, mode, ...}. Production headline numbers come
-    # from the held-out "test(all, unseen)" blend (hybrid) and clf (ML-only) rows.
+    # Entries are a list of {name, mode, ...}. The deployed router default is
+    # "rules_primary" (see app/core/module_b/router_b.py); use that row for the
+    # production headline, and clf (ML-only) for the safety ablation.
     def find(name: str, mode: str) -> dict:
         for row in data:
             if (
@@ -185,19 +186,19 @@ def _build_module_b(data: list[dict]) -> EvidenceModuleB:
                 return row
         return {}
 
-    blend = find("test(all, unseen)", "blend")
+    rules = find("test(all, unseen)", "rules_primary")
     clf = find("test(all, unseen)", "clf")
-    hw = find("handwritten(independent)", "blend")
+    hw = find("handwritten(independent)", "rules_primary")
 
     return EvidenceModuleB(
-        n_test=int(blend.get("n", 0)),
-        safety_recall=float(blend.get("safety_R", 0.0)),
-        safety_precision=float(blend.get("safety_P", 0.0)),
-        n_safety=int(blend.get("n_safety", 0)),
-        any_true_domain_hit_rate=float(blend.get("any_true_domain_flagged", 0.0)),
-        domain_micro_precision=float(blend.get("domain_micro_P", 0.0)),
-        domain_micro_recall=float(blend.get("domain_micro_R", 0.0)),
-        domain_micro_f1=float(blend.get("domain_micro_F1", 0.0)),
+        n_test=int(rules.get("n", 0)),
+        safety_recall=float(rules.get("safety_R", 0.0)),
+        safety_precision=float(rules.get("safety_P", 0.0)),
+        n_safety=int(rules.get("n_safety", 0)),
+        any_true_domain_hit_rate=float(rules.get("any_true_domain_flagged", 0.0)),
+        domain_micro_precision=float(rules.get("domain_micro_P", 0.0)),
+        domain_micro_recall=float(rules.get("domain_micro_R", 0.0)),
+        domain_micro_f1=float(rules.get("domain_micro_F1", 0.0)),
         ml_only_safety_recall=float(clf.get("safety_R", 0.0)),
         handwritten_notes=int(hw.get("n", 0)),
         handwritten_any_domain_hit_rate=(

@@ -120,7 +120,7 @@ export function Display({
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("nrx-rise mx-auto w-full max-w-[1360px] px-5 pb-32 pt-6 sm:pt-8 lg:px-8", className)}>
+    <div className={cn("nrx-rise mx-auto w-full max-w-[1360px] px-4 pt-6 pb-36 sm:px-5 sm:pt-8 sm:pb-32 lg:px-8", className)}>
       <Localize>{children}</Localize>
     </div>
   );

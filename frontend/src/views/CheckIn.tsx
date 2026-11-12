@@ -1231,9 +1231,9 @@ export function CheckIn() {
 
         {/* phone */}
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-28">
-          <div className="relative mx-auto w-full max-w-[410px] rounded-[60px] bg-ink p-[11px] shadow-[0_70px_100px_-45px_rgba(31,20,9,0.95)]">
-            <div className="relative flex min-h-[700px] flex-col overflow-hidden rounded-[50px] bg-card">
-              <div className="relative flex items-center justify-between px-9 pt-5 text-[12.5px] font-bold">
+          <div className="relative mx-auto w-full max-w-[410px] rounded-[60px] bg-ink p-[11px] shadow-[0_70px_100px_-45px_rgba(31,20,9,0.95)] max-lg:max-w-none max-lg:rounded-none max-lg:bg-transparent max-lg:p-0 max-lg:shadow-none">
+            <div className="relative flex min-h-[700px] flex-col overflow-hidden rounded-[50px] bg-card max-lg:min-h-0 max-lg:rounded-[28px] max-lg:border max-lg:border-line-2">
+              <div className="relative flex items-center justify-between px-9 pt-5 text-[12.5px] font-bold max-lg:hidden">
                 <span>9:41</span>
                 <span className="absolute top-3.5 left-1/2 h-[28px] w-[112px] -translate-x-1/2 rounded-full bg-ink" />
                 <span className="flex items-center gap-1.5">
@@ -1243,7 +1243,7 @@ export function CheckIn() {
                 </span>
               </div>
 
-              <div className="mt-6 flex items-center gap-3 px-6">
+              <div className="mt-6 flex items-center gap-3 px-6 max-lg:mt-4 max-lg:px-4">
                 <LogoMark size={38} />
                 <div className="leading-tight">
                   <p className="text-[14.5px] font-bold">Nirixon</p>

@@ -72,11 +72,7 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
 
   const runTest = async () => {
     const base = normalize(value);
-    if (!base) {
-      setTest({ ok: true, message: "Using the built-in default (same origin)." });
-      return;
-    }
-    if (!/^https?:\/\//i.test(base)) {
+    if (base && !/^https?:\/\//i.test(base)) {
       setTest({ ok: false, message: "Use a full address starting with http:// or https://" });
       return;
     }
@@ -85,10 +81,15 @@ export function ServerSettings({ open, onClose }: { open: boolean; onClose: () =
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 6000);
     try {
-      const res = await fetch(`${base}/health`, { signal: controller.signal });
+      // Same-origin builds go through the Vite/nginx proxy, which forwards /api.
+      const target = base ? `${base}/api/health` : "/api/health";
+      const res = await fetch(target, { signal: controller.signal });
       const body = (await res.json().catch(() => null)) as { status?: string } | null;
-      if (res.ok && body?.status === "ok") {
-        setTest({ ok: true, message: "Connected — the backend is healthy." });
+      if (res.ok && (body?.status === "ok" || body?.status === "degraded")) {
+        setTest({
+          ok: true,
+          message: base ? "Connected — the backend is healthy." : "Connected through this site's /api proxy.",
+        });
       } else {
         setTest({ ok: false, message: `The server answered ${res.status}. Check the address.` });
       }

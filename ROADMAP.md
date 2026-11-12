@@ -7,7 +7,7 @@ This roadmap outlines the milestones, completed capabilities, active development
 ## 📍 Phase 1: Core System Architecture & Engine Foundations *(Completed & Test-Verified)*
 
 - [x] **Dual-Module Screening System:**
-  - [x] **Module A (0–60 Months):** Adaptive dynamic questionnaire engine, calibrated XGBoost classifier, and TreeSHAP local explainability.
+  - [x] **Module A (0–60 Months):** Adaptive dynamic questionnaire engine, calibrated Random Forest classifier (XGBoost/ensemble benchmarked), and TreeSHAP local explainability.
   - [x] **Module B (5–12 Years):** Free-text NLP concern router (TF-IDF + LogisticRegression) across 8 developmental and learning domains, plus sensory rule-outs.
 - [x] **Clinical Safety Infrastructure:**
   - [x] Inviolable Deterministic Clinical Safety Floor (milestone regression override, severe deficit thresholding, sensory flags).
@@ -15,7 +15,7 @@ This roadmap outlines the milestones, completed capabilities, active development
   - [x] Acute crisis bypass with verified Indian helpline routing (Tele-MANAS, Kiran, Childline).
 - [x] **Frontline Worker (ASHA / Anganwadi / ANM) Portal:**
   - [x] Ward-level child caseload roster with quick filters (Tier 3, overdue follow-ups, age brackets).
-  - [x] Offline-first Progressive Web App (PWA) with persistent client IndexedDB queue (`nirixon_chw_offline_db`).
+  - [x] Offline-first Progressive Web App (PWA) with persistent client IndexedDB queue (`nirixon-chw-offline`).
   - [x] Idempotent synchronization engine (`POST /api/chw/sync`) with client-generated UUID keys and automated conflict logging.
   - [x] Strict 5-stage auditable referral lifecycle (`created` ➔ `sent` ➔ `seen` ➔ `outcome recorded` ➔ `closed`).
   - [x] Area-level data isolation preventing cross-ward data leakage.

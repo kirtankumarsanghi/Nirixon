@@ -24,10 +24,15 @@ declare global {
 
 export function isNativeApp(): boolean {
   try {
-    return Capacitor.isNativePlatform();
+    if (Capacitor.isNativePlatform()) return true;
   } catch {
-    return false;
+    /* fall through to the origin check */
   }
+  if (typeof window === "undefined") return false;
+  // Capacitor serves the bundle from https://localhost. This also covers the
+  // rare case where the Capacitor bridge failed to report the platform.
+  const { protocol, hostname } = window.location;
+  return hostname === "localhost" && (protocol === "https:" || protocol === "capacitor:");
 }
 
 function bridge(): NirixonNativeBridge | null {

@@ -367,6 +367,11 @@ def create_app(*, with_lifespan: bool = True) -> FastAPI:
             "session_repo": current_settings.session_repo_backend,
         }
 
+    @app.get("/api/health", include_in_schema=False)
+    async def api_health():
+        """Same payload as /health, under /api so dev/nginx proxies forward it."""
+        return await health()
+
     @app.get("/live")
     async def live():
         """Basic liveness — process is up, independent of DB/artifacts."""

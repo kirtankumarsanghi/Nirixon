@@ -1,10 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 // Vitest types are ambient via /// reference; keeps tsc -b happy across vite versions.
 /// <reference types="vitest/config" />
 
 import tailwindcss from "@tailwindcss/vite";
+
+const pkg = JSON.parse(
+  readFileSync(resolve(process.cwd(), "package.json"), "utf8"),
+) as { version: string };
 
 export default defineConfig(({ command, isPreview }) => {
   // A shell-wide NODE_ENV=production otherwise makes `vite dev` behave like a
@@ -17,6 +23,9 @@ export default defineConfig(({ command, isPreview }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     // Android System WebView on older phones lags behind desktop Chrome.
     build: {
       target: "es2019",

@@ -281,7 +281,7 @@ export function ClinicalReview() {
                 className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4 transition-colors last:border-0 hover:bg-card-2/60 sm:px-7"
               >
                 <span className="size-3 shrink-0 rounded-[4px]" style={{ background: status.hex }} />
-                <span className="w-[190px] shrink-0 truncate font-display text-[22px] leading-none uppercase sm:w-[240px]">
+                <span className="w-[150px] shrink-0 font-display text-[18px] leading-tight uppercase sm:w-[240px] sm:text-[22px]">
                   {DOMAINS[key].label}
                 </span>
                 <span className="hidden flex-1 truncate text-[11.5px] text-muted md:block">{DOMAINS[key].plain}</span>

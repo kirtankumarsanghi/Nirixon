@@ -1,9 +1,11 @@
 # Validity & Claims
 
+> **Current canonical run:** `backend/ml/artifacts/metrics.json` (timestamp 2026-11-12 02:30:35) evaluates a **Random Forest** production model on an **8,000-row synthetic cohort with a 1,600-row holdout**. Report-ready tables are in [`docs/RESULTS.md`](RESULTS.md). The numeric tables later in this document describe an **earlier 50k/10k XGBoost run** and are retained as methodology/history. Do not mix the two runs in a report; use `metrics.json` for current values.
+
 **Status:** methodology hardened — **clinical validity not established**.
 
-This document is the single source of truth for what Nirixon's models have and have
-not demonstrated. A model trained on synthetic data generated from our own item bank
+This document is the methodology and claim ledger for Nirixon's models; the
+current numeric values live in `backend/ml/artifacts/metrics.json`. A model trained on synthetic data generated from our own item bank
 can *recover our rule* without learning anything about real children. Every number
 below is a **simulation result**.
 

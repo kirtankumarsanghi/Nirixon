@@ -75,12 +75,20 @@ function normalizeBase(value: string | null | undefined): string {
   return (value ?? "").trim().replace(/\/+$/, "");
 }
 
+function nativeShell(): boolean {
+  if (Capacitor.isNativePlatform()) return true;
+  if (typeof window === "undefined") return false;
+  // The Capacitor WebView serves the bundle from https://localhost.
+  const { protocol, hostname } = window.location;
+  return hostname === "localhost" && (protocol === "https:" || protocol === "capacitor:");
+}
+
 function defaultApiBase(): string {
   if (envBase) return envBase.replace("://localhost:", "://127.0.0.1:");
   if (envMobileBase) return envMobileBase;
   // Native builds have no dev-server proxy. 10.0.2.2 is the host machine from
   // the Android emulator; a physical phone uses the first-run server dialog.
-  return Capacitor.isNativePlatform() ? "http://10.0.2.2:8000" : "";
+  return nativeShell() ? "http://10.0.2.2:8000" : "";
 }
 
 function storedApiBase(): string {

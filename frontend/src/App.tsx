@@ -4,6 +4,7 @@ import { AppFooter } from "./components/AppFooter";
 import { Crumbs } from "./components/Crumbs";
 import { MenuOverlay, Nav } from "./components/Nav";
 import { RoleDock } from "./components/RoleDock";
+import { LangPicker } from "./components/LangPicker";
 import { SyncStatus } from "./components/SyncStatus";
 import { ScrollProgress } from "./components/ScrollProgress";
 import { ServerSettingsButton } from "./components/ServerSettings";
@@ -177,6 +178,10 @@ function Workspace() {
         onSignOut={logout}
         footer={
           <div className="space-y-7">
+            <div>
+              <p className="mb-3 font-mono text-[10.5px] tracking-[0.22em] text-paper/45 uppercase">{tr("Language")}</p>
+              <LangPicker tone="dark" />
+            </div>
             <div>
               <p className="mb-3 font-mono text-[10.5px] tracking-[0.22em] text-paper/45 uppercase">{tr("Switch workspace")}</p>
               <div className="flex flex-wrap gap-2">

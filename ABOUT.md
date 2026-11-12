@@ -8,7 +8,7 @@
 
 ## 🌍 The Problem: The "Invisible Delays"
 
-In developing and emerging healthcare ecosystems, **over 70% of neurodevelopmental delays, autism spectrum conditions, sensory impairments, and specific learning disabilities are detected only after children reach primary school age (6–8 years)**. 
+In developing and emerging healthcare ecosystems, **a large share of neurodevelopmental delays, autism spectrum conditions, sensory impairments, and specific learning disabilities are detected only after children reach primary school age (6–8 years)**.
 
 By this point, the optimal biological window of neuroplasticity (ages 0–5) has narrowed significantly. The costs of delayed identification fall heavily on children and families:
 - **School Dropouts & Stigma:** Unidentified hearing, speech, or cognitive delays are frequently misattributed to behavioral disobedience or lack of aptitude.
@@ -25,7 +25,7 @@ Nirixon was created to transform this fragmented landscape into a cohesive, equi
 Nirixon operates under four fundamental clinical and design invariants:
 
 ### 1. Deterministic Clinical Safety Trumps Statistical ML
-While calibrated machine learning (XGBoost, TreeSHAP) enables dynamic, low-burden adaptive questionnaires, statistical predictions must never supersede established clinical red flags. 
+While calibrated machine learning (a Random Forest production model with TreeSHAP; XGBoost and a soft-voting ensemble are benchmarked) enables dynamic, low-burden adaptive questionnaires, statistical predictions must never supersede established clinical red flags.
 - Nirixon incorporates an **uncompromising Deterministic Clinical Safety Floor**: any reported loss of previously acquired speech or motor milestones (developmental regression), severe deficits ($\le -2.0$ Standard Deviations), or sensory failures bypass statistical calculations and trigger an immediate **Tier 3: Priority Referral** with emergency safety guidance.
 
 ### 2. Actionable Triage Over Diagnostic Labeling
@@ -36,8 +36,8 @@ Nirixon is **NOT** a diagnostic device and never outputs clinical diagnoses (suc
 
 ### 3. Grassroots-Native & Offline-First Design
 Healthcare technology must work where the patient lives. Nirixon is built for real-world field conditions:
-- **Offline-First Progressive Web App (PWA):** Operates without active internet connectivity using encrypted local IndexedDB storage, idempotent synchronization, and automatic conflict resolution.
-- **Ultra-Accessible UI:** Mobile-first layout calibrated for 360px viewport field smartphones, high-contrast touch targets, and pre-recorded multilingual audio narration in 8 Indian languages (Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati, Kannada, and English).
+- **Offline-First Progressive Web App (PWA):** Operates without active internet connectivity using local IndexedDB storage, idempotent synchronization, and automatic conflict resolution.
+- **Ultra-Accessible UI:** Mobile-first layout calibrated for 360px viewport field smartphones, high-contrast touch targets, reviewed English/Hindi narration, and on-demand narration in eight languages (Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati, Kannada, and English).
 - **Zero-Footprint Shared Device Security:** Frontline workers sharing primary health center tablets can log out to immediately and irreversibly wipe all local client caches.
 
 ### 4. Culturally Grounded Public Health Alignment
@@ -86,7 +86,7 @@ Healthcare technology must work where the patient lives. Nirixon is built for re
 
 | Layer | Implementation | Technical & Clinical Rationale |
 |---|---|---|
-| **Early Childhood Screener (0–60m)** | Adaptive IRT-inspired dynamic questionnaire + calibrated XGBoost | Minimizes question count while maximizing domain coverage; probability calibration via Isotonic Regression ensures reliable risk estimates. |
+| **Early Childhood Screener (0–60m)** | Adaptive IRT-inspired dynamic questionnaire + calibrated Random Forest (XGBoost/ensemble benchmarked) | Minimizes question count while maximizing domain coverage; probability calibration ensures reliable risk estimates. |
 | **School-Age Screener (5–12y)** | NLP Router (`TF-IDF` + `LogisticRegression`) + 8 developmental domains | Converts informal parental vernacular into structured domain priors; prioritizes high safety recall for acute distress and developmental regression. |
 | **Explainability Engine** | TreeSHAP local feature attribution | Guarantees transparency by breaking down multi-class risk contributions for every individual child evaluation. |
 | **Safety Invariants** | Deterministic rule override engine | Hardcoded clinical boundary rules upstream and downstream of ML inference to catch regressions and severe motor/sensory deficits. |

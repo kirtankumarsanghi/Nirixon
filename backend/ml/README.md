@@ -70,7 +70,7 @@ A standard clinical baseline scores each developmental domain against published 
 | Regime | Evaluation Approach | Macro F1 | Refer Sensitivity | Refer Precision | Typical Specificity |
 |---|---|---|---|---|---|
 | Complete (36 items) | Published ASQ Rule | 0.7875 | 0.9602 | 0.5550 | 0.8734 |
-| Complete (36 items) | **XGBoost (trained model)** | **0.8996** | **0.9248** | **0.8819** | **0.9796** |
+| Complete (36 items) | **Random Forest (production)** | **0.9017** | **0.9248** | **0.8819** | **0.9796** |
 | Sparse (12 items) | Naive Rule (Zero-filled) | 0.4353 | 0.1637 | 0.4353 | 0.4278 |
 | Sparse (12 items) | Prorated Scale Rule | 0.4034 | 0.9867 | 0.2053 | 0.3425 |
 | Sparse (12 items) | **XGBoost + Peer Imputation** | **0.8412** | **0.8009** | **0.8341** | **0.8294** |

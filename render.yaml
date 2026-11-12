@@ -1,0 +1,60 @@
+databases:
+  - name: nirixon-db
+    databaseName: nirixon
+    user: nirixon
+    plan: free
+    region: singapore
+
+services:
+  - type: web
+    name: nirixon-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile.backend
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    # Run migrations before serving so a fresh managed database gets the schema.
+    dockerCommand: sh -c "cd /app/backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1"
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nirixon-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: SEED_USER_EMAIL
+        value: parent@example.com
+      - key: SEED_USER_PASSWORD
+        sync: false
+      - key: ML_ARTIFACTS_DIR
+        value: /app/backend/ml/artifacts
+      - key: ML_ARTIFACTS_DIR_B
+        value: /app/backend/ml/artifacts/module_b
+      - key: MODULE_B_DATA_DIR
+        value: /app/backend/data/module_b
+      - key: MODULE_B_ARTIFACT_DIR
+        value: /app/backend/ml/artifacts/module_b_router
+      - key: NIRIXON_REFERENCE_DB
+        value: /app/backend/data/find_help/reference.sqlite
+      - key: SESSION_REPO_BACKEND
+        value: memory
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: GROWTH_SYNC_ENABLED
+        value: "true"
+      - key: NOTIFICATION_PROVIDER
+        value: outbox
+      - key: NOTIFICATION_WORKER_ENABLED
+        value: "false"
+      - key: PUBLIC_APP_URL
+        value: https://nirixon-api.onrender.com
+      # The API itself is served over HTTPS; native WebView origins are added
+      # automatically in app/main.py, these are for web clients.
+      - key: CORS_ORIGINS
+        value: https://localhost,http://localhost,capacitor://localhost

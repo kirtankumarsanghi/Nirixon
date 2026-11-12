@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { ROLES, viewLabel } from "../lib/roles";
 import { useT } from "../lib/useT";
@@ -8,7 +7,7 @@ import { cn } from "../utils/cn";
 
 /**
  * "Where am I" bar under the floating nav:
- * back button · breadcrumb · (on small screens) a scrollable strip of the role's sections.
+ * back button · breadcrumb · (on small screens) the role's sections.
  */
 export function Crumbs() {
   const { role, view, go, back, canBack } = useApp();
@@ -16,13 +15,6 @@ export function Crumbs() {
   const cfg = ROLES[role];
   const here = viewLabel(role, view);
   const atHome = view === cfg.home;
-  const stripRef = useRef<HTMLElement>(null);
-
-  // keep the active pill visible in the scrollable strip
-  useEffect(() => {
-    const el = stripRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    el?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [view, role]);
 
   return (
     <Localize>
@@ -62,9 +54,8 @@ export function Crumbs() {
 
       {/* tabs live in the top bar on wide screens — give everyone else a strip */}
       <nav
-        ref={stripRef}
         aria-label="Workspace sections"
-        className="nrx-hide-scroll -mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:px-0 xl:hidden"
+        className="-mx-5 mt-4 flex flex-wrap gap-2 px-5 pb-1 lg:mx-0 lg:px-0 xl:hidden"
       >
         {cfg.tabs.map((t) => {
           const on = view === t.view;
@@ -75,7 +66,7 @@ export function Crumbs() {
               onClick={() => go(t.view)}
               aria-current={on ? "page" : undefined}
               className={cn(
-                "shrink-0 rounded-full border px-5 py-2.5 text-[13px] font-bold whitespace-nowrap transition-all",
+                "shrink-0 rounded-full border px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition-all sm:px-5 sm:py-2.5 sm:text-[13px]",
                 on ? "border-ink bg-ink text-paper" : "border-line-2 bg-card text-ink-2 hover:border-ink hover:text-ink"
               )}
             >

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, ArrowUp, ArrowUpRight, Eye, EyeOff, Info, Loader2, Lock, Mail } from "lucide-react";
 import { MenuOverlay, Nav } from "../components/Nav";
-import { ServerSettingsButton } from "../components/ServerSettings";
+import { ServerSettings, ServerSettingsButton } from "../components/ServerSettings";
 import { getApiBase, getSavedApiBase, isApiUnavailable } from "../api/client";
 import { isNativeApp } from "../lib/native";
 import { LogoMark, Wordmark } from "../components/Brand";
@@ -56,23 +56,21 @@ export function Login() {
   const [active, setActive] = useState<Role>("parent");
   const [tab, setTab] = useState("signin");
   const [menu, setMenu] = useState(false);
+  const [serverOpen, setServerOpen] = useState(false);
   const [apiState, setApiState] = useState<"checking" | "ok" | "down" | null>(null);
   const timers = useRef<number[]>([]);
 
-  // Surface whether the phone can actually reach the configured API host.
+  // Surface whether this device can actually reach the configured API host.
+  // `/api/health` (not `/health`) so the Vite and nginx proxies forward it.
   useEffect(() => {
     const base = getApiBase();
-    if (!base) {
-      setApiState(null);
-      return;
-    }
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 5000);
     setApiState("checking");
-    fetch(`${base}/health`, { signal: controller.signal })
+    fetch(`${base}/api/health`, { signal: controller.signal })
       .then(async (res) => {
         const body = (await res.json().catch(() => null)) as { status?: string } | null;
-        setApiState(res.ok && body?.status === "ok" ? "ok" : "down");
+        setApiState(res.ok && (body?.status === "ok" || body?.status === "degraded") ? "ok" : "down");
       })
       .catch(() => setApiState("down"))
       .finally(() => window.clearTimeout(timer));
@@ -171,6 +169,16 @@ export function Login() {
     isNativeApp() &&
     !getSavedApiBase() &&
     !(import.meta.env.VITE_API_BASE_URL ?? "").trim();
+
+  // Never leave the user staring at "unreachable" with no path forward: if the
+  // API cannot be reached, open the address dialog automatically.
+  useEffect(() => {
+    if (needsServer || apiState === "down") setServerOpen(true);
+  }, [needsServer, apiState]);
+
+  const apiLabel =
+    getApiBase() ||
+    (typeof window !== "undefined" ? window.location.origin : tr("this origin"));
 
   return (
     <Localize>
@@ -288,7 +296,7 @@ export function Login() {
 
               {apiState === "down" && (
                 <p role="alert" className="mt-4 rounded-2xl bg-brick/20 px-4 py-3 text-[12.5px] leading-snug text-[#ffb59f]">
-                  Can't reach the API at {getApiBase() || tr("this origin")}. Make sure the backend is running, then try
+                  Can't reach the API at {apiLabel}. Make sure the backend is running, then try
                   again — or use “Change” below to point at a different server.
                 </p>
               )}
@@ -392,7 +400,8 @@ export function Login() {
               <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
                 <div className="min-w-0">
                   <p className="font-mono text-[9.5px] tracking-[0.2em] text-paper/40 uppercase">{tr("API server")}</p>
-                  <p className="truncate font-mono text-[10.5px] text-paper/60">{getApiBase() || tr("same origin")}</p>
+                  <p className="truncate font-mono text-[10.5px] text-paper/60">{apiLabel}</p>
+                  <p className="mt-0.5 font-mono text-[9px] text-paper/30">Nirixon v{__APP_VERSION__}</p>
                   {apiState && (
                     <p
                       className={cn(
@@ -405,12 +414,13 @@ export function Login() {
                     </p>
                   )}
                 </div>
-                <ServerSettingsButton
-                  autoOpen={needsServer}
+                <button
+                  type="button"
+                  onClick={() => setServerOpen(true)}
                   className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/15 px-3.5 py-2 text-[11.5px] font-semibold text-paper/75 transition-colors hover:border-white/40 hover:text-paper"
                 >
-                  {tr("Change")}
-                </ServerSettingsButton>
+                  <Info className="size-4" /> {tr("Change")}
+                </button>
               </div>
             </div>
           </div>
@@ -622,6 +632,7 @@ export function Login() {
           Demo workspace · records served by the Nirixon API · Screening aid, not a diagnosis
         </p>
       </footer>
+      <ServerSettings open={serverOpen} onClose={() => setServerOpen(false)} />
     </div>
     </Localize>
   );
